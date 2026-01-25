@@ -23,11 +23,13 @@ class DeterministicDeck:
 
     Attributes:
         seed: Random seed for shuffling
+        num_players: Number of players (for hole card dealing)
         cards: List of remaining cards in the deck
         dealt: List of cards that have been dealt
     """
 
     seed: int
+    num_players: int = 2
     cards: list[str] = field(default_factory=list)
     dealt: list[str] = field(default_factory=list)
     _explicit_holes: list[Optional[str]] = field(default_factory=list)
@@ -40,17 +42,19 @@ class DeterministicDeck:
             rng = random.Random(self.seed)
             rng.shuffle(self.cards)
 
-    def set_explicit_holes(
-        self, player0_hole: Optional[str], player1_hole: Optional[str]
-    ) -> None:
+    def set_explicit_holes(self, hole_cards: list[str | None]) -> None:
         """
-        Set explicit hole cards for both players.
+        Set explicit hole cards for players.
 
         Args:
-            player0_hole: Cards for player 0 (e.g., "AcAs")
-            player1_hole: Cards for player 1 (e.g., "KhKd")
+            hole_cards: List of hole cards for each player.
+                        e.g., ["AcAs", "KhKd", None, "QsQc"]
+                        None means deal randomly for that player.
         """
-        self._explicit_holes = [player0_hole, player1_hole]
+        # Pad with None if fewer entries than players
+        self._explicit_holes = list(hole_cards)
+        while len(self._explicit_holes) < self.num_players:
+            self._explicit_holes.append(None)
 
         # Remove explicit cards from deck if specified
         for hole in self._explicit_holes:
@@ -81,7 +85,7 @@ class DeterministicDeck:
         Returns explicit cards if set, otherwise deals from shuffled deck.
 
         Args:
-            player_index: 0 or 1
+            player_index: Player index (0 to num_players-1)
 
         Returns:
             Two-card string like "AcAs"
@@ -126,9 +130,9 @@ class DeterministicDeck:
         return self.cards.copy()
 
     @classmethod
-    def from_seed(cls, seed: int) -> "DeterministicDeck":
+    def from_seed(cls, seed: int, num_players: int = 2) -> "DeterministicDeck":
         """Create a new deck shuffled with the given seed."""
-        return cls(seed=seed)
+        return cls(seed=seed, num_players=num_players)
 
 
 def parse_cards(card_string: str) -> list[str]:

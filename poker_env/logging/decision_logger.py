@@ -1,6 +1,7 @@
 """JSONL decision logging for experiment replay and analysis."""
 
 import json
+import hashlib
 from pathlib import Path
 from typing import Optional, Any
 from dataclasses import dataclass, asdict
@@ -28,7 +29,7 @@ class DecisionRecord:
     legal_actions: list[str]
     agent_belief: Optional[dict]
     agent_action: str
-    oracle_truth: Optional[dict]
+    equity_given_true_hands: Optional[dict]  # Renamed from oracle_truth
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
@@ -43,9 +44,20 @@ class HandSummary:
     seed: int
     num_decisions: int
     final_stacks: list[int]
-    player0_delta: float
-    player1_delta: float
+    deltas: dict  # {"player0_delta": float, "player1_delta": float, ...}
     showdown: dict
+
+
+@dataclass
+class RunConfig:
+    """Configuration for a run, used for reproducibility tracking."""
+
+    env_config_hash: str
+    agent_configs: list[dict]  # Config for each agent
+    prompt_version: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
 
 
 class DecisionLogger:
@@ -54,29 +66,53 @@ class DecisionLogger:
 
     Records one JSON object per line for each decision point,
     plus a summary record at the end of each hand.
+    Supports 2-6 players.
+
+    Includes config hashes for paper-quality reproducibility.
     """
 
-    def __init__(self, output_path: str):
+    def __init__(
+        self,
+        output_path: str,
+        env_config_hash: str = "",
+        agent_configs: list[dict] | None = None,
+        prompt_version: str | None = None,
+    ):
         """
         Initialize the logger.
 
         Args:
             output_path: Path to output JSONL file
+            env_config_hash: Hash of environment config for reproducibility
+            agent_configs: List of agent configurations
+            prompt_version: Version string for prompt templates
         """
         self.output_path = Path(output_path)
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # Run config for reproducibility
+        self.run_config = RunConfig(
+            env_config_hash=env_config_hash,
+            agent_configs=agent_configs or [],
+            prompt_version=prompt_version,
+        )
+
         # Current hand state
         self._current_hand_id: Optional[str] = None
+        self._current_seed: int = 0
         self._decision_idx: int = 0
         self._records: list[DecisionRecord] = []
 
         # Open file in append mode
         self._file = None
+        self._header_written = False
 
     def __enter__(self):
         """Context manager entry."""
         self._file = open(self.output_path, "a")
+        # Write run config header if file is empty
+        if self.output_path.stat().st_size == 0:
+            self._write_header()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -84,6 +120,15 @@ class DecisionLogger:
         if self._file:
             self._file.close()
             self._file = None
+
+    def _write_header(self):
+        """Write run configuration header."""
+        header = {
+            "type": "run_config",
+            **self.run_config.to_dict(),
+        }
+        self._write_record(header)
+        self._header_written = True
 
     def start_hand(self, hand_id: str, seed: int) -> None:
         """
@@ -104,17 +149,17 @@ class DecisionLogger:
         hidden: dict,
         agent_action: Action,
         agent_belief: Optional[dict] = None,
-        oracle_truth: Optional[dict] = None,
+        equity_given_true_hands: Optional[dict] = None,
     ) -> None:
         """
         Log a decision point.
 
         Args:
             obs: Observation at the decision point
-            hidden: Hidden state (opponent hole cards, etc.)
+            hidden: Hidden state (all players' hole cards, etc.)
             agent_action: Action selected by the agent
             agent_belief: Optional belief dict from agent
-            oracle_truth: Optional ground truth from oracle
+            equity_given_true_hands: Ground truth equity from oracle (computed AFTER agent acts)
         """
         record = DecisionRecord(
             hand_id=obs.hand_id,
@@ -127,7 +172,7 @@ class DecisionLogger:
             legal_actions=[a.type.value for a in obs.legal_actions],
             agent_belief=agent_belief,
             agent_action=agent_action.type.value,
-            oracle_truth=oracle_truth,
+            equity_given_true_hands=equity_given_true_hands,
         )
 
         self._records.append(record)
@@ -137,17 +182,15 @@ class DecisionLogger:
     def end_hand(
         self,
         final_stacks: list[int],
-        player0_delta: float,
-        player1_delta: float,
+        deltas: dict,
         showdown: dict,
     ) -> None:
         """
         Log hand completion summary.
 
         Args:
-            final_stacks: Final stack sizes
-            player0_delta: Stack change for player 0
-            player1_delta: Stack change for player 1
+            final_stacks: Final stack sizes for all players
+            deltas: Stack changes for all players {"player0_delta": float, ...}
             showdown: Showdown information (hole cards, board)
         """
         summary = HandSummary(
@@ -155,8 +198,7 @@ class DecisionLogger:
             seed=self._current_seed,
             num_decisions=self._decision_idx,
             final_stacks=final_stacks,
-            player0_delta=player0_delta,
-            player1_delta=player1_delta,
+            deltas=deltas,
             showdown=showdown,
         )
 
@@ -215,3 +257,23 @@ def load_hand_summaries(jsonl_path: str) -> list[dict]:
                 if record.get("type") == "hand_summary":
                     summaries.append(record)
     return summaries
+
+
+def load_run_config(jsonl_path: str) -> Optional[dict]:
+    """
+    Load run configuration from a JSONL file.
+
+    Args:
+        jsonl_path: Path to JSONL file
+
+    Returns:
+        Run config dict or None if not found
+    """
+    with open(jsonl_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                record = json.loads(line)
+                if record.get("type") == "run_config":
+                    return record
+    return None

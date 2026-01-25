@@ -32,6 +32,7 @@ class TestGoldenHand:
         - Example ends with stacks [204, 196] (player 0 wins 4 chips)
         """
         env = PokerKitEnv(
+            num_players=2,
             stacks=(200, 200),
             blinds=(1, 2),
             small_bet=2,
@@ -39,8 +40,6 @@ class TestGoldenHand:
         )
 
         # Reset with explicit cards to match docs example
-        # The docs example uses specific cards but doesn't show them all
-        # We'll verify the hand plays correctly regardless
         obs = env.reset(seed=42)
 
         assert obs is not None
@@ -50,13 +49,13 @@ class TestGoldenHand:
     def test_preflop_blind_posting(self):
         """Test that blinds are correctly posted."""
         env = PokerKitEnv(
+            num_players=2,
             stacks=(200, 200),
             blinds=(1, 2),
         )
         obs = env.reset(seed=42)
 
         # After blinds, pot should contain 3 chips (1 + 2)
-        # Note: Pot calculation may vary based on when we observe it
         assert obs.street == "PREFLOP"
 
     def test_complete_hand_to_showdown(self):
@@ -82,7 +81,6 @@ class TestGoldenHand:
 
         assert done
         assert "PREFLOP" in streets_seen
-        # May or may not see all streets depending on the specific hand
         assert "final_stacks" in info
         assert len(info["final_stacks"]) == 2
 
@@ -132,7 +130,6 @@ class TestGoldenHand:
                 break
 
         # In fixed-limit, typically capped at 4 bets (bet + 3 raises)
-        # But this can vary - just verify we didn't crash
         assert raise_count >= 0
 
 
@@ -204,9 +201,6 @@ class TestRewardCalculation:
         """Test that folding gives the pot to opponent."""
         env = PokerKitEnv()
         obs = env.reset(seed=42)
-
-        # Get initial pot
-        initial_pot = obs.pot_total
 
         # Fold immediately
         legal = env.legal_actions()

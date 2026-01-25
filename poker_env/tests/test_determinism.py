@@ -37,11 +37,10 @@ class TestDeterministicDealing:
 
         env.reset(
             seed=42,
-            hero_hole="AcAs",
-            villain_hole="KhKd",
+            hole_cards=["AcAs", "KhKd"],
         )
 
-        # Check cards via hidden state (hero=player0, villain=player1)
+        # Check cards via hidden state (player0, player1)
         hidden = env.get_hidden_state()
         assert hidden["player0_hole"] == ["Ac", "As"]
         assert hidden["player1_hole"] == ["Kh", "Kd"]
@@ -73,8 +72,8 @@ class TestDeterministicDeck:
 
     def test_explicit_hole_cards(self):
         """Test setting explicit hole cards."""
-        deck = DeterministicDeck.from_seed(42)
-        deck.set_explicit_holes("AcAs", "KhKd")
+        deck = DeterministicDeck.from_seed(42, num_players=2)
+        deck.set_explicit_holes(["AcAs", "KhKd"])
 
         hole0 = deck.get_hole_cards(0)
         hole1 = deck.get_hole_cards(1)
@@ -85,10 +84,22 @@ class TestDeterministicDeck:
     def test_explicit_cards_removed_from_deck(self):
         """Test that explicit cards are removed from deck."""
         deck = DeterministicDeck.from_seed(42)
-        deck.set_explicit_holes("AcAs", None)
+        deck.set_explicit_holes(["AcAs", None])
 
         assert "Ac" not in deck.cards
         assert "As" not in deck.cards
+
+    def test_multiway_explicit_holes(self):
+        """Test explicit holes for multi-way games."""
+        deck = DeterministicDeck.from_seed(42, num_players=4)
+        deck.set_explicit_holes(["AcAs", "KhKd", None, "QsQc"])
+
+        assert deck.get_hole_cards(0) == "AcAs"
+        assert deck.get_hole_cards(1) == "KhKd"
+        # Player 2 gets random cards
+        hole2 = deck.get_hole_cards(2)
+        assert len(hole2) == 4  # Two 2-char cards
+        assert deck.get_hole_cards(3) == "QsQc"
 
 
 class TestGameplayDeterminism:

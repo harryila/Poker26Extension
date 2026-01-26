@@ -31,6 +31,15 @@ class DecisionRecord:
     agent_action: str
     equity_given_true_hands: Optional[dict]  # Renamed from oracle_truth
 
+    # LLM agent metadata (optional, populated when using HFAgent)
+    action_metadata: Optional[dict] = None  # parse_success, fallback_used, raw_response
+    belief_metadata: Optional[dict] = None  # parse_success, prob_sum, prob_min, negative_count
+
+    # Reproducibility fields
+    prompt_template_id: Optional[str] = None  # e.g., "action_strict_v1"
+    prompt_hash: Optional[str] = None  # SHA256 hash of formatted prompt
+    probe_order: Optional[str] = None  # "action_first" or "belief_first"
+
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         return asdict(self)
@@ -150,6 +159,11 @@ class DecisionLogger:
         agent_action: Action,
         agent_belief: Optional[dict] = None,
         equity_given_true_hands: Optional[dict] = None,
+        action_metadata: Optional[dict] = None,
+        belief_metadata: Optional[dict] = None,
+        prompt_template_id: Optional[str] = None,
+        prompt_hash: Optional[str] = None,
+        probe_order: Optional[str] = None,
     ) -> None:
         """
         Log a decision point.
@@ -160,6 +174,11 @@ class DecisionLogger:
             agent_action: Action selected by the agent
             agent_belief: Optional belief dict from agent
             equity_given_true_hands: Ground truth equity from oracle (computed AFTER agent acts)
+            action_metadata: Metadata from action selection (parse_success, fallback_used, etc.)
+            belief_metadata: Metadata from belief elicitation (prob_sum, prob_min, etc.)
+            prompt_template_id: ID of prompt template used
+            prompt_hash: SHA256 hash of formatted prompt
+            probe_order: Order of probing ("action_first" or "belief_first")
         """
         record = DecisionRecord(
             hand_id=obs.hand_id,
@@ -173,6 +192,11 @@ class DecisionLogger:
             agent_belief=agent_belief,
             agent_action=agent_action.type.value,
             equity_given_true_hands=equity_given_true_hands,
+            action_metadata=action_metadata,
+            belief_metadata=belief_metadata,
+            prompt_template_id=prompt_template_id,
+            prompt_hash=prompt_hash,
+            probe_order=probe_order,
         )
 
         self._records.append(record)

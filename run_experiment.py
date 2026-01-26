@@ -14,24 +14,41 @@ Usage:
 """
 
 import argparse
+import random
 import warnings
 from pathlib import Path
 from typing import Optional
 
 from poker_env.env import PokerKitEnv
-from poker_env.agents import BaseAgent, RandomAgent, CallAgent
+from poker_env.agents import BaseAgent, RandomAgent, CallAgent, HF_AVAILABLE
 from poker_env.oracle import EquityOracle
 from poker_env.logging import DecisionLogger
 
+# Conditionally import HFAgent
+if HF_AVAILABLE:
+    from poker_env.agents import HFAgent
 
-def create_agent(agent_type: str, seed: Optional[int] = None, name: str = "") -> BaseAgent:
+
+def create_agent(
+    agent_type: str,
+    seed: Optional[int] = None,
+    name: str = "",
+    hf_model: str = "meta-llama/Llama-3.1-8B-Instruct",
+    temperature: float = 0.2,
+    max_new_tokens: int = 128,
+    max_input_tokens: int = 2048,
+) -> BaseAgent:
     """
     Create an agent by type name.
 
     Args:
-        agent_type: One of "random", "call"
+        agent_type: One of "random", "call", "hf"
         seed: Optional seed for random agent
         name: Optional name for the agent
+        hf_model: HuggingFace model ID (for hf agent)
+        temperature: Generation temperature (for hf agent)
+        max_new_tokens: Max tokens to generate (for hf agent)
+        max_input_tokens: Max input context length (for hf agent)
 
     Returns:
         BaseAgent instance
@@ -40,6 +57,19 @@ def create_agent(agent_type: str, seed: Optional[int] = None, name: str = "") ->
         return RandomAgent(seed=seed, name=name or "RandomAgent")
     elif agent_type == "call":
         return CallAgent(name=name or "CallAgent")
+    elif agent_type == "hf":
+        if not HF_AVAILABLE:
+            raise ImportError(
+                "HFAgent requires torch and transformers. "
+                "Install with: pip install torch transformers accelerate"
+            )
+        return HFAgent(
+            model_id=hf_model,
+            temperature=temperature,
+            max_new_tokens=max_new_tokens,
+            max_input_tokens=max_input_tokens,
+            name=name or "HFAgent",
+        )
     else:
         raise ValueError(f"Unknown agent type: {agent_type}")
 
@@ -48,6 +78,10 @@ def create_agents(
     agent_types: list[str],
     num_players: int,
     base_seed: int,
+    hf_model: str = "meta-llama/Llama-3.1-8B-Instruct",
+    temperature: float = 0.2,
+    max_new_tokens: int = 128,
+    max_input_tokens: int = 2048,
 ) -> list[BaseAgent]:
     """
     Create agents for all players.
@@ -56,21 +90,44 @@ def create_agents(
         agent_types: List of agent types (will be cycled if shorter than num_players)
         num_players: Number of players
         base_seed: Base seed for random agents
+        hf_model: HuggingFace model ID (for hf agents)
+        temperature: Generation temperature (for hf agents)
+        max_new_tokens: Max tokens to generate (for hf agents)
+        max_input_tokens: Max input context length (for hf agents)
 
     Returns:
         List of BaseAgent instances
     """
     agents = []
+    hf_agent_instance = None  # Reuse same HF agent for efficiency
+    
     for i in range(num_players):
         agent_type = agent_types[i % len(agent_types)]
         seed = base_seed + i if agent_type == "random" else None
-        agents.append(create_agent(agent_type, seed=seed, name=f"Player{i}_{agent_type}"))
+        
+        if agent_type == "hf":
+            # Reuse same HFAgent instance (model only needs to load once)
+            if hf_agent_instance is None:
+                hf_agent_instance = create_agent(
+                    agent_type,
+                    name=f"Player{i}_{agent_type}",
+                    hf_model=hf_model,
+                    temperature=temperature,
+                    max_new_tokens=max_new_tokens,
+                    max_input_tokens=max_input_tokens,
+                )
+            agents.append(hf_agent_instance)
+        else:
+            agents.append(create_agent(agent_type, seed=seed, name=f"Player{i}_{agent_type}"))
+    
     return agents
 
 
 def get_agent_configs(agents: list[BaseAgent]) -> list[dict]:
     """Get configuration dicts for all agents."""
     configs = []
+    seen_hf = False
+    
     for agent in agents:
         config = {
             "name": agent.name,
@@ -78,6 +135,13 @@ def get_agent_configs(agents: list[BaseAgent]) -> list[dict]:
         }
         if hasattr(agent, "seed"):
             config["seed"] = agent.seed
+        # Add HF-specific config (only once since agents may be shared)
+        if HF_AVAILABLE and hasattr(agent, "model_id") and not seen_hf:
+            config["model_id"] = agent.model_id
+            config["temperature"] = agent.temperature
+            config["max_new_tokens"] = agent.max_new_tokens
+            config["max_input_tokens"] = agent.max_input_tokens
+            seen_hf = True
         configs.append(config)
     return configs
 
@@ -89,6 +153,8 @@ def run_single_hand(
     logger: Optional[DecisionLogger],
     seed: int,
     compute_oracle: bool = True,
+    elicit_beliefs: bool = False,
+    randomize_probe_order: bool = False,
 ) -> dict:
     """
     Run a single hand of poker.
@@ -100,6 +166,8 @@ def run_single_hand(
         logger: Optional decision logger
         seed: Random seed for this hand
         compute_oracle: Whether to compute oracle truth at each decision
+        elicit_beliefs: Whether to call belief() on agents (for LLM agents)
+        randomize_probe_order: Whether to randomize action/belief probe order
 
     Returns:
         Dict with hand results
@@ -119,9 +187,58 @@ def run_single_hand(
         player = env.current_player()
         agent = agents[player]
 
-        # Agent acts based ONLY on observation (no oracle info)
-        action = agent.act(obs)
-        belief = agent.belief(obs)
+        # Determine probe order
+        if randomize_probe_order:
+            probe_order = random.choice(["action_first", "belief_first"])
+        else:
+            probe_order = "action_first"
+
+        # Initialize metadata
+        action_metadata = None
+        belief_metadata = None
+        belief = None
+        prompt_template_id = None
+        prompt_hash = None
+
+        # Check if agent is HFAgent with metadata support
+        is_hf_agent = HF_AVAILABLE and hasattr(agent, 'act_with_metadata')
+
+        if probe_order == "belief_first" and elicit_beliefs:
+            # Get belief first
+            if is_hf_agent:
+                belief, belief_meta = agent.belief_with_metadata(obs)
+                belief_metadata = belief_meta.to_dict() if belief_meta else None
+                prompt_hash = belief_meta.prompt_hash if belief_meta else None
+                prompt_template_id = belief_meta.prompt_template_id if belief_meta else None
+            else:
+                belief = agent.belief(obs)
+
+            # Then get action
+            if is_hf_agent:
+                action, action_meta = agent.act_with_metadata(obs)
+                action_metadata = action_meta.to_dict() if action_meta else None
+                if action_meta and not prompt_hash:
+                    prompt_hash = action_meta.prompt_hash
+                    prompt_template_id = action_meta.prompt_template_id
+            else:
+                action = agent.act(obs)
+        else:
+            # Action first (default)
+            if is_hf_agent:
+                action, action_meta = agent.act_with_metadata(obs)
+                action_metadata = action_meta.to_dict() if action_meta else None
+                prompt_hash = action_meta.prompt_hash if action_meta else None
+                prompt_template_id = action_meta.prompt_template_id if action_meta else None
+            else:
+                action = agent.act(obs)
+
+            # Then get belief if requested
+            if elicit_beliefs:
+                if is_hf_agent:
+                    belief, belief_meta = agent.belief_with_metadata(obs)
+                    belief_metadata = belief_meta.to_dict() if belief_meta else None
+                else:
+                    belief = agent.belief(obs)
 
         # Oracle computed AFTER agent acts - for logging only, never seen by agent
         equity_truth = None
@@ -151,6 +268,11 @@ def run_single_hand(
                 agent_action=action,
                 agent_belief=belief,
                 equity_given_true_hands=equity_truth,
+                action_metadata=action_metadata,
+                belief_metadata=belief_metadata,
+                prompt_template_id=prompt_template_id,
+                prompt_hash=prompt_hash,
+                probe_order=probe_order if elicit_beliefs else None,
             )
 
         # Apply action
@@ -186,6 +308,12 @@ def run_experiment(
     big_bet: int = 4,
     compute_oracle: bool = True,
     verbose: bool = False,
+    hf_model: str = "meta-llama/Llama-3.1-8B-Instruct",
+    temperature: float = 0.2,
+    max_new_tokens: int = 128,
+    max_input_tokens: int = 2048,
+    elicit_beliefs: bool = False,
+    randomize_probe_order: bool = False,
 ) -> dict:
     """
     Run a full experiment with multiple hands.
@@ -202,6 +330,12 @@ def run_experiment(
         big_bet: Big bet size
         compute_oracle: Whether to compute oracle truth
         verbose: Print progress
+        hf_model: HuggingFace model ID (for hf agents)
+        temperature: Generation temperature (for hf agents)
+        max_new_tokens: Max tokens to generate (for hf agents)
+        max_input_tokens: Max input context length (for hf agents)
+        elicit_beliefs: Whether to call belief() on agents
+        randomize_probe_order: Whether to randomize action/belief probe order
 
     Returns:
         Dict with experiment summary
@@ -221,7 +355,15 @@ def run_experiment(
         )
 
     # Create agents
-    agents = create_agents(agent_types, num_players, base_seed)
+    agents = create_agents(
+        agent_types,
+        num_players,
+        base_seed,
+        hf_model=hf_model,
+        temperature=temperature,
+        max_new_tokens=max_new_tokens,
+        max_input_tokens=max_input_tokens,
+    )
 
     # Create oracle
     oracle = EquityOracle(num_samples=5000, seed=base_seed + 100)
@@ -246,6 +388,8 @@ def run_experiment(
                 logger=logger,
                 seed=hand_seed,
                 compute_oracle=compute_oracle,
+                elicit_beliefs=elicit_beliefs,
+                randomize_probe_order=randomize_probe_order,
             )
 
             hand_results.append(result)
@@ -295,7 +439,7 @@ def main():
         "--agent",
         type=str,
         default="random",
-        choices=["random", "call"],
+        choices=["random", "call", "hf"],
         help="Default agent type for all players (default: random)",
     )
     parser.add_argument(
@@ -339,6 +483,42 @@ def main():
         action="store_true",
         help="Print progress",
     )
+    
+    # HuggingFace agent options
+    parser.add_argument(
+        "--hf-model",
+        type=str,
+        default="meta-llama/Llama-3.1-8B-Instruct",
+        help="HuggingFace model ID (default: meta-llama/Llama-3.1-8B-Instruct)",
+    )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.2,
+        help="Generation temperature for HF agent (default: 0.2, use 0 for deterministic)",
+    )
+    parser.add_argument(
+        "--max-new-tokens",
+        type=int,
+        default=128,
+        help="Max tokens to generate (default: 128)",
+    )
+    parser.add_argument(
+        "--max-input-tokens",
+        type=int,
+        default=2048,
+        help="Max input context length (default: 2048)",
+    )
+    parser.add_argument(
+        "--elicit-beliefs",
+        action="store_true",
+        help="Call belief() on agents at each decision (for LLM belief analysis)",
+    )
+    parser.add_argument(
+        "--randomize-probe-order",
+        action="store_true",
+        help="Randomize order of action/belief probing (for robustness testing)",
+    )
 
     args = parser.parse_args()
 
@@ -361,6 +541,12 @@ def main():
         base_seed=args.seed,
         compute_oracle=not args.no_oracle,
         verbose=args.verbose,
+        hf_model=args.hf_model,
+        temperature=args.temperature,
+        max_new_tokens=args.max_new_tokens,
+        max_input_tokens=args.max_input_tokens,
+        elicit_beliefs=args.elicit_beliefs,
+        randomize_probe_order=args.randomize_probe_order,
     )
 
 

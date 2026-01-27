@@ -3,9 +3,34 @@ Prompt templates for belief elicitation from LLM agents.
 
 Provides structured prompts to extract probability distributions
 over opponent hand buckets from LLM poker agents.
+
+Supports two formats:
+- "full": Labeled dict format {"premium_pairs": 0.05, ...}
+- "compact": Fixed-order list format {"schema": "buckets_14_v1", "probs": [...]}
 """
 
 from analysis.buckets import BUCKET_NAMES, BUCKETS
+
+# Re-export for convenience
+__all__ = [
+    "BUCKET_NAMES",
+    "BELIEF_SCHEMA_ID",
+    "format_belief_prompt",
+    "format_compact_belief_prompt",
+    "format_action_summary",
+]
+
+# ============================================================================
+# Compact Format Configuration (from poker_env/config.py)
+# ============================================================================
+
+# Import schema ID from config to ensure consistency
+try:
+    from poker_env.config import BELIEF_SCHEMA_ID, BUCKET_ORDER
+except ImportError:
+    # Fallback for standalone use
+    BELIEF_SCHEMA_ID = "buckets_14_v1"
+    BUCKET_ORDER = BUCKET_NAMES
 
 # ============================================================================
 # Bucket Descriptions (for inclusion in prompts)
@@ -278,3 +303,57 @@ def format_win_prob_prompt(
         pot=pot,
         action_summary=format_action_summary(history, hero_index),
     )
+
+
+# ============================================================================
+# Compact Belief Format (Fixed-Order List)
+# ============================================================================
+
+# Standardized system message for compact format
+COMPACT_BELIEF_SYSTEM_MESSAGE = f"""You are analyzing opponent hand ranges in poker. Return ONLY valid JSON. No other text.
+Output format: {{"schema":"{BELIEF_SCHEMA_ID}","probs":[p0,p1,...,p13]}}
+Constraints: each pi must be a decimal between 0 and 1, non-negative, and the 14 values must sum to 1.0 exactly (adjust the last value to fix rounding). Use at most 3 decimal places."""
+
+
+def get_bucket_order_string() -> str:
+    """Generate bucket order reference for compact prompts."""
+    return ", ".join(f"{i} {name}" for i, name in enumerate(BUCKET_ORDER))
+
+
+def format_compact_belief_prompt(
+    hero_hole: list[str],
+    board: list[str],
+    pot: int,
+    history: list[dict],
+    hero_index: int = 0,
+) -> str:
+    """
+    Format a compact belief elicitation prompt.
+    
+    Uses fixed-order list format: {"schema": "buckets_14_v1", "probs": [...]}
+    
+    Args:
+        hero_hole: Hero's hole cards
+        board: Board cards
+        pot: Current pot size
+        history: Action history
+        hero_index: Hero's player index
+        
+    Returns:
+        Formatted prompt string (user message portion)
+    """
+    action_summary = format_action_summary(history, hero_index)
+    bucket_order_str = get_bucket_order_string()
+    
+    hero_hole_str = " ".join(hero_hole) if hero_hole else "Unknown"
+    board_str = " ".join(board) if board else "None (preflop)"
+    
+    return f"""Bucket order (indices 0-13):
+{bucket_order_str}.
+
+Your cards: {hero_hole_str}
+Board: {board_str}
+Pot: {pot}
+Opponent's actions: {action_summary}
+
+Return ONLY the JSON object."""

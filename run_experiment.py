@@ -6,11 +6,13 @@ Usage:
     # 2 players (heads-up)
     python run_experiment.py --agent random --hands 100 --seed 42 --out logs/test.jsonl -v
 
-    # 4 players (will show warning - heads-up recommended for belief research)
-    python run_experiment.py --num-players 4 --agents random,call,random,call --hands 100 -v
+    # HF agent with default 8B model
+    python run_experiment.py --agent hf --opponent call --hands 10 --elicit-beliefs -v
 
-    # 6 players all random
-    python run_experiment.py --num-players 6 --agent random --hands 100 -v
+    # HF agent with 70B research model
+    python run_experiment.py --agent hf --opponent call --hf-model meta-llama/Llama-3.1-70B-Instruct --hands 10 -v
+
+Configuration defaults are in poker_env/config.py
 """
 
 import argparse
@@ -23,6 +25,17 @@ from poker_env.env import PokerKitEnv
 from poker_env.agents import BaseAgent, RandomAgent, CallAgent, HF_AVAILABLE
 from poker_env.oracle import EquityOracle
 from poker_env.logging import DecisionLogger
+from poker_env.config import (
+    DEFAULT_MODEL_ID,
+    RESEARCH_MODEL_ID,
+    DEFAULT_TEMPERATURE,
+    DEFAULT_TOP_P,
+    DEFAULT_ACTION_MAX_TOKENS,
+    DEFAULT_BELIEF_MAX_TOKENS,
+    DEFAULT_MAX_INPUT_TOKENS,
+    DEFAULT_MAX_HISTORY_EVENTS,
+    DEFAULT_BELIEF_FORMAT,
+)
 
 # Conditionally import HFAgent
 if HF_AVAILABLE:
@@ -33,10 +46,13 @@ def create_agent(
     agent_type: str,
     seed: Optional[int] = None,
     name: str = "",
-    hf_model: str = "meta-llama/Llama-3.1-8B-Instruct",
-    temperature: float = 0.2,
-    max_new_tokens: int = 128,
-    max_input_tokens: int = 2048,
+    hf_model: str | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
+    action_max_new_tokens: int | None = None,
+    belief_max_new_tokens: int | None = None,
+    max_input_tokens: int | None = None,
+    belief_format: str | None = None,
 ) -> BaseAgent:
     """
     Create an agent by type name.
@@ -45,10 +61,13 @@ def create_agent(
         agent_type: One of "random", "call", "hf"
         seed: Optional seed for random agent
         name: Optional name for the agent
-        hf_model: HuggingFace model ID (for hf agent)
-        temperature: Generation temperature (for hf agent)
-        max_new_tokens: Max tokens to generate (for hf agent)
-        max_input_tokens: Max input context length (for hf agent)
+        hf_model: HuggingFace model ID (for hf agent, defaults to config)
+        temperature: Generation temperature (for hf agent, defaults to config)
+        top_p: Top-p sampling parameter (for hf agent, defaults to config)
+        action_max_new_tokens: Max tokens for action (for hf agent, defaults to config)
+        belief_max_new_tokens: Max tokens for belief (for hf agent, defaults to config)
+        max_input_tokens: Max input context length (for hf agent, defaults to config)
+        belief_format: "compact" or "full" (for hf agent, defaults to config)
 
     Returns:
         BaseAgent instance
@@ -66,8 +85,11 @@ def create_agent(
         return HFAgent(
             model_id=hf_model,
             temperature=temperature,
-            max_new_tokens=max_new_tokens,
+            top_p=top_p,
+            action_max_new_tokens=action_max_new_tokens,
+            belief_max_new_tokens=belief_max_new_tokens,
             max_input_tokens=max_input_tokens,
+            belief_format=belief_format,
             name=name or "HFAgent",
         )
     else:
@@ -78,10 +100,13 @@ def create_agents(
     agent_types: list[str],
     num_players: int,
     base_seed: int,
-    hf_model: str = "meta-llama/Llama-3.1-8B-Instruct",
-    temperature: float = 0.2,
-    max_new_tokens: int = 128,
-    max_input_tokens: int = 2048,
+    hf_model: str | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
+    action_max_new_tokens: int | None = None,
+    belief_max_new_tokens: int | None = None,
+    max_input_tokens: int | None = None,
+    belief_format: str | None = None,
 ) -> list[BaseAgent]:
     """
     Create agents for all players.
@@ -92,8 +117,11 @@ def create_agents(
         base_seed: Base seed for random agents
         hf_model: HuggingFace model ID (for hf agents)
         temperature: Generation temperature (for hf agents)
-        max_new_tokens: Max tokens to generate (for hf agents)
+        top_p: Top-p sampling parameter (for hf agents)
+        action_max_new_tokens: Max tokens for action (for hf agents)
+        belief_max_new_tokens: Max tokens for belief (for hf agents)
         max_input_tokens: Max input context length (for hf agents)
+        belief_format: "compact" or "full" (for hf agents)
 
     Returns:
         List of BaseAgent instances
@@ -113,8 +141,11 @@ def create_agents(
                     name=f"Player{i}_{agent_type}",
                     hf_model=hf_model,
                     temperature=temperature,
-                    max_new_tokens=max_new_tokens,
+                    top_p=top_p,
+                    action_max_new_tokens=action_max_new_tokens,
+                    belief_max_new_tokens=belief_max_new_tokens,
                     max_input_tokens=max_input_tokens,
+                    belief_format=belief_format,
                 )
             agents.append(hf_agent_instance)
         else:
@@ -139,8 +170,11 @@ def get_agent_configs(agents: list[BaseAgent]) -> list[dict]:
         if HF_AVAILABLE and hasattr(agent, "model_id") and not seen_hf:
             config["model_id"] = agent.model_id
             config["temperature"] = agent.temperature
-            config["max_new_tokens"] = agent.max_new_tokens
+            config["top_p"] = agent.top_p
+            config["action_max_new_tokens"] = agent.action_max_new_tokens
+            config["belief_max_new_tokens"] = agent.belief_max_new_tokens
             config["max_input_tokens"] = agent.max_input_tokens
+            config["belief_format"] = agent.belief_format
             seen_hf = True
         configs.append(config)
     return configs
@@ -308,10 +342,13 @@ def run_experiment(
     big_bet: int = 4,
     compute_oracle: bool = True,
     verbose: bool = False,
-    hf_model: str = "meta-llama/Llama-3.1-8B-Instruct",
-    temperature: float = 0.2,
-    max_new_tokens: int = 128,
-    max_input_tokens: int = 2048,
+    hf_model: str | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
+    action_max_new_tokens: int | None = None,
+    belief_max_new_tokens: int | None = None,
+    max_input_tokens: int | None = None,
+    belief_format: str | None = None,
     elicit_beliefs: bool = False,
     randomize_probe_order: bool = False,
 ) -> dict:
@@ -330,10 +367,13 @@ def run_experiment(
         big_bet: Big bet size
         compute_oracle: Whether to compute oracle truth
         verbose: Print progress
-        hf_model: HuggingFace model ID (for hf agents)
-        temperature: Generation temperature (for hf agents)
-        max_new_tokens: Max tokens to generate (for hf agents)
-        max_input_tokens: Max input context length (for hf agents)
+        hf_model: HuggingFace model ID (for hf agents, None = use config default)
+        temperature: Generation temperature (for hf agents, None = use config default)
+        top_p: Top-p sampling (for hf agents, None = use config default)
+        action_max_new_tokens: Max tokens for action (for hf agents, None = use config default)
+        belief_max_new_tokens: Max tokens for belief (for hf agents, None = use config default)
+        max_input_tokens: Max input context length (for hf agents, None = use config default)
+        belief_format: "compact" or "full" (for hf agents, None = use config default)
         elicit_beliefs: Whether to call belief() on agents
         randomize_probe_order: Whether to randomize action/belief probe order
 
@@ -361,8 +401,11 @@ def run_experiment(
         base_seed,
         hf_model=hf_model,
         temperature=temperature,
-        max_new_tokens=max_new_tokens,
+        top_p=top_p,
+        action_max_new_tokens=action_max_new_tokens,
+        belief_max_new_tokens=belief_max_new_tokens,
         max_input_tokens=max_input_tokens,
+        belief_format=belief_format,
     )
 
     # Create oracle
@@ -427,7 +470,8 @@ def run_experiment(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run poker experiments with specified agents"
+        description="Run poker experiments with specified agents. "
+                    "Configuration defaults are in poker_env/config.py"
     )
     parser.add_argument(
         "--num-players",
@@ -488,26 +532,45 @@ def main():
     parser.add_argument(
         "--hf-model",
         type=str,
-        default="meta-llama/Llama-3.1-8B-Instruct",
-        help="HuggingFace model ID (default: meta-llama/Llama-3.1-8B-Instruct)",
+        default=None,
+        help=f"HuggingFace model ID (default: {DEFAULT_MODEL_ID}, research: {RESEARCH_MODEL_ID})",
     )
     parser.add_argument(
         "--temperature",
         type=float,
-        default=0.2,
-        help="Generation temperature for HF agent (default: 0.2, use 0 for deterministic)",
+        default=None,
+        help=f"Generation temperature (default: {DEFAULT_TEMPERATURE}, use 0 for deterministic)",
     )
     parser.add_argument(
-        "--max-new-tokens",
+        "--top-p",
+        type=float,
+        default=None,
+        help=f"Top-p sampling parameter (default: {DEFAULT_TOP_P})",
+    )
+    parser.add_argument(
+        "--action-max-new-tokens",
         type=int,
-        default=128,
-        help="Max tokens to generate (default: 128)",
+        default=None,
+        help=f"Max tokens for action generation (default: {DEFAULT_ACTION_MAX_TOKENS})",
+    )
+    parser.add_argument(
+        "--belief-max-new-tokens",
+        type=int,
+        default=None,
+        help=f"Max tokens for belief generation (default: {DEFAULT_BELIEF_MAX_TOKENS})",
     )
     parser.add_argument(
         "--max-input-tokens",
         type=int,
-        default=2048,
-        help="Max input context length (default: 2048)",
+        default=None,
+        help=f"Max input context length (default: {DEFAULT_MAX_INPUT_TOKENS})",
+    )
+    parser.add_argument(
+        "--belief-format",
+        type=str,
+        default=None,
+        choices=["compact", "full"],
+        help=f"Belief output format (default: {DEFAULT_BELIEF_FORMAT})",
     )
     parser.add_argument(
         "--elicit-beliefs",
@@ -519,8 +582,33 @@ def main():
         action="store_true",
         help="Randomize order of action/belief probing (for robustness testing)",
     )
+    parser.add_argument(
+        "--i-know-what-im-doing",
+        action="store_true",
+        help="Allow multi-way belief experiments (not recommended for research)",
+    )
 
     args = parser.parse_args()
+    
+    # Warn about multi-way belief experiments
+    if args.elicit_beliefs and args.num_players > 2:
+        if not args.i_know_what_im_doing:
+            print("\n" + "="*70)
+            print("WARNING: Multi-way belief experiments are not recommended!")
+            print("="*70)
+            print("""
+Belief elicitation with >2 players introduces:
+- Multiple opponent posteriors to track
+- Exponentially complex action-likelihood modeling
+- Side pot complications
+
+For valid research results, use heads-up (2 players) for belief experiments.
+
+To proceed anyway, add: --i-know-what-im-doing
+""")
+            print("="*70 + "\n")
+            import sys
+            sys.exit(1)
 
     # Determine agent types
     if args.agents:
@@ -543,8 +631,11 @@ def main():
         verbose=args.verbose,
         hf_model=args.hf_model,
         temperature=args.temperature,
-        max_new_tokens=args.max_new_tokens,
+        top_p=args.top_p,
+        action_max_new_tokens=args.action_max_new_tokens,
+        belief_max_new_tokens=args.belief_max_new_tokens,
         max_input_tokens=args.max_input_tokens,
+        belief_format=args.belief_format,
         elicit_beliefs=args.elicit_beliefs,
         randomize_probe_order=args.randomize_probe_order,
     )

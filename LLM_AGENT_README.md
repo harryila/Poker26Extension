@@ -1,6 +1,24 @@
-# LLM Agent Integration (Llama 3.1 8B)
+# LLM Agent Integration
 
-This document describes the HuggingFace-based LLM agent integration for running poker experiments with Llama 3.1 8B Instruct.
+This document describes the HuggingFace-based LLM agent integration for running poker experiments with Llama 3.1 models.
+
+## Configuration
+
+**All defaults are centralized in `poker_env/config.py`** - this is the single source of truth for model configuration.
+
+```python
+# poker_env/config.py
+
+DEFAULT_MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"      # Safe default for dev/CI
+RESEARCH_MODEL_ID = "meta-llama/Llama-3.1-70B-Instruct"   # For research runs
+
+DEFAULT_TEMPERATURE = 0.2
+DEFAULT_TOP_P = 0.9
+DEFAULT_ACTION_MAX_TOKENS = 64       # Actions need few tokens
+DEFAULT_BELIEF_MAX_TOKENS = 384      # Beliefs need more
+DEFAULT_BELIEF_FORMAT = "compact"    # Fixed-order list format
+BELIEF_SCHEMA_ID = "buckets_14_v1"   # Versioned schema
+```
 
 ## Overview
 
@@ -9,15 +27,19 @@ The `HFAgent` class enables running poker experiments with large language models
 - **Strict JSON output enforcement** via Llama chat templates
 - **Deterministic fallback** (CHECK_OR_CALL/FOLD) on parse failure
 - **Full telemetry** for parse success, coherence diagnostics, reproducibility
-- **Configurable generation** (temperature, token limits)
-- **Belief elicitation** with bucket-level probability distributions
+- **Separate token budgets** for action vs belief generation
+- **Compact belief format** (fixed-order list) for reliable parsing
+- **Truncation telemetry** for history analysis
+- **Centralized configuration** in `poker_env/config.py`
 
 ## Requirements
 
 ### Hardware
-- **GPU**: 40GB+ VRAM recommended (A100, A6000)
-- Llama 3.1 8B in bfloat16 uses ~16GB VRAM
-- Leave headroom for KV cache during generation
+
+| Model | VRAM Required | Recommended GPU |
+|-------|---------------|-----------------|
+| Llama 3.1 8B (default) | ~16 GB | A100-40GB, A6000 |
+| Llama 3.1 70B (research) | ~80 GB | GH200, H100, multi-GPU |
 
 ### Software
 ```bash
@@ -25,67 +47,64 @@ The `HFAgent` class enables running poker experiments with large language models
 torch>=2.0.0
 transformers>=4.35.0
 accelerate>=0.24.0
+huggingface_hub>=0.19.0
 ```
 
 ### HuggingFace Access
 1. Create account at https://huggingface.co
-2. Request access to `meta-llama/Llama-3.1-8B-Instruct`
+2. Request access to `meta-llama/Llama-3.1-8B-Instruct` (and 70B for research)
 3. Create access token at https://huggingface.co/settings/tokens
-4. Login: `huggingface-cli login` or via Python (see setup.sh)
+4. Login: `huggingface-cli login` or via setup.sh
 
 ## Installation
 
 ```bash
-# Run setup (includes HF login prompt)
-./setup.sh
+# Run setup with GPU support and HF login
+./setup.sh --with-gpu --hf-token YOUR_HF_TOKEN
 
 # Or manually:
 source venv/bin/activate
 pip install torch transformers accelerate
-python -c "from huggingface_hub import login; login()"
+huggingface-cli login
 ```
 
 ## Usage
 
-### Basic HF Agent Run
+### Development/CI (8B model, default)
 
 ```bash
-# HF agent vs random opponent, 5 hands
-python run_experiment.py \
-    --agent hf \
-    --opponent random \
-    --hands 5 \
-    --seed 42 \
-    --out logs/hf_run.jsonl \
-    --no-oracle \
-    -v
+# Basic run with 8B model (uses config defaults)
+python run_experiment.py --agent hf --opponent call --hands 10 --no-oracle -v
 ```
 
-### With Belief Elicitation
+### Research Run (70B model)
 
 ```bash
-# Elicit beliefs at each decision point
+# Use 70B model for research
 python run_experiment.py \
     --agent hf \
+    --hf-model meta-llama/Llama-3.1-70B-Instruct \
     --opponent call \
-    --hands 10 \
+    --hands 100 \
     --elicit-beliefs \
-    --out logs/hf_beliefs.jsonl \
     -v
 ```
 
-### Full Research Configuration
+### Full Configuration
 
 ```bash
 python run_experiment.py \
     --agent hf \
+    --hf-model meta-llama/Llama-3.1-70B-Instruct \
     --opponent call \
     --hands 100 \
     --seed 42 \
-    --elicit-beliefs \
     --temperature 0.2 \
-    --max-new-tokens 256 \
-    --max-input-tokens 2048 \
+    --top-p 0.9 \
+    --action-max-new-tokens 64 \
+    --belief-max-new-tokens 384 \
+    --belief-format compact \
+    --elicit-beliefs \
     --randomize-probe-order \
     --out logs/research_run.jsonl \
     -v
@@ -100,10 +119,32 @@ python run_experiment.py \
 | `--agent hf` | - | Use HuggingFace LLM agent |
 | `--hf-model` | `meta-llama/Llama-3.1-8B-Instruct` | HuggingFace model ID |
 | `--temperature` | `0.2` | Generation temperature (0 = deterministic) |
-| `--max-new-tokens` | `128` | Max tokens to generate per response |
+| `--top-p` | `0.9` | Top-p sampling parameter |
+| `--action-max-new-tokens` | `64` | Max tokens for action generation |
+| `--belief-max-new-tokens` | `384` | Max tokens for belief generation |
 | `--max-input-tokens` | `2048` | Max input context length |
+| `--belief-format` | `compact` | Belief output format ("compact" or "full") |
 | `--elicit-beliefs` | `False` | Call `belief()` at each decision |
 | `--randomize-probe-order` | `False` | Randomize action/belief probe order |
+| `--i-know-what-im-doing` | `False` | Allow multi-way belief experiments (bypasses heads-up enforcement) |
+
+### Heads-Up Enforcement for Belief Experiments
+
+**Important:** When `--elicit-beliefs` is enabled with `--num-players > 2`, the system will block execution and show a warning:
+
+```
+WARNING: Multi-way belief experiments are not recommended!
+
+Belief elicitation with >2 players introduces:
+- Multiple opponent posteriors to track
+- Exponentially complex action-likelihood modeling
+- Side pot complications
+
+For valid research results, use heads-up (2 players) for belief experiments.
+To proceed anyway, add: --i-know-what-im-doing
+```
+
+This protects against accidentally contaminating research data with multi-way games.
 
 ### Temperature Guidelines
 
@@ -112,14 +153,43 @@ python run_experiment.py \
 | `0` | Deterministic (greedy) | Reproducible experiments |
 | `0.2` | Low variance | Recommended default |
 | `0.7` | Higher creativity | Exploration studies |
-| `1.0` | Full sampling | Maximum diversity |
 
-### Token Limits
+## Belief Formats
 
-| Parameter | Recommendation | Notes |
-|-----------|----------------|-------|
-| `--max-new-tokens` | 128 for actions, 256+ for beliefs | Belief JSON needs more tokens |
-| `--max-input-tokens` | 2048 | Truncates history if exceeded |
+### Compact Format (Default)
+
+Uses a fixed-order list with embedded schema for self-description:
+
+```json
+{"schema": "buckets_14_v1", "probs": [0.05, 0.08, 0.12, 0.10, 0.08, 0.07, 0.06, 0.05, 0.08, 0.06, 0.05, 0.08, 0.07, 0.05]}
+```
+
+**Bucket order (indices 0-13):**
+
+| Index | Bucket Name | Description |
+|-------|-------------|-------------|
+| 0 | premium_pairs | AA, KK, QQ |
+| 1 | strong_pairs | JJ, TT |
+| 2 | medium_pairs | 99-66 |
+| 3 | small_pairs | 55-22 |
+| 4 | premium_broadway | AKs, AKo, AQs |
+| 5 | strong_broadway | AQo, AJs, KQs, ATs |
+| 6 | medium_broadway | KQo, KJs, QJs, etc. |
+| 7 | suited_aces | A9s-A2s |
+| 8 | suited_connectors | T9s-54s |
+| 9 | suited_gappers | J9s, T8s, etc. |
+| 10 | offsuit_connectors | T9o-65o |
+| 11 | weak_broadway | KTo, QTo, etc. |
+| 12 | speculative_suited | Small suited cards |
+| 13 | trash | Everything else |
+
+### Full Format (for debugging)
+
+Uses labeled dict:
+
+```json
+{"premium_pairs": 0.05, "strong_pairs": 0.08, "medium_pairs": 0.12, ...}
+```
 
 ## Output Format
 
@@ -140,19 +210,26 @@ Each decision point logs:
     "raw_response": "{\"action\": \"BET_OR_RAISE\"}",
     "action_chosen": "BET_OR_RAISE",
     "prompt_hash": "a1b2c3d4e5f6g7h8",
-    "prompt_template_id": "action_strict_v1"
+    "prompt_template_id": "action_strict_v1",
+    "history_events_before": 15,
+    "history_events_after": 15,
+    "was_truncated": false
   },
   "belief_metadata": {
     "parse_success": true,
-    "prob_sum": 1.02,
-    "prob_min": 0.0,
+    "prob_sum": 1.0,
+    "prob_min": 0.02,
     "negative_count": 0,
     "prompt_hash": "f9e8d7c6b5a43210",
-    "prompt_template_id": "belief_strict_v1"
-  },
-  "prompt_template_id": "action_strict_v1",
-  "prompt_hash": "a1b2c3d4e5f6g7h8",
-  "probe_order": "action_first"
+    "prompt_template_id": "belief_compact_v1",
+    "belief_format": "compact",
+    "belief_schema_id": "buckets_14_v1",
+    "history_events_before": 15,
+    "history_events_after": 15,
+    "was_truncated": false,
+    "repair_distance_l1": 0.0,
+    "repair_distance_l2": 0.0
+  }
 }
 ```
 
@@ -165,43 +242,40 @@ Each decision point logs:
 | `fallback_rate` | % using deterministic fallback | <10% |
 | `coherence_rate` | % of beliefs with valid probabilities | >70% |
 | `avg_prob_sum` | Mean sum of belief probabilities | ~1.0 |
+| `avg_repair_distance_l1` | Mean L1 distance to simplex | ~0.0 |
+| `avg_repair_distance_l2` | Mean L2 distance to simplex | ~0.0 |
 
-## Architecture
+## Standardized Prompts
+
+### Action System Message
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      run_experiment.py                       │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────┐  │
-│  │ PokerKitEnv │───▶│   HFAgent   │───▶│ DecisionLogger  │  │
-│  │             │    │             │    │                 │  │
-│  │ - reset()   │    │ - act()     │    │ - log_decision()│  │
-│  │ - step()    │    │ - belief()  │    │ - end_hand()    │  │
-│  │ - get_obs() │    │             │    │                 │  │
-│  └─────────────┘    └──────┬──────┘    └─────────────────┘  │
-│                            │                                 │
-│                     ┌──────▼──────┐                         │
-│                     │ Llama 3.1   │                         │
-│                     │ 8B Instruct │                         │
-│                     │             │                         │
-│                     │ bfloat16    │                         │
-│                     │ device_map  │                         │
-│                     └─────────────┘                         │
-└─────────────────────────────────────────────────────────────┘
+You are a poker player. Choose your action.
+Return ONLY valid JSON. No other text.
+Format: {"action": "FOLD" | "CHECK_OR_CALL" | "BET_OR_RAISE"}
+```
+
+### Belief System Message (Compact)
+
+```
+You are analyzing opponent hand ranges in poker. Return ONLY valid JSON. No other text.
+Output format: {"schema":"buckets_14_v1","probs":[p0,p1,...,p13]}
+Constraints: each pi must be a decimal between 0 and 1, non-negative, and the 14 values must sum to 1.0 exactly (adjust the last value to fix rounding). Use at most 3 decimal places.
 ```
 
 ## Implementation Details
 
-### JSON Extraction (Robust)
+### do_sample Rule
 
-The agent extracts JSON from potentially chatty responses:
+The agent applies the standard HuggingFace rule:
 
 ```python
-def _extract_json(text: str) -> dict | None:
-    # 1. Strip code fences (```json ... ```)
-    # 2. Find all {...} blocks
-    # 3. Try each, shortest first (cleaner)
-    # 4. Handle trailing commas
+if self.temperature == 0:
+    gen_kwargs["do_sample"] = False  # Deterministic
+else:
+    gen_kwargs["do_sample"] = True
+    gen_kwargs["temperature"] = self.temperature
+    gen_kwargs["top_p"] = self.top_p
 ```
 
 ### Fallback Behavior
@@ -210,102 +284,73 @@ On parse failure:
 1. If `CHECK_OR_CALL` is legal → use it
 2. Otherwise → `FOLD`
 
-This ensures experiments never crash and provides interpretable fallback.
-
 ### History Truncation
 
 To stay within token budget:
 ```python
+# Keep first 5 (blinds/deals) + last (max_events - 5)
 def _truncate_history(history, max_events=50):
-    # Keep first 5 (blinds/deals) + last (max_events - 5)
+    if len(history) <= max_events:
+        return history
+    return history[:5] + history[-(max_events - 5):]
 ```
 
-### Prompt Hashing
+Truncation is logged: `history_events_before`, `history_events_after`, `was_truncated`
 
-Every prompt is hashed (SHA256, 16 chars) for reproducibility:
+### Belief Conversion Utilities
+
 ```python
-prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()[:16]
+from analysis.belief_utils import compact_to_dict, dict_to_compact, repair_belief
+
+# Convert compact to labeled dict
+belief, metadata = compact_to_dict([0.05, 0.08, ...])
+
+# Convert dict to compact (with clipping/renormalization)
+probs, metadata = dict_to_compact({"premium_pairs": 0.05, ...})
+
+# Repair invalid distribution
+repaired, metadata = repair_belief(invalid_belief)
 ```
 
-## Integration Test Results
+## Files
 
-Test run: HF agent vs call agent, 3 hands
+| File | Description |
+|------|-------------|
+| `poker_env/config.py` | **Central configuration** - edit model defaults here |
+| `poker_env/agents/hf_agent.py` | HFAgent class |
+| `analysis/prompts.py` | Prompt templates |
+| `analysis/belief_utils.py` | Belief conversion utilities |
+| `run_experiment.py` | CLI interface |
 
+## Smoke Tests
+
+After implementation, run these tests:
+
+### Test 1: Actions Only
+```bash
+python run_experiment.py --agent hf --opponent call --hands 5 --no-oracle -v
 ```
-=== Experiment Summary (2 players) ===
-Hands played: 3
-Config hash: 770d229a252c882d
-Player 0 (Player0_hf): +X.0 chips
-Player 1 (Player1_call): -X.0 chips
+**Expect:** `action_parse_rate ~100%`, `fallback_rate ~0%`
+
+### Test 2: Beliefs with Compact Format
+```bash
+python run_experiment.py --agent hf --opponent call --hands 5 \
+  --elicit-beliefs --belief-format compact --belief-max-new-tokens 384 --no-oracle -v
 ```
+**Expect:** `belief_parse_rate >80%`
 
-### Observed Metrics
-
-| Metric | Value | Notes |
-|--------|-------|-------|
-| Action parse rate | 100% | Model returns clean JSON |
-| Belief parse rate | ~50% | Needs `--max-new-tokens 256+` |
-| Fallback rate | 0% | No fallbacks needed |
-| Model load time | ~8s | First run, cached after |
-| Inference time | ~0.5-1s/decision | With A100 GPU |
-
-## Troubleshooting
-
-### "CUDA out of memory"
-
-Reduce batch size or use quantization:
-```python
-# In hf_agent.py, load with 8-bit quantization:
-model = AutoModelForCausalLM.from_pretrained(
-    model_id,
-    load_in_8bit=True,
-    device_map="auto",
-)
+### Test 3: Deterministic Mode
+```bash
+python run_experiment.py --agent hf --opponent call --hands 5 \
+  --elicit-beliefs --temperature 0 --no-oracle -v
 ```
+**Expect:** Parse rates stable, outputs consistent
 
-### "Token indices out of bounds"
-
-Increase `--max-input-tokens` or the model will truncate important context.
-
-### Low belief parse rate
-
-Increase `--max-new-tokens 256` or `512` for full belief output.
-
-### "Permission denied (publickey)" when pushing
-
-The SSH key isn't set up. Either:
-1. Add the generated SSH key to GitHub settings
-2. Use HTTPS: `git remote set-url origin https://github.com/...`
-
-## Files Modified/Created
-
-| File | Status | Description |
-|------|--------|-------------|
-| `poker_env/agents/hf_agent.py` | **New** | HFAgent class |
-| `poker_env/agents/prompts.py` | **New** | Action/belief prompts |
-| `poker_env/agents/__init__.py` | Modified | Conditional HFAgent import |
-| `poker_env/logging/decision_logger.py` | Modified | Added metadata fields |
-| `run_experiment.py` | Modified | Added HF CLI flags |
-| `requirements.txt` | Modified | Added torch, transformers |
-| `setup.sh` | Modified | Added HF login |
-
-## Next Steps
-
-### Immediate
-1. Run larger experiments (100+ hands)
-2. Tune `--max-new-tokens` for reliable belief parsing
-3. Analyze parse rates and coherence metrics
-
-### Research Pipeline
-1. **Generate data**: Run HF agent vs various opponents
-2. **Enrich with oracles**: `python -m analysis.build_dataset`
-3. **Compute metrics**: PCE, coherence, belief-action divergence
-4. **Analyze**: "Plays well despite bad beliefs" phenomenon
-
-### Model Variations
-- Try different temperatures for variance analysis
-- Compare Llama 3.1 8B vs 70B (with quantization)
-- Test prompt uniformity across variants
+### Test 4: Verify Schema in Logs
+```bash
+grep "buckets_14_v1" logs/experiment.jsonl | head -3
+```
+**Check:** Every belief record includes `"schema":"buckets_14_v1"`
 
 ## API Reference
 
@@ -315,32 +360,30 @@ The SSH key isn't set up. Either:
 from poker_env.agents import HFAgent
 
 agent = HFAgent(
-    model_id="meta-llama/Llama-3.1-8B-Instruct",
-    temperature=0.2,
-    max_new_tokens=128,
-    max_input_tokens=2048,
-    max_history_events=50,
+    model_id=None,                    # Uses config.DEFAULT_MODEL_ID
+    temperature=None,                  # Uses config.DEFAULT_TEMPERATURE
+    top_p=None,                       # Uses config.DEFAULT_TOP_P
+    action_max_new_tokens=None,       # Uses config.DEFAULT_ACTION_MAX_TOKENS
+    belief_max_new_tokens=None,       # Uses config.DEFAULT_BELIEF_MAX_TOKENS
+    max_input_tokens=None,            # Uses config.DEFAULT_MAX_INPUT_TOKENS
+    belief_format=None,               # Uses config.DEFAULT_BELIEF_FORMAT
     name="HFAgent",
 )
 
 # Get action
 action = agent.act(obs)
 
-# Get action with metadata
+# Get action with metadata (includes truncation info)
 action, metadata = agent.act_with_metadata(obs)
 
 # Get belief
 belief = agent.belief(obs)
 
-# Get belief with metadata
+# Get belief with metadata (includes truncation info)
 belief, metadata = agent.belief_with_metadata(obs)
-
-# Access last metadata
-agent.get_last_action_metadata()
-agent.get_last_belief_metadata()
 ```
 
-### ActionMetadata
+### Metadata Classes
 
 ```python
 @dataclass
@@ -351,11 +394,10 @@ class ActionMetadata:
     action_chosen: str
     prompt_hash: str
     prompt_template_id: str
-```
+    history_events_before: int
+    history_events_after: int
+    was_truncated: bool
 
-### BeliefMetadata
-
-```python
 @dataclass
 class BeliefMetadata:
     parse_success: bool
@@ -365,4 +407,11 @@ class BeliefMetadata:
     negative_count: int
     prompt_hash: str
     prompt_template_id: str
+    belief_format: str
+    belief_schema_id: str
+    history_events_before: int
+    history_events_after: int
+    was_truncated: bool
+    repair_distance_l1: float | None  # L1 distance to simplex (~0 for valid)
+    repair_distance_l2: float | None  # L2 distance to simplex (~0 for valid)
 ```

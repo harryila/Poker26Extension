@@ -56,6 +56,15 @@ The codebase warns when using >2 players. Multi-way is "engineering-supported" b
 4. **Belief-Action Divergence**: Compare stated beliefs to action-implied beliefs
 5. **"Plays Well Despite Bad Beliefs"**: Identify when LLMs make good decisions with nonsensical beliefs
 
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [README.md](README.md) | This file - project overview, API reference, and analysis system |
+| [LLM_AGENT_README.md](LLM_AGENT_README.md) | HuggingFace LLM agent integration (Llama 3.1 8B/70B) |
+| [RESEARCH_PIPELINE.md](RESEARCH_PIPELINE.md) | Step-by-step research experiment guide with commands |
+| [EXPERIMENT_RESULTS.md](EXPERIMENT_RESULTS.md) | Recorded findings from sanity check experiments |
+
 ## Requirements
 
 - **Python >= 3.11** (required by PokerKit)
@@ -118,6 +127,8 @@ python -m analysis.build_dataset logs/experiment.jsonl logs/enriched.jsonl --opp
 | `--seed` | Base random seed for reproducibility. Each hand uses `seed + hand_num * 1000`. | `42` | `--seed 12345` |
 | `--out` | Output file path for JSONL decision logs | `logs/experiment.jsonl` | `--out results/run1.jsonl` |
 | `--no-oracle` | Skip equity oracle computation. Equity oracle is ON by default. | Off (oracle computed) | `--no-oracle` |
+| `--elicit-beliefs` | Call belief() on agents at each decision (for LLM belief analysis) | False | `--elicit-beliefs` |
+| `--i-know-what-im-doing` | Allow multi-way belief experiments (bypasses heads-up enforcement) | False | `--i-know-what-im-doing` |
 | `-v, --verbose` | Print progress every 10 hands and show summary at end | False | `-v` |
 
 ### Agent Types
@@ -837,7 +848,7 @@ result = identify_plays_well_despite_bad_beliefs(
 | Number of hands | `--hands` | 100 | Sample size |
 | Random seed | `--seed` | 42 | For reproducibility |
 | Agent types | `--agent`, `--agents` | random | Agent behavior |
-| Compute oracle | `--no-oracle` | True | Skip equity computation for speed |
+| Compute oracle | `--no-oracle` | False (oracle ON) | Skip equity computation for speed |
 
 ### Dataset Builder Configuration
 

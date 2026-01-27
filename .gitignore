@@ -23,9 +23,11 @@ htmlcov/
 .DS_Store
 
 # Logs and data
-logs/
-*.jsonl
+# logs/ - REMOVED: experiment logs are now tracked for reproducibility
 *.log
+
+# Keep logs folder but ignore very large files
+logs/*.tmp
 
 # Distribution
 dist/

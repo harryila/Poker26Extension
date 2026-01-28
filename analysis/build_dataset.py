@@ -286,9 +286,9 @@ def main():
     parser.add_argument(
         "--opponent",
         choices=["default", "tight_passive", "tight_aggressive", 
-                 "loose_passive", "loose_aggressive", "informative"],
+                 "loose_passive", "loose_aggressive", "informative_v2", "informative"],
         default="default",
-        help="Opponent model preset for strategy-aware oracle",
+        help="Opponent model preset for strategy-aware oracle (use informative_v2 for experiments)",
     )
     
     args = parser.parse_args()

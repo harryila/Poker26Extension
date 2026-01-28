@@ -12,6 +12,93 @@ Before running large-scale experiments, we first run a **sanity check** to verif
 
 ---
 
+## Execution History: What Actually Happened
+
+This section documents how the pipeline was executed and where we deviated from the original plan.
+
+### Phase 1A: Completed (January 28, 2026)
+
+**Original Plan:** Run 4 sanity check runs (2 temps ? 2 seeds ? 50 hands) with `--opponent-preset informative`.
+
+**What Actually Happened:**
+
+1. **Initial attempt with `call` opponent was inconclusive:**
+   - First run used `--opponent call` (always calls)
+   - This produced JS(CardOnly, StrategyAware) = 0.0147 - too low to test anything
+   - See [EXPERIMENT_RESULTS.md - Appendix: Opponent Informativeness Validation](EXPERIMENT_RESULTS.md#appendix-opponent-informativeness-validation)
+
+2. **Created ThresholdAgent to fix informativeness problem:**
+   - Built `poker_env/agents/threshold_agent.py` with `informative` preset
+   - Validated that JS(CardOnly, StrategyAware) ? 0.05-0.06 with this opponent
+   - This is the "informative opponent problem" fix documented below
+
+3. **Re-ran Phase 1A with informative opponent:**
+   - All 4 runs completed: temp 0.0 (seeds 42, 123) + temp 0.2 (seeds 42, 123)
+   - Files: `logs/sanity_70b_t0_s42_informative.jsonl`, etc.
+   - Results: [EXPERIMENT_RESULTS.md - Phase 1A Sanity Grid](EXPERIMENT_RESULTS.md#phase-1a-sanity-grid-complete)
+
+**Key Finding (Phase 1A):**
+> LLM is **closer to CardOnly** than StrategyAware (JS difference = -0.0170).
+> This is a **negative result**: the model largely ignores betting history.
+
+See [EXPERIMENT_RESULTS.md - Key Result](EXPERIMENT_RESULTS.md#key-result-70b-with-informative-opponent-phase-1a-complete) for full metrics.
+
+### Pipeline Shift: Negative Result Path
+
+**Original Pipeline Said:**
+> "Only proceed to Phase 2 if Phase 1 shows LLM is closer to StrategyAware."
+
+**What We Changed:**
+
+The original gate was too strict. A well-characterized **negative result** is just as publishable as a positive result. We updated the decision rule:
+
+| Result | Original Action | **Updated Action** |
+|--------|-----------------|-------------------|
+| LLM closer to CardOnly | "Early headline" (stop) | **Scale up to quantify** |
+| LLM closer to StrategyAware | Scale up | Scale up |
+
+**Why:** Phase 1A revealed a nuanced finding:
+- LLM shows **weak directional sensitivity** to opponent aggression (shifts correctly)
+- But **severe base-rate neglect** dominates (trash underestimated 4x)
+- Net effect: closer to CardOnly because calibration error >> directional response
+
+This is scientifically interesting and worth scaling. See [EXPERIMENT_RESULTS.md - Action-Conditioning Analysis](EXPERIMENT_RESULTS.md#action-conditioning-analysis).
+
+### Opponent Preset Versioning
+
+**Issue Discovered:** The `informative` preset name could drift if params changed later.
+
+**Solution:** Added explicit `informative_v2` preset as the canonical name:
+- `informative_v2`: aggression=0.85, fold_threshold=0.55, bluff_freq=0.02
+- `informative`: Legacy alias (identical params, for backwards compatibility)
+
+**For Phase 2:** Use `--opponent-preset informative_v2` everywhere (gameplay AND enrichment).
+
+### Analysis Script Addition
+
+**Original Pipeline:** Assumed ad-hoc Python scripts for analysis.
+
+**What We Added:** Created `analysis/analyze_beliefs.py` CLI tool that:
+- Computes validity audit (raw outputs)
+- Computes JS divergence (normalized)
+- Computes action-conditioning analysis
+- Outputs JSON summary
+
+See [README.md - Step 3: Run Full Analysis](README.md#step-3-run-full-analysis).
+
+### Current Status
+
+| Phase | Status | Documentation |
+|-------|--------|---------------|
+| 1A | ? Complete | [EXPERIMENT_RESULTS.md](EXPERIMENT_RESULTS.md#phase-1a-sanity-grid-complete) |
+| 1B | ? Complete | Enrichment done |
+| 1C | ? Complete | `logs/phase1a_complete.json` |
+| **2** | ? **Ready** | Commands below (use `informative_v2`) |
+| 3 | ? Pending | After Phase 2 |
+| 4 | ? Pending | After Phase 3 |
+
+---
+
 ## Critical: Why Opponent Choice Matters
 
 ### The Informative Opponent Problem
@@ -36,7 +123,9 @@ We tested different opponents to verify action informativeness by measuring JS(C
 
 **Screening criterion:** JS > 0.05 is a heuristic indicating actions carry enough information for meaningful posterior updates. This is a **screening criterion** (does this opponent produce informative histories?) not a **correctness criterion** (is JS > 0.05 "right"?). Use it to validate experimental setup, not to evaluate LLM performance.
 
-**Recommendation:** Always use `--opponent threshold --opponent-preset informative` for belief experiments.
+**Recommendation:** Always use `--opponent threshold --opponent-preset informative_v2` for belief experiments.
+
+> **Preset Versioning:** `informative` and `informative_v2` have identical parameters (aggression=0.85, fold_threshold=0.55, bluff_freq=0.02). Use `informative_v2` for new experiments. Phase 1A logs used `informative` (valid, same params).
 
 See [EXPERIMENT_RESULTS.md](EXPERIMENT_RESULTS.md#appendix-opponent-informativeness-validation) for detailed validation methodology.
 
@@ -110,7 +199,7 @@ python run_experiment.py \
 - Temperatures: 0.0, 0.2
 - Seeds: 42, 123
 - Hands per condition: 50
-- Total: 4 runs × 50 hands = 200 hands
+- Total: 4 runs ? 50 hands = 200 hands
 
 ### Step 1B: Enrich Logs with Oracle Posteriors
 
@@ -193,33 +282,38 @@ print(f"Mean JS(LLM, StrategyAware):              {np.mean(js_to_strat_aware):.4
 
 # Primary question: Does LLM use action history?
 if np.mean(js_to_strat_aware) < np.mean(js_to_card_only):
-    print("✓ LLM closer to StrategyAware - uses action history!")
+    print("? LLM closer to StrategyAware - uses action history!")
 else:
-    print("✗ LLM closer to CardOnly - ignores action history")
+    print("? LLM closer to CardOnly - ignores action history")
 
 # Secondary question: Can LLM beat naive combo counting?
 if np.mean(js_to_card_only) > 0.3:
-    print("⚠️ LLM far from BucketCountPrior - worse than naive combinatorics")
+    print("?? LLM far from BucketCountPrior - worse than naive combinatorics")
 elif np.mean(js_to_card_only) < 0.1:
-    print("✓ LLM close to BucketCountPrior - matches basic combinatorics")
+    print("? LLM close to BucketCountPrior - matches basic combinatorics")
 ```
 
 **Decision rule:**
 
 | Result | Interpretation | Action |
 |--------|----------------|--------|
-| LLM closer to **CardOnly** | Model ignores betting history | Early headline: "coherent beliefs that ignore action history" |
-| LLM closer to **StrategyAware** | Model uses action history | **Green light:** scale up |
-| LLM far from **both** (JS > 0.3) | Model worse than combo counting | Strong negative result - publishable as-is |
+| LLM closer to **CardOnly** | Model ignores betting history | **Negative result:** scale up to quantify |
+| LLM closer to **StrategyAware** | Model uses action history | **Positive result:** scale up to confirm |
+| LLM far from **both** (JS > 0.3) | Model worse than combo counting | Strong negative - check methodology first |
 | Similar distance to both | Ambiguous signal | Run more hands or investigate |
 
 This step is cheap (~200 hands total across 4 runs) and prevents wasting compute on uninformative experiments.
 
 ---
 
-## Phase 2: Baseline Dataset Grid (After Sanity Check Passes)
+## Phase 2: Baseline Dataset Grid (Scale Up)
 
-**Only proceed here if Phase 1 shows LLM is closer to StrategyAware.**
+**Proceed regardless of Phase 1 outcome** (whether LLM is closer to CardOnly or StrategyAware).
+
+- **Positive result** (closer to StrategyAware): Scale to confirm effect and compute confidence intervals
+- **Negative result** (closer to CardOnly): Scale to quantify the failure mode, show stability, and compute full paper metrics
+
+The key insight: a well-characterized negative result ("LLM shows weak directional sensitivity but severe base-rate neglect") is just as publishable as a positive result. Scaling turns the sanity check into a paper.
 
 ### Step 2A: Full Experiment Grid
 
@@ -364,11 +458,14 @@ Show that core results are stable across opponent models. Small quantitative dif
 | Preset | Aggression | Fold Threshold | Bluff Freq | Notes |
 |--------|------------|----------------|------------|-------|
 | `default` | 0.4 | 0.3 | 0.1 | Balanced play |
-| `informative` | 0.85 | 0.55 | 0.02 | **Recommended** - max action signal |
+| `informative_v2` | 0.85 | 0.55 | 0.02 | **Recommended** - max action signal (canonical) |
+| `informative` | 0.85 | 0.55 | 0.02 | Legacy alias for `informative_v2` |
 | `tight_passive` | 0.2 | 0.4 | 0.02 | Folds often, rarely raises |
 | `tight_aggressive` | 0.6 | 0.4 | 0.08 | Selective but aggressive |
 | `loose_passive` | 0.2 | 0.2 | 0.05 | Plays many hands, just calls |
 | `loose_aggressive` | 0.6 | 0.2 | 0.15 | Plays many hands, raises often |
+
+**Note:** Phase 1A used `informative` (legacy). Phase 2+ should use `informative_v2` for explicit versioning.
 
 ### Dataset Builder Flags
 
@@ -376,7 +473,9 @@ Show that core results are stable across opponent models. Small quantitative dif
 |------|-------------|
 | `--opponent MODEL` | Opponent model for posteriors (must match gameplay opponent!) |
 
-**Available presets:** `default`, `tight_passive`, `tight_aggressive`, `loose_passive`, `loose_aggressive`, `informative`
+**Available presets:** `default`, `tight_passive`, `tight_aggressive`, `loose_passive`, `loose_aggressive`, `informative_v2`, `informative`
+
+**Note:** Use `informative_v2` for new experiments; `informative` is a legacy alias with identical params.
 
 ---
 
@@ -396,21 +495,21 @@ A model that outputs perfect probabilities but ignores betting history is scient
 
 ```
 logs/
-├── sanity_70b_t0_s42.jsonl            # Raw experiment logs
-├── sanity_70b_t0_s42_enriched.jsonl   # Enriched (contains both oracle_card_only AND oracle_strategy_aware)
-├── sanity_70b_t0_s123.jsonl
-├── sanity_70b_t0_s123_enriched.jsonl
-├── sanity_70b_t02_s42.jsonl
-├── sanity_70b_t02_s42_enriched.jsonl
-├── sanity_70b_t02_s123.jsonl
-├── sanity_70b_t02_s123_enriched.jsonl
-├── baseline_70b_t0_s42.jsonl
-├── baseline_70b_t0_s42_enriched.jsonl
-└── ...
+??? sanity_70b_t0_s42.jsonl            # Raw experiment logs
+??? sanity_70b_t0_s42_enriched.jsonl   # Enriched (contains both oracle_card_only AND oracle_strategy_aware)
+??? sanity_70b_t0_s123.jsonl
+??? sanity_70b_t0_s123_enriched.jsonl
+??? sanity_70b_t02_s42.jsonl
+??? sanity_70b_t02_s42_enriched.jsonl
+??? sanity_70b_t02_s123.jsonl
+??? sanity_70b_t02_s123_enriched.jsonl
+??? baseline_70b_t0_s42.jsonl
+??? baseline_70b_t0_s42_enriched.jsonl
+??? ...
 
 results/
-├── sanity_check_comparison.csv       # CardOnly vs StrategyAware JS distances
-├── pce_distribution.csv
-├── update_coherence.csv
-└── belief_action.csv
+??? sanity_check_comparison.csv       # CardOnly vs StrategyAware JS distances
+??? pce_distribution.csv
+??? update_coherence.csv
+??? belief_action.csv
 ```

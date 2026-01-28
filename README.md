@@ -478,8 +478,46 @@ python -m analysis.build_dataset logs/raw.jsonl logs/enriched.jsonl --opponent d
 | `tight_aggressive` | 0.6 | 0.4 | 0.08 | Selective but aggressive |
 | `loose_passive` | 0.2 | 0.2 | 0.05 | Plays many hands, just calls |
 | `loose_aggressive` | 0.6 | 0.2 | 0.15 | Plays many hands, raises often |
+| `informative_v2` | 0.85 | 0.55 | 0.02 | **Canonical** - max oracle separation |
+| `informative` | 0.85 | 0.55 | 0.02 | Legacy alias for `informative_v2` |
 
-### Step 3: Compute Metrics
+> **Preset Versioning:** `informative` and `informative_v2` have identical parameters. Use `informative_v2` for new experiments. Phase 1A logs used `informative` (valid, same params).
+
+### Step 3: Run Full Analysis
+
+Analyze LLM beliefs against oracle posteriors:
+
+```bash
+# Single file
+python -m analysis.analyze_beliefs logs/enriched.jsonl
+
+# Multiple files (aggregated)
+python -m analysis.analyze_beliefs logs/run1_enriched.jsonl logs/run2_enriched.jsonl
+
+# Save JSON report
+python -m analysis.analyze_beliefs logs/enriched.jsonl --json-out results.json
+```
+
+**Output includes:**
+
+| Section | Description |
+|---------|-------------|
+| Validity Audit | Raw output stats (prob_sum, negatives, all-zeros) |
+| JS Distance Analysis | LLM vs CardOnly vs StrategyAware (normalized) |
+| Action-Conditioning | Does LLM shift beliefs after opponent aggression? |
+| Summary Table | Paper-ready metrics |
+
+**Key metrics:**
+
+| Metric | Interpretation |
+|--------|----------------|
+| JS(LLM, CardOnly) | Distance to combo-counting baseline |
+| JS(LLM, StrategyAware) | Distance to Bayesian posterior |
+| JS(CardOnly, StrategyAware) | Oracle separation (test validity, should be >0.05) |
+| LLM closer to | CardOnly = ignores history, StrategyAware = uses history |
+| Strong-shift ratio | LLM response to aggression / Oracle response |
+
+### Step 4: Compute Metrics (Programmatic)
 
 ```python
 from analysis.build_dataset import load_analysis_dataset, extract_beliefs_and_oracles

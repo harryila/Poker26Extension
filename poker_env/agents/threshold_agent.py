@@ -40,7 +40,6 @@ class ThresholdAgent(BaseAgent):
     """
     
     # Presets for ThresholdAgent
-    # Note: "informative" preset is designed for maximum action-history signal
     PRESETS = {
         "default": {
             "aggression": 0.4,
@@ -67,13 +66,20 @@ class ThresholdAgent(BaseAgent):
             "fold_threshold": 0.2,
             "bluff_freq": 0.15,
         },
-        # INFORMATIVE: Designed for maximum action-history signal
+        # INFORMATIVE_V2: Canonical preset for maximum action-history signal
         # Very high fold rate for weak hands, very high raise rate for strong hands
         # This makes actions highly correlated with hand strength
-        "informative": {
+        # Achieves JS(CardOnly, StrategyAware) ≈ 0.05-0.06
+        "informative_v2": {
             "aggression": 0.85,      # Almost always raise with playable hands
             "fold_threshold": 0.55,  # Fold most weak hands
             "bluff_freq": 0.02,      # Very low bluff rate (actions reveal strength)
+        },
+        # Legacy alias (deprecated, use informative_v2)
+        "informative": {
+            "aggression": 0.85,
+            "fold_threshold": 0.55,
+            "bluff_freq": 0.02,
         },
     }
     

@@ -19,6 +19,40 @@ from analysis.posterior_oracle import (
 )
 
 
+def _check_opponent_preset_match(log_path: str, enrichment_preset: str) -> None:
+    """
+    Check if the enrichment preset matches the gameplay opponent.
+    
+    Warns loudly if there's a mismatch, which would produce invalid oracle comparisons.
+    This is critical for scientific integrity - reviewers will catch this error.
+    """
+    with open(log_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            record = json.loads(line)
+            if record.get("type") == "run_config":
+                agent_configs = record.get("agent_configs", [])
+                for agent in agent_configs:
+                    if agent.get("type") == "ThresholdAgent":
+                        gameplay_preset = agent.get("preset")
+                        if gameplay_preset and gameplay_preset != enrichment_preset:
+                            print("\n" + "=" * 70)
+                            print("⚠️  WARNING: OPPONENT PRESET MISMATCH DETECTED!")
+                            print("=" * 70)
+                            print(f"  Gameplay used:    ThresholdAgent with preset '{gameplay_preset}'")
+                            print(f"  Enriching with:   ParametricOpponent preset '{enrichment_preset}'")
+                            print("")
+                            print("  This may produce INVALID oracle comparisons!")
+                            print("  The StrategyAwarePosterior will compute likelihoods")
+                            print("  assuming different opponent behavior than what actually occurred.")
+                            print("")
+                            print(f"  Recommended: Use --opponent {gameplay_preset}")
+                            print("=" * 70 + "\n")
+                return  # Only need to check run_config once
+
+
 def build_analysis_dataset(
     log_path: str,
     output_path: str,
@@ -42,6 +76,9 @@ def build_analysis_dataset(
     Returns:
         Summary statistics
     """
+    # Check for opponent preset mismatch (critical for validity)
+    _check_opponent_preset_match(log_path, opponent_preset)
+    
     # Create oracles
     card_only = CardOnlyPosterior()
     opponent_model = ParametricOpponent.from_preset(opponent_preset)
@@ -249,7 +286,7 @@ def main():
     parser.add_argument(
         "--opponent",
         choices=["default", "tight_passive", "tight_aggressive", 
-                 "loose_passive", "loose_aggressive"],
+                 "loose_passive", "loose_aggressive", "informative"],
         default="default",
         help="Opponent model preset for strategy-aware oracle",
     )

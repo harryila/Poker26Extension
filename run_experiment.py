@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 from poker_env.env import PokerKitEnv
-from poker_env.agents import BaseAgent, RandomAgent, CallAgent, HF_AVAILABLE
+from poker_env.agents import BaseAgent, RandomAgent, CallAgent, ThresholdAgent, HF_AVAILABLE
 from poker_env.oracle import EquityOracle
 from poker_env.logging import DecisionLogger
 from poker_env.config import (
@@ -53,12 +53,13 @@ def create_agent(
     belief_max_new_tokens: int | None = None,
     max_input_tokens: int | None = None,
     belief_format: str | None = None,
+    opponent_preset: str | None = None,
 ) -> BaseAgent:
     """
     Create an agent by type name.
 
     Args:
-        agent_type: One of "random", "call", "hf"
+        agent_type: One of "random", "call", "threshold", "hf"
         seed: Optional seed for random agent
         name: Optional name for the agent
         hf_model: HuggingFace model ID (for hf agent, defaults to config)
@@ -68,6 +69,7 @@ def create_agent(
         belief_max_new_tokens: Max tokens for belief (for hf agent, defaults to config)
         max_input_tokens: Max input context length (for hf agent, defaults to config)
         belief_format: "compact" or "full" (for hf agent, defaults to config)
+        opponent_preset: Preset for threshold agent (default, tight_passive, etc.)
 
     Returns:
         BaseAgent instance
@@ -76,6 +78,9 @@ def create_agent(
         return RandomAgent(seed=seed, name=name or "RandomAgent")
     elif agent_type == "call":
         return CallAgent(name=name or "CallAgent")
+    elif agent_type == "threshold":
+        preset = opponent_preset or "default"
+        return ThresholdAgent(preset=preset, seed=seed, name=name or f"ThresholdAgent_{preset}")
     elif agent_type == "hf":
         if not HF_AVAILABLE:
             raise ImportError(
@@ -107,6 +112,7 @@ def create_agents(
     belief_max_new_tokens: int | None = None,
     max_input_tokens: int | None = None,
     belief_format: str | None = None,
+    opponent_preset: str | None = None,
 ) -> list[BaseAgent]:
     """
     Create agents for all players.
@@ -118,6 +124,7 @@ def create_agents(
         hf_model: HuggingFace model ID (for hf agents)
         temperature: Generation temperature (for hf agents)
         top_p: Top-p sampling parameter (for hf agents)
+        opponent_preset: Preset for threshold agents
         action_max_new_tokens: Max tokens for action (for hf agents)
         belief_max_new_tokens: Max tokens for belief (for hf agents)
         max_input_tokens: Max input context length (for hf agents)
@@ -149,7 +156,12 @@ def create_agents(
                 )
             agents.append(hf_agent_instance)
         else:
-            agents.append(create_agent(agent_type, seed=seed, name=f"Player{i}_{agent_type}"))
+            agents.append(create_agent(
+                agent_type, 
+                seed=seed, 
+                name=f"Player{i}_{agent_type}",
+                opponent_preset=opponent_preset,
+            ))
     
     return agents
 
@@ -351,6 +363,7 @@ def run_experiment(
     belief_format: str | None = None,
     elicit_beliefs: bool = False,
     randomize_probe_order: bool = False,
+    opponent_preset: str | None = None,
 ) -> dict:
     """
     Run a full experiment with multiple hands.
@@ -406,6 +419,7 @@ def run_experiment(
         belief_max_new_tokens=belief_max_new_tokens,
         max_input_tokens=max_input_tokens,
         belief_format=belief_format,
+        opponent_preset=opponent_preset,
     )
 
     # Create oracle
@@ -496,8 +510,15 @@ def main():
         "--opponent",
         type=str,
         default=None,
-        choices=["random", "call"],
+        choices=["random", "call", "threshold"],
         help="Agent type for opponents (heads-up only, overrides --agent for player 1)",
+    )
+    parser.add_argument(
+        "--opponent-preset",
+        type=str,
+        default="default",
+        choices=["default", "tight_passive", "tight_aggressive", "loose_passive", "loose_aggressive", "informative"],
+        help="Preset for threshold opponent (default: default, use 'informative' for max action signal)",
     )
     parser.add_argument(
         "--hands",
@@ -638,6 +659,7 @@ To proceed anyway, add: --i-know-what-im-doing
         belief_format=args.belief_format,
         elicit_beliefs=args.elicit_beliefs,
         randomize_probe_order=args.randomize_probe_order,
+        opponent_preset=args.opponent_preset,
     )
 
 

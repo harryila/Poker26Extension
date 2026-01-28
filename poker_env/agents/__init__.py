@@ -3,8 +3,9 @@
 from poker_env.agents.base import BaseAgent
 from poker_env.agents.random_agent import RandomAgent
 from poker_env.agents.call_agent import CallAgent
+from poker_env.agents.threshold_agent import ThresholdAgent
 
-__all__ = ["BaseAgent", "RandomAgent", "CallAgent"]
+__all__ = ["BaseAgent", "RandomAgent", "CallAgent", "ThresholdAgent"]
 
 # Conditional import for HFAgent (requires torch and transformers)
 try:

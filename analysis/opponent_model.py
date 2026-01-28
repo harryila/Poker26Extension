@@ -171,6 +171,9 @@ class ParametricOpponent:
         "loose_passive": {"aggression": 0.2, "fold_threshold": 0.2, "bluff_freq": 0.05},
         "loose_aggressive": {"aggression": 0.6, "fold_threshold": 0.2, "bluff_freq": 0.15},
         "default": {"aggression": 0.4, "fold_threshold": 0.3, "bluff_freq": 0.1},
+        # INFORMATIVE: Designed for maximum action-history signal in experiments
+        # Actions are highly correlated with hand strength
+        "informative": {"aggression": 0.85, "fold_threshold": 0.55, "bluff_freq": 0.02},
     }
     
     def __init__(

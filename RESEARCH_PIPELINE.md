@@ -12,20 +12,51 @@ Before running large-scale experiments, we first run a **sanity check** to verif
 
 ---
 
+## Critical: Why Opponent Choice Matters
+
+### The Informative Opponent Problem
+
+For the sanity check to work, **the opponent's actions must carry information about their hand strength**. Otherwise, `CardOnlyPosterior` and `StrategyAwarePosterior` will be nearly identical, and we can't test whether the LLM uses action history.
+
+| Opponent | Behavior | Information Content |
+|----------|----------|---------------------|
+| `call` | Always calls | **None** - actions reveal nothing |
+| `random` | Uniform random | **Low** - actions uncorrelated with hand |
+| `threshold` | Raises strong, folds weak | **High** - actions reveal hand strength |
+
+### Validation Results
+
+We tested different opponents to verify action informativeness by measuring JS(CardOnly, StrategyAware):
+
+| Opponent | Preset | JS(CardOnly, StrategyAware) | Status |
+|----------|--------|------------------------------|--------|
+| `call` | - | 0.0147 | Too low |
+| `threshold` | `default` | 0.0167 | Too low |
+| `threshold` | `informative` | **0.0622** | **Sufficient** |
+
+**Screening criterion:** JS > 0.05 is a heuristic indicating actions carry enough information for meaningful posterior updates. This is a **screening criterion** (does this opponent produce informative histories?) not a **correctness criterion** (is JS > 0.05 "right"?). Use it to validate experimental setup, not to evaluate LLM performance.
+
+**Recommendation:** Always use `--opponent threshold --opponent-preset informative` for belief experiments.
+
+See [EXPERIMENT_RESULTS.md](EXPERIMENT_RESULTS.md#appendix-opponent-informativeness-validation) for detailed validation methodology.
+
+---
+
 ## Phase 1: Mini Sanity Grid (First!)
 
 **Purpose:** Verify the LLM is actually using action history, not just card information.
 
 ### Step 1A: Run Small Experiment Grid
 
-Run heads-up fixed-limit with beliefs enabled:
+Run heads-up fixed-limit with beliefs enabled, using the **informative threshold opponent**:
 
 ```bash
 # Llama 3.1 70B, temp 0.0, seed 42
 python run_experiment.py \
     --agent hf \
     --hf-model meta-llama/Llama-3.1-70B-Instruct \
-    --opponent call \
+    --opponent threshold \
+    --opponent-preset informative \
     --hands 50 \
     --seed 42 \
     --temperature 0.0 \
@@ -37,7 +68,8 @@ python run_experiment.py \
 python run_experiment.py \
     --agent hf \
     --hf-model meta-llama/Llama-3.1-70B-Instruct \
-    --opponent call \
+    --opponent threshold \
+    --opponent-preset informative \
     --hands 50 \
     --seed 123 \
     --temperature 0.0 \
@@ -49,7 +81,8 @@ python run_experiment.py \
 python run_experiment.py \
     --agent hf \
     --hf-model meta-llama/Llama-3.1-70B-Instruct \
-    --opponent call \
+    --opponent threshold \
+    --opponent-preset informative \
     --hands 50 \
     --seed 42 \
     --temperature 0.2 \
@@ -61,7 +94,8 @@ python run_experiment.py \
 python run_experiment.py \
     --agent hf \
     --hf-model meta-llama/Llama-3.1-70B-Instruct \
-    --opponent call \
+    --opponent threshold \
+    --opponent-preset informative \
     --hands 50 \
     --seed 123 \
     --temperature 0.2 \
@@ -72,6 +106,7 @@ python run_experiment.py \
 
 **Grid summary:**
 - Model: Llama 3.1 70B
+- Opponent: `threshold` with `informative` preset
 - Temperatures: 0.0, 0.2
 - Seeds: 42, 123
 - Hands per condition: 50
@@ -79,14 +114,16 @@ python run_experiment.py \
 
 ### Step 1B: Enrich Logs with Oracle Posteriors
 
-The dataset builder computes **both** `oracle_card_only` and `oracle_strategy_aware` in a single pass:
+The dataset builder computes **both** `oracle_card_only` and `oracle_strategy_aware` in a single pass.
+
+**Important:** Use `--opponent informative` to match the ThresholdAgent's behavior:
 
 ```bash
 # Enrich all sanity logs (each produces both oracle types)
-python -m analysis.build_dataset logs/sanity_70b_t0_s42.jsonl logs/sanity_70b_t0_s42_enriched.jsonl --opponent default
-python -m analysis.build_dataset logs/sanity_70b_t0_s123.jsonl logs/sanity_70b_t0_s123_enriched.jsonl --opponent default
-python -m analysis.build_dataset logs/sanity_70b_t02_s42.jsonl logs/sanity_70b_t02_s42_enriched.jsonl --opponent default
-python -m analysis.build_dataset logs/sanity_70b_t02_s123.jsonl logs/sanity_70b_t02_s123_enriched.jsonl --opponent default
+python -m analysis.build_dataset logs/sanity_70b_t0_s42.jsonl logs/sanity_70b_t0_s42_enriched.jsonl --opponent informative
+python -m analysis.build_dataset logs/sanity_70b_t0_s123.jsonl logs/sanity_70b_t0_s123_enriched.jsonl --opponent informative
+python -m analysis.build_dataset logs/sanity_70b_t02_s42.jsonl logs/sanity_70b_t02_s42_enriched.jsonl --opponent informative
+python -m analysis.build_dataset logs/sanity_70b_t02_s123.jsonl logs/sanity_70b_t02_s123_enriched.jsonl --opponent informative
 ```
 
 Each enriched log will contain:
@@ -98,8 +135,22 @@ Each enriched log will contain:
 Compute the key comparison:
 
 ```
-mean JS(LLM, CardOnly) vs mean JS(LLM, StrategyAware)
+mean JS(LLM, CardOnly) vs mean JS(LLM, StrategyAware) vs mean JS(LLM, BucketCountPrior)
 ```
+
+#### Understanding the Baselines
+
+| Baseline | What it is | What it measures |
+|----------|------------|------------------|
+| **CardOnlyPosterior** | P(hand \| blockers) - uniform over remaining combos | Model-free, ignores betting |
+| **StrategyAwarePosterior** | P(hand \| blockers, actions) - uses opponent model | Uses betting history |
+| **BucketCountPrior** | Same as CardOnly, but framed as a baseline | "Can LLM beat combo counting?" |
+
+**Key insight:** `CardOnlyPosterior` and `BucketCountPrior` are mathematically equivalent - both compute probability proportional to combo count per bucket after accounting for blockers. The distinction is conceptual:
+- Use CardOnly to answer: "Does LLM use action history?"
+- Use BucketCountPrior to answer: "Is LLM better than naive combo counting?"
+
+If `JS(LLM, CardOnly)` is high, the LLM doesn't even match simple combinatorics - that's a strong, simple finding.
 
 **Quick analysis script:**
 
@@ -134,24 +185,35 @@ llm, co, sa = load_beliefs_and_oracles("logs/sanity_70b_t0_s42_enriched.jsonl")
 js_to_card_only = [jensenshannon(l, c) for l, c in zip(llm, co)]
 js_to_strat_aware = [jensenshannon(l, s) for l, s in zip(llm, sa)]
 
-print(f"Mean JS(LLM, CardOnly):     {np.mean(js_to_card_only):.4f}")
-print(f"Mean JS(LLM, StrategyAware): {np.mean(js_to_strat_aware):.4f}")
+# BucketCountPrior = CardOnly (mathematically equivalent, different framing)
+js_to_bucket_prior = js_to_card_only  # Same computation
 
+print(f"Mean JS(LLM, CardOnly/BucketCountPrior): {np.mean(js_to_card_only):.4f}")
+print(f"Mean JS(LLM, StrategyAware):              {np.mean(js_to_strat_aware):.4f}")
+
+# Primary question: Does LLM use action history?
 if np.mean(js_to_strat_aware) < np.mean(js_to_card_only):
-    print("✓ LLM closer to StrategyAware - GREEN LIGHT to scale up!")
+    print("✓ LLM closer to StrategyAware - uses action history!")
 else:
-    print("✗ LLM closer to CardOnly - investigate prompt/model")
+    print("✗ LLM closer to CardOnly - ignores action history")
+
+# Secondary question: Can LLM beat naive combo counting?
+if np.mean(js_to_card_only) > 0.3:
+    print("⚠️ LLM far from BucketCountPrior - worse than naive combinatorics")
+elif np.mean(js_to_card_only) < 0.1:
+    print("✓ LLM close to BucketCountPrior - matches basic combinatorics")
 ```
 
 **Decision rule:**
 
 | Result | Interpretation | Action |
 |--------|----------------|--------|
-| LLM closer to **CardOnly** | Model ignores betting history | Investigate prompt, may need revision |
+| LLM closer to **CardOnly** | Model ignores betting history | Early headline: "coherent beliefs that ignore action history" |
 | LLM closer to **StrategyAware** | Model uses action history | **Green light:** scale up |
+| LLM far from **both** (JS > 0.3) | Model worse than combo counting | Strong negative result - publishable as-is |
 | Similar distance to both | Ambiguous signal | Run more hands or investigate |
 
-This step is cheap (~200 hands total) and prevents wasting compute on uninformative experiments.
+This step is cheap (~200 hands total across 4 runs) and prevents wasting compute on uninformative experiments.
 
 ---
 
@@ -166,6 +228,7 @@ Scale up to paper-grade dataset:
 ```bash
 # Configuration grid:
 # - Model: Llama 3.1 70B
+# - Opponent: threshold (informative preset)
 # - Temperatures: 0.0, 0.2
 # - Seeds: 42, 123, 456
 # - Hands: 1000 per condition (scale to 5000 if stable)
@@ -174,7 +237,8 @@ Scale up to paper-grade dataset:
 python run_experiment.py \
     --agent hf \
     --hf-model meta-llama/Llama-3.1-70B-Instruct \
-    --opponent call \
+    --opponent threshold \
+    --opponent-preset informative \
     --hands 1000 \
     --seed 42 \
     --temperature 0.0 \
@@ -197,8 +261,10 @@ python run_experiment.py \
 
 ### Step 2B: Enrich with StrategyAwarePosterior
 
+**Important:** Use `--opponent informative` to match the ThresholdAgent's behavior:
+
 ```bash
-python -m analysis.build_dataset logs/baseline_70b_t0_s42.jsonl logs/baseline_70b_t0_s42_enriched.jsonl --opponent default
+python -m analysis.build_dataset logs/baseline_70b_t0_s42.jsonl logs/baseline_70b_t0_s42_enriched.jsonl --opponent informative
 # ... repeat for all files ...
 ```
 
@@ -241,19 +307,19 @@ python -m analysis.metrics.belief_action logs/baseline_enriched/ --output result
 
 ### Step 4A: Opponent Model Sensitivity
 
-Repeat enrichment/metrics across different opponent presets:
+Test whether results are sensitive to opponent model assumptions by re-enriching with different presets:
 
 ```bash
-# Tight-passive opponent
-python -m analysis.build_dataset logs/baseline.jsonl logs/baseline_tight_passive.jsonl --opponent tight_passive
+# Main results use informative preset (matches gameplay)
+python -m analysis.build_dataset logs/baseline.jsonl logs/baseline_informative.jsonl --opponent informative
 
-# Loose-aggressive opponent
+# Robustness: what if we assumed different opponent behavior?
+python -m analysis.build_dataset logs/baseline.jsonl logs/baseline_tight_aggressive.jsonl --opponent tight_aggressive
 python -m analysis.build_dataset logs/baseline.jsonl logs/baseline_loose_aggressive.jsonl --opponent loose_aggressive
-
-# ... repeat for other presets ...
 ```
 
 **Available opponent presets:**
+- `informative` (recommended - matches ThresholdAgent gameplay)
 - `default` (balanced)
 - `tight_passive`
 - `tight_aggressive`
@@ -263,6 +329,8 @@ python -m analysis.build_dataset logs/baseline.jsonl logs/baseline_loose_aggress
 ### Step 4B: Qualitative Stability
 
 Show that core results are stable across opponent models. Small quantitative differences are expected; large qualitative changes would be concerning.
+
+**Key insight:** Even though we USE the `informative` preset during gameplay, testing robustness across OTHER presets shows whether the LLM's belief quality depends on our specific opponent assumptions.
 
 ---
 
@@ -274,7 +342,8 @@ Show that core results are stable across opponent models. Small quantitative dif
 |------|-------------|
 | `--agent hf` | Use HuggingFace LLM agent |
 | `--hf-model MODEL_ID` | Specify model (default: 8B, research: 70B) |
-| `--opponent call` | Opponent always calls (simple, interpretable) |
+| `--opponent TYPE` | Opponent type: `call`, `random`, or `threshold` |
+| `--opponent-preset PRESET` | Preset for threshold opponent (see below) |
 | `--hands N` | Number of hands to play |
 | `--seed N` | Random seed for reproducibility |
 | `--temperature T` | Generation temperature (0.0 = deterministic) |
@@ -282,11 +351,32 @@ Show that core results are stable across opponent models. Small quantitative dif
 | `--out FILE` | Output JSONL path |
 | `-v` | Verbose output |
 
+### Opponent Types
+
+| Type | Behavior | Use Case |
+|------|----------|----------|
+| `call` | Always calls | Simple baseline (NOT for belief experiments) |
+| `random` | Uniform random | Testing only |
+| `threshold` | Plays based on hand strength | **Required for belief experiments** |
+
+### Threshold Opponent Presets
+
+| Preset | Aggression | Fold Threshold | Bluff Freq | Notes |
+|--------|------------|----------------|------------|-------|
+| `default` | 0.4 | 0.3 | 0.1 | Balanced play |
+| `informative` | 0.85 | 0.55 | 0.02 | **Recommended** - max action signal |
+| `tight_passive` | 0.2 | 0.4 | 0.02 | Folds often, rarely raises |
+| `tight_aggressive` | 0.6 | 0.4 | 0.08 | Selective but aggressive |
+| `loose_passive` | 0.2 | 0.2 | 0.05 | Plays many hands, just calls |
+| `loose_aggressive` | 0.6 | 0.2 | 0.15 | Plays many hands, raises often |
+
 ### Dataset Builder Flags
 
 | Flag | Description |
 |------|-------------|
-| `--opponent MODEL` | Opponent model for posteriors (default, card_only, tight_passive, etc.) |
+| `--opponent MODEL` | Opponent model for posteriors (must match gameplay opponent!) |
+
+**Available presets:** `default`, `tight_passive`, `tight_aggressive`, `loose_passive`, `loose_aggressive`, `informative`
 
 ---
 

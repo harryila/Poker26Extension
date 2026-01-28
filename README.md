@@ -122,7 +122,8 @@ python -m analysis.build_dataset logs/experiment.jsonl logs/enriched.jsonl --opp
 | `--num-players` | Number of players in the game (2-6) | `2` | `--num-players 4` |
 | `--agent` | Default agent type for all players | `random` | `--agent call` |
 | `--agents` | Comma-separated list of agent types for each player. Overrides `--agent`. | None | `--agents random,call,random,call` |
-| `--opponent` | Agent type for player 1 only (heads-up shortcut). Only works with 2 players. | None | `--opponent call` |
+| `--opponent` | Agent type for player 1 only (heads-up shortcut). Only works with 2 players. | None | `--opponent threshold` |
+| `--opponent-preset` | Preset for threshold opponent behavior. | `default` | `--opponent-preset informative` |
 | `--hands` | Number of hands to play | `100` | `--hands 500` |
 | `--seed` | Base random seed for reproducibility. Each hand uses `seed + hand_num * 1000`. | `42` | `--seed 12345` |
 | `--out` | Output file path for JSONL decision logs | `logs/experiment.jsonl` | `--out results/run1.jsonl` |
@@ -137,6 +138,18 @@ python -m analysis.build_dataset logs/experiment.jsonl logs/enriched.jsonl --opp
 |------|----------|
 | `random` | Selects uniformly at random from legal actions |
 | `call` | Always checks or calls (never folds, never raises) |
+| `threshold` | Plays based on hand strength (raises strong, folds weak). Use for belief experiments. |
+
+### Threshold Agent Presets
+
+When using `--opponent threshold`, specify behavior with `--opponent-preset`:
+
+| Preset | Description | Use Case |
+|--------|-------------|----------|
+| `informative` | High action-hand correlation | **Recommended for belief experiments** |
+| `default` | Balanced play | General testing |
+| `tight_aggressive` | Selective but aggressive | Robustness checks |
+| `loose_aggressive` | Plays many hands aggressively | Robustness checks |
 
 ### Flag Combinations
 

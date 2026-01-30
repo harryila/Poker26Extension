@@ -517,8 +517,8 @@ def main():
         "--opponent-preset",
         type=str,
         default="default",
-        choices=["default", "tight_passive", "tight_aggressive", "loose_passive", "loose_aggressive", "informative"],
-        help="Preset for threshold opponent (default: default, use 'informative' for max action signal)",
+        choices=["default", "tight_passive", "tight_aggressive", "loose_passive", "loose_aggressive", "informative", "informative_v2"],
+        help="Preset for threshold opponent (default: default, use 'informative_v2' for max action signal)",
     )
     parser.add_argument(
         "--hands",

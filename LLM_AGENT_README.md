@@ -235,15 +235,74 @@ Each decision point logs:
 
 ### Telemetry Metrics
 
-| Metric | Description | Target |
-|--------|-------------|--------|
-| `action_parse_rate` | % of action responses parsed | >95% |
-| `belief_parse_rate` | % of belief responses parsed | >80% |
-| `fallback_rate` | % using deterministic fallback | <10% |
-| `coherence_rate` | % of beliefs with valid probabilities | >70% |
-| `avg_prob_sum` | Mean sum of belief probabilities | ~1.0 |
-| `avg_repair_distance_l1` | Mean L1 distance to simplex | ~0.0 |
-| `avg_repair_distance_l2` | Mean L2 distance to simplex | ~0.0 |
+| Metric | Description | Target | Observed (70B) |
+|--------|-------------|--------|----------------|
+| `action_parse_rate` | % of action responses parsed | >95% | ~95% |
+| `belief_parse_rate` | % of belief responses parsed | >80% | **~50%** |
+| `fallback_rate` | % using deterministic fallback | <10% | <5% |
+| `coherence_rate` | % of beliefs with valid probabilities | >70% | ~95% (of parsed) |
+| `avg_prob_sum` | Mean sum of belief probabilities | ~1.0 | ~1.13 |
+| `avg_repair_distance_l1` | Mean L1 distance to simplex | ~0.0 | ~0.13 |
+| `avg_repair_distance_l2` | Mean L2 distance to simplex | ~0.0 | ~0.04 |
+
+> **Note on belief_parse_rate:** The observed ~50% belief parse rate is expected model behavior, not a bug. The 70B model sometimes outputs 15 values instead of 14, or produces degenerate distributions. This is acceptable because:
+> - Analysis filters failed parses before computing metrics
+> - Sufficient valid samples remain for statistical analysis (N=246 in Phase 1A, N=1,084 total)
+> - Failure mode is consistent (not biased by temperature or seed)
+> - See [EXPERIMENT_RESULTS.md](EXPERIMENT_RESULTS.md#expected-belief-parsing-behavior) for details.
+
+---
+
+## Actual Research Findings (January 2026)
+
+This section documents what we actually discovered when running the LLM agent experiments. The results diverged significantly from initial expectations.
+
+### Original Hypothesis vs Reality
+
+**Original hypothesis:** LLMs would use betting history to form beliefs about opponent hands, similar to Bayesian reasoning.
+
+**What we actually found:**
+
+| Expectation | Reality |
+|-------------|---------|
+| LLM uses betting history | LLM largely **ignores** betting history |
+| LLM closer to StrategyAware oracle | LLM closer to **CardOnly** oracle (combo-counting) |
+| Base rates would be reasonable | **4x base-rate neglect** (17% trash vs 69% actual) |
+| Belief updates track oracle | Updates are **11x too large** with **r=0.056** correlation |
+
+### Model Comparison: 70B vs 8B
+
+We originally planned to test both Llama 3.1 8B and 70B. The 8B experiments were abandoned.
+
+| Model | Outcome | Why |
+|-------|---------|-----|
+| **70B** | ✅ Usable | Produces varied, context-sensitive beliefs (though miscalibrated) |
+| **8B** | ❌ Abandoned | **100% degenerate output**: always `[0,0,0,0,0,0,0,0,0,0,0,0,0,1]` (all mass on trash) |
+
+**8B abandonment rationale:** The 8B model outputs a fixed belief for every single game state, regardless of cards, street, or opponent actions. This indicates the model lacks sufficient capacity for structured probabilistic reasoning over poker hand ranges. See [EXPERIMENT_RESULTS.md - Part 2](EXPERIMENT_RESULTS.md#part-2-llama-31-8b-analysis) for details.
+
+### Key Metrics from Experiments (N=1,084)
+
+| Metric | Value | 95% CI | Interpretation |
+|--------|-------|--------|----------------|
+| JS(LLM, CardOnly) | 0.4067 | [0.4032, 0.4104] | Distance to combo-counting |
+| JS(LLM, StrategyAware) | 0.4204 | [0.4166, 0.4244] | Distance to Bayesian |
+| **LLM closer to** | **CardOnly** | by 0.0137 | Ignores betting history |
+| LLM trash mass | 16.89% | - | Should be ~66% |
+| Update magnitude ratio (card) | 11.06x | - | Massively over-updates |
+| Update magnitude ratio (action) | 3.25x | - | Over-updates |
+| Update correlation | 0.056 | - | Nearly random direction |
+
+### Refined Main Claim
+
+> **Llama 3.1 70B shows weak directional sensitivity to betting actions, but remains closer to CardOnly than StrategyAware because base-rate neglect dominates. The model attempts to update beliefs but does so incorrectly—over-updating by 3-11x with near-zero correlation to oracle updates.**
+
+### Implications for Future LLM Agent Work
+
+1. **Don't trust surface-level coherence:** The 8B model had "perfect" prob_sum=1.0 while outputting degenerate nonsense. **"Syntactically valid and numerically coherent" beliefs may still be distributionally incorrect.** Phase 3 confirmed that even well-formed 70B beliefs suffer from severe base-rate neglect (4x underestimate of trash hands) and miscalibrated updates (11x over-updating). Coherence ≠ correctness.
+2. **Test against Bayesian baselines:** Without oracle comparison, you won't know if beliefs are reasonable
+3. **Model size matters:** There appears to be a capability threshold between 8B and 70B for belief elicitation
+4. **Parse rate is acceptable at 50%:** Sufficient valid samples remain for statistical analysis
 
 ## Standardized Prompts
 

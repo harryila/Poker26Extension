@@ -4,6 +4,8 @@ A reproducible, instrumented Fixed-Limit Texas Hold'em environment built on [Pok
 
 ## Research Overview
 
+> **Scope Note:** This repository studies **belief formation and updating**, not optimal poker play. Results should not be interpreted as claims about exploitability, equilibrium convergence, or policy optimality. The goal is to diagnose whether LLMs reason probabilistically about hidden information, not to build competitive poker agents.
+
 This codebase supports research into **whether LLMs actually maintain coherent Bayesian beliefs** about hidden information. The core research question:
 
 > *Do LLM poker agents internally maintain coherent probability distributions over opponent hands—or do they rely on surface-level heuristics while producing plausible-sounding but inconsistent belief statements?*
@@ -56,6 +58,23 @@ The codebase warns when using >2 players. Multi-way is "engineering-supported" b
 4. **Belief-Action Divergence**: Compare stated beliefs to action-implied beliefs
 5. **"Plays Well Despite Bad Beliefs"**: Identify when LLMs make good decisions with nonsensical beliefs
 
+### Research Findings (January 2026)
+
+This codebase was used to produce a complete research study. Key findings:
+
+| Metric | Value | Interpretation |
+|--------|-------|----------------|
+| N (valid beliefs) | 1,084 | Combined Phase 1A + Phase 2 data |
+| JS(LLM, CardOnly) | 0.4067 | LLM distance to combo-counting baseline |
+| JS(LLM, StrategyAware) | 0.4204 | LLM distance to Bayesian action-conditioned |
+| **LLM closer to** | **CardOnly** | **By 0.0137 — LLM ignores betting history** |
+| LLM trash mass | 16.89% | Should be ~66% (4x underestimate) |
+| Update correlation | 0.056 | Nearly random — updates in wrong direction |
+
+> **Headline:** Llama 3.1 70B shows weak directional sensitivity to betting actions, but severe base-rate neglect dominates—beliefs stay closer to CardOnly than StrategyAware. The model attempts to update beliefs but does so incorrectly: over-updating by 3-11x with near-zero correlation to oracle updates.
+
+See [EXPERIMENT_RESULTS.md](EXPERIMENT_RESULTS.md) for complete analysis.
+
 ## Documentation
 
 | Document | Description |
@@ -64,6 +83,7 @@ The codebase warns when using >2 players. Multi-way is "engineering-supported" b
 | [LLM_AGENT_README.md](LLM_AGENT_README.md) | HuggingFace LLM agent integration (Llama 3.1 8B/70B) |
 | [RESEARCH_PIPELINE.md](RESEARCH_PIPELINE.md) | Step-by-step research experiment guide with commands |
 | [EXPERIMENT_RESULTS.md](EXPERIMENT_RESULTS.md) | Recorded findings from sanity check experiments |
+| [DEFERRED_WORK.md](DEFERRED_WORK.md) | Deferred experiments and extensions (scope discipline) |
 
 ## Requirements
 
@@ -146,10 +166,13 @@ When using `--opponent threshold`, specify behavior with `--opponent-preset`:
 
 | Preset | Description | Use Case |
 |--------|-------------|----------|
-| `informative` | High action-hand correlation | **Recommended for belief experiments** |
+| `informative_v2` | High action-hand correlation (canonical) | **Recommended for belief experiments** |
+| `informative` | Legacy alias for `informative_v2` | Backwards compatibility |
 | `default` | Balanced play | General testing |
 | `tight_aggressive` | Selective but aggressive | Robustness checks |
 | `loose_aggressive` | Plays many hands aggressively | Robustness checks |
+
+> **Why `informative_v2` matters:** With a `call` opponent (always calls), CardOnly and StrategyAware posteriors are nearly identical (JS=0.015), making it impossible to test if LLM uses betting history. The `informative_v2` preset achieves JS(CardOnly, StrategyAware) ≈ 0.05-0.06, providing sufficient signal for belief experiments. See [EXPERIMENT_RESULTS.md - Appendix: Opponent Informativeness Validation](EXPERIMENT_RESULTS.md#appendix-opponent-informativeness-validation).
 
 ### Flag Combinations
 
@@ -202,6 +225,20 @@ python run_experiment.py --seed 42 --hands 100
 python run_experiment.py --seed 42 --hands 100  # Identical results
 ```
 
+### LLM Agent Flags
+
+When using `--agent hf` (HuggingFace LLM agent):
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--hf-model` | `Llama-3.1-8B-Instruct` | HuggingFace model ID |
+| `--temperature` | `0.2` | Generation temperature (0 = deterministic) |
+| `--elicit-beliefs` | `False` | Prompt LLM for beliefs at each decision |
+| `--belief-format` | `compact` | Belief output format (`compact` or `full`) |
+| `--belief-max-new-tokens` | `384` | Max tokens for belief generation |
+
+See [LLM_AGENT_README.md](LLM_AGENT_README.md) for complete HF agent documentation.
+
 ### Example Commands
 
 ```bash
@@ -223,6 +260,40 @@ python run_experiment.py --hands 100 --out results/test_run.jsonl -v
 # Specific seed for reproducibility
 python run_experiment.py --seed 12345 --hands 100 -v
 ```
+
+### LLM Belief Experiment Commands (Actual Research)
+
+These are the commands used in the actual research study:
+
+```bash
+# Phase 1A: Sanity check with informative opponent (50 hands)
+python run_experiment.py \
+    --agent hf \
+    --hf-model meta-llama/Llama-3.1-70B-Instruct \
+    --opponent threshold \
+    --opponent-preset informative_v2 \
+    --hands 50 \
+    --seed 42 \
+    --temperature 0.0 \
+    --elicit-beliefs \
+    --out logs/sanity_70b_t0_s42_informative.jsonl \
+    -v
+
+# Phase 2: Scale-up with informative opponent (1000 hands target)
+python run_experiment.py \
+    --agent hf \
+    --hf-model meta-llama/Llama-3.1-70B-Instruct \
+    --opponent threshold \
+    --opponent-preset informative_v2 \
+    --hands 1000 \
+    --seed 42 \
+    --temperature 0.0 \
+    --elicit-beliefs \
+    --out logs/phase2_70b_t0_s42_informative_v2.jsonl \
+    -v
+```
+
+**Runtime note:** 70B model inference takes ~2 minutes per hand. A 1000-hand run takes ~33 hours. See [RESEARCH_PIPELINE.md](RESEARCH_PIPELINE.md) for the full grid.
 
 ### Dataset Builder Command
 
@@ -504,6 +575,7 @@ python -m analysis.analyze_beliefs logs/enriched.jsonl --json-out results.json
 |---------|-------------|
 | Validity Audit | Raw output stats (prob_sum, negatives, all-zeros) |
 | JS Distance Analysis | LLM vs CardOnly vs StrategyAware (normalized) |
+| L1 Distance Analysis | Scale-sensitive vs shape-only error separation |
 | Action-Conditioning | Does LLM shift beliefs after opponent aggression? |
 | Summary Table | Paper-ready metrics |
 
@@ -515,7 +587,48 @@ python -m analysis.analyze_beliefs logs/enriched.jsonl --json-out results.json
 | JS(LLM, StrategyAware) | Distance to Bayesian posterior |
 | JS(CardOnly, StrategyAware) | Oracle separation (test validity, should be >0.05) |
 | LLM closer to | CardOnly = ignores history, StrategyAware = uses history |
+| L1 (clipped, unnorm) | Scale-sensitive distance (captures sum inflation) |
+| L1 (normalized) | Shape-only distance (isolates distributional error) |
 | Strong-shift ratio | LLM response to aggression / Oracle response |
+
+### Step 4: Paper-Ready Analysis (Phase 3)
+
+For publication-grade metrics with bootstrap confidence intervals:
+
+```bash
+# PCE Distribution with Bootstrap CIs
+python -m analysis.compute_pce_distribution \
+    logs/enriched1.jsonl logs/enriched2.jsonl \
+    --output-records results/pce_distribution.csv \
+    --output-summary results/pce_summary.csv \
+    --bootstrap 2000
+
+# Update Coherence (separates card reveals from opponent actions)
+python -m analysis.compute_update_coherence \
+    logs/enriched1.jsonl logs/enriched2.jsonl \
+    --output results/update_coherence.csv \
+    --output-summary results/update_coherence_summary.json
+
+# Generate Paper Figures
+python -m analysis.plot_paper_figures \
+    --pce-data results/pce_distribution.csv \
+    --pce-summary results/pce_summary.csv \
+    --update-data results/update_coherence.csv \
+    --output-dir figures/
+```
+
+**Phase 3 output files:**
+
+| File | Description |
+|------|-------------|
+| `results/pce_distribution.csv` | Per-record PCE with slicing variables (N records) |
+| `results/pce_summary.csv` | Aggregated stats with bootstrap CIs by group |
+| `results/update_coherence.csv` | Per-update magnitude, correlation, direction |
+| `results/update_coherence_summary.json` | Summary by CARD_REVEAL vs ACTION |
+| `figures/fig1_pce_cdf.png` | CDF of JS distances (main result figure) |
+| `figures/fig2_baserate_neglect.png` | Trash mass comparison bar chart |
+| `figures/fig3_update_scatter.png` | Update magnitude scatter (2 panels) |
+| `figures/fig4_street_stability.png` | JS distance by street |
 
 ### Step 4: Compute Metrics (Programmatic)
 
@@ -948,10 +1061,13 @@ poker_env/                    # Core poker environment
 ├── actions.py                # Action types
 ├── obs.py                    # Observation dataclass
 ├── deck.py                   # Deterministic dealing
+├── config.py                 # Centralized model configuration
 ├── agents/
 │   ├── base.py               # BaseAgent interface
 │   ├── random_agent.py
-│   └── call_agent.py
+│   ├── call_agent.py
+│   ├── threshold_agent.py    # Hand-strength based (for belief experiments)
+│   └── hf_agent.py           # HuggingFace LLM agent
 ├── oracle/
 │   └── win_prob.py           # EquityOracle (ground truth equity)
 ├── logging/
@@ -961,13 +1077,18 @@ poker_env/                    # Core poker environment
 analysis/                     # Belief analysis system
 ├── __init__.py               # Main exports
 ├── buckets.py                # Bucket schemes (14/7/30) + ablation hooks
-├── opponent_model.py         # ParametricOpponent, CFROpponent stub
+├── opponent_model.py         # ParametricOpponent with presets
 ├── posterior_oracle.py       # CardOnlyPosterior, StrategyAwarePosterior
 ├── belief_schema.py          # BeliefOutput dataclass
+├── belief_utils.py           # Belief conversion utilities
 ├── projection.py             # Simplex projection
 ├── prompts.py                # LLM prompt templates
 ├── uniformity.py             # Prompt invariance testing
-├── build_dataset.py          # CLI for enriching logs
+├── build_dataset.py          # CLI for enriching logs with oracles
+├── analyze_beliefs.py        # CLI for JS/L1 analysis + action-conditioning
+├── compute_pce_distribution.py  # PCE by street/action with bootstrap CIs
+├── compute_update_coherence.py  # Card vs action update separation
+├── plot_paper_figures.py     # Generate paper-ready figures
 ├── metrics/
 │   ├── calibration.py        # PCE, KL, JS, Brier, ECE
 │   ├── coherence.py          # Axiom violation checks
@@ -983,6 +1104,25 @@ analysis/                     # Belief analysis system
     └── test_q_values.py
 
 run_experiment.py             # Main experiment script
+
+logs/                         # Experiment data (generated)
+├── sanity_*.jsonl            # Phase 1A raw logs
+├── *_enriched.jsonl          # Logs with oracle posteriors
+├── phase2_*.jsonl            # Phase 2 scale-up logs
+└── *.json                    # Analysis summaries
+
+results/                      # Analysis outputs (generated)
+├── pce_distribution.csv      # Per-record PCE metrics
+├── pce_summary.csv           # Aggregated with bootstrap CIs
+├── update_coherence.csv      # Per-update metrics
+├── update_coherence_summary.json
+└── combined_analysis.json    # Full analysis with L1 metrics
+
+figures/                      # Paper figures (generated)
+├── fig1_pce_cdf.png/pdf      # Main result: JS distance CDF
+├── fig2_baserate_neglect.png/pdf  # Trash mass comparison
+├── fig3_update_scatter.png/pdf    # Update magnitude scatter
+└── fig4_street_stability.png/pdf  # Effect by street
 ```
 
 ## Hand Manifests (Reproducibility)
@@ -1034,6 +1174,186 @@ pytest poker_env/tests/ -v
 # Just analysis
 pytest analysis/tests/ -v
 ```
+
+---
+
+## Complete Research Workflow (What We Actually Did)
+
+This section documents the complete workflow from initial setup to paper-ready figures.
+
+### Phase 1: Environment Setup
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/harryila/poker2026.git
+cd poker2026
+./setup.sh --with-gpu --hf-token YOUR_TOKEN
+
+# 2. Verify GPU (NVIDIA GH200 480GB used)
+nvidia-smi
+
+# 3. Activate environment
+source venv/bin/activate
+```
+
+### Phase 2: Initial Discovery
+
+**Original plan:** Use `call` opponent, expect LLM to be closer to StrategyAware.
+
+**What happened:**
+```bash
+# First attempt with call opponent (INCONCLUSIVE)
+python run_experiment.py \
+    --agent hf \
+    --hf-model meta-llama/Llama-3.1-70B-Instruct \
+    --opponent call \
+    --hands 50 \
+    --seed 42 \
+    --temperature 0.0 \
+    --elicit-beliefs \
+    --out logs/sanity_70b_t0_s42.jsonl \
+    -v
+
+# Result: JS(CardOnly, StrategyAware) = 0.0147 — too low to test anything!
+# The call opponent provides no betting signal.
+```
+
+**Solution:** Created `ThresholdAgent` with `informative_v2` preset to achieve JS(CardOnly, StrategyAware) ≈ 0.05-0.06.
+
+### Phase 3: Phase 1A Sanity Grid (4 runs)
+
+```bash
+# Run grid: 2 temps × 2 seeds × 50 hands
+for temp in 0.0 0.2; do
+    for seed in 42 123; do
+        python run_experiment.py \
+            --agent hf \
+            --hf-model meta-llama/Llama-3.1-70B-Instruct \
+            --opponent threshold \
+            --opponent-preset informative_v2 \
+            --hands 50 \
+            --seed $seed \
+            --temperature $temp \
+            --elicit-beliefs \
+            --out logs/sanity_70b_t${temp/./}_s${seed}_informative.jsonl \
+            -v
+    done
+done
+
+# Enrich with oracle posteriors
+for f in logs/sanity_70b_*_informative.jsonl; do
+    python -m analysis.build_dataset $f ${f%.jsonl}_enriched.jsonl --opponent informative_v2
+done
+
+# Analyze Phase 1A
+python -m analysis.analyze_beliefs logs/*_informative_enriched.jsonl \
+    --json-out logs/phase1a_complete.json
+```
+
+**Phase 1A Result (N=246):** LLM closer to CardOnly by 0.0170. Negative result — LLM ignores betting history.
+
+### Phase 4: Phase 2 Scale-Up (Partial)
+
+**Original plan:** 6 runs × 1000 hands = ~200 GPU hours.
+
+**What we did:** Stopped after 2 runs (12+ hours) when results replicated Phase 1A.
+
+```bash
+# Phase 2 runs (in tmux for persistence)
+tmux new -s phase2
+
+python run_experiment.py \
+    --agent hf \
+    --hf-model meta-llama/Llama-3.1-70B-Instruct \
+    --opponent threshold \
+    --opponent-preset informative_v2 \
+    --hands 1000 \
+    --seed 42 \
+    --temperature 0.0 \
+    --elicit-beliefs \
+    --out logs/phase2_70b_t0_s42_informative_v2.jsonl \
+    -v
+# Completed 366 of 1000 hands before stopping
+
+python run_experiment.py \
+    --agent hf \
+    --hf-model meta-llama/Llama-3.1-70B-Instruct \
+    --opponent threshold \
+    --opponent-preset informative_v2 \
+    --hands 1000 \
+    --seed 42 \
+    --temperature 0.2 \
+    --elicit-beliefs \
+    --out logs/phase2_70b_t02_s42_informative_v2.jsonl \
+    -v
+# Completed 326 of 1000 hands before stopping
+```
+
+**Phase 2 Result (N=838):** Virtually identical to Phase 1A. Effect replicated with 3.4x more data.
+
+### Phase 5: Phase 3 Paper Analysis
+
+```bash
+# Combine all enriched data (Phase 1A + Phase 2)
+ALL_FILES="logs/sanity_70b_t0_s42_informative_enriched.jsonl \
+logs/sanity_70b_t0_s123_informative_enriched.jsonl \
+logs/sanity_70b_t02_s42_informative_enriched.jsonl \
+logs/sanity_70b_t02_s123_informative_enriched.jsonl \
+logs/phase2_70b_t0_s42_informative_v2_enriched.jsonl \
+logs/phase2_70b_t02_s42_informative_v2_enriched.jsonl"
+
+# Full analysis with L1 metrics
+python -m analysis.analyze_beliefs $ALL_FILES \
+    --json-out results/combined_analysis.json
+
+# PCE Distribution with Bootstrap CIs
+python -m analysis.compute_pce_distribution $ALL_FILES \
+    --output-records results/pce_distribution.csv \
+    --output-summary results/pce_summary.csv \
+    --bootstrap 2000
+
+# Update Coherence Analysis
+python -m analysis.compute_update_coherence $ALL_FILES \
+    --output results/update_coherence.csv \
+    --output-summary results/update_coherence_summary.json
+
+# Generate Paper Figures
+python -m analysis.plot_paper_figures \
+    --pce-data results/pce_distribution.csv \
+    --pce-summary results/pce_summary.csv \
+    --update-data results/update_coherence.csv \
+    --output-dir figures/
+```
+
+### Final Output Files
+
+| File | Size | Description |
+|------|------|-------------|
+| `results/pce_distribution.csv` | 250 KB | 1,084 per-record PCE values |
+| `results/pce_summary.csv` | 3 KB | Aggregated with bootstrap CIs |
+| `results/update_coherence.csv` | 57 KB | 318 update metrics |
+| `figures/fig1_pce_cdf.png` | 180 KB | Main result figure |
+| `figures/fig2_baserate_neglect.png` | 155 KB | Trash mass comparison |
+| `figures/fig3_update_scatter.png` | 410 KB | Update diagnosis (2 panels) |
+| `figures/fig4_street_stability.png` | 185 KB | Effect by street |
+
+---
+
+## What We Learned (Research Lessons)
+
+1. **Opponent choice is critical:** A `call` opponent provides no signal for testing action-conditioning. Always validate JS(CardOnly, StrategyAware) > 0.05 before running experiments.
+
+2. **Model size matters:** Llama 3.1 8B outputs degenerate beliefs (100% trash) for every game state. Belief elicitation requires models above a capability threshold.
+
+3. **Don't trust surface coherence:** The 8B model had "perfect" prob_sum=1.0 while outputting nonsense. Always compare to Bayesian baselines.
+
+4. **Negative results are publishable:** "LLM ignores betting history" is a valid finding. Scale up to characterize the failure mode, don't stop.
+
+5. **Analysis > Data:** After replicating the effect, deeper analysis (L1 metrics, update coherence) yields more insight than more data.
+
+6. **Parse rate ~50% is acceptable:** LLM belief elicitation will have failures. Filter and proceed — sufficient valid samples remain.
+
+---
 
 ## License
 

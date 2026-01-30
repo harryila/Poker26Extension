@@ -150,6 +150,22 @@ def normalize_belief(belief: dict[str, float]) -> Optional[np.ndarray]:
     return probs / total
 
 
+def clip_belief(belief: dict[str, float]) -> np.ndarray:
+    """
+    Clip negative values to 0 but do NOT normalize.
+    
+    This preserves the original scale (sum may be != 1).
+    Used for scale-sensitive L1 metric.
+    """
+    probs = np.array([belief.get(b, 0.0) for b in BUCKET_NAMES])
+    return np.maximum(probs, 0)
+
+
+def compute_l1_distance(p: np.ndarray, q: np.ndarray) -> float:
+    """Compute L1 (Manhattan) distance between two arrays."""
+    return float(np.sum(np.abs(p - q)))
+
+
 def compute_js_metrics(records: list[dict]) -> dict:
     """
     Compute JS divergence metrics on normalized beliefs.
@@ -161,11 +177,22 @@ def compute_js_metrics(records: list[dict]) -> dict:
     js_llm_sa = []  # LLM vs StrategyAware  
     js_co_sa = []   # CardOnly vs StrategyAware (oracle separation)
     
+    # NEW: L1 distance metrics (scale-sensitive and shape-only)
+    l1_clipped_unnorm_co = []  # L1 after clip only (scale-sensitive) vs CardOnly
+    l1_clipped_unnorm_sa = []  # L1 after clip only (scale-sensitive) vs StrategyAware
+    l1_normalized_co = []      # L1 after clip+normalize (shape-only) vs CardOnly
+    l1_normalized_sa = []      # L1 after clip+normalize (shape-only) vs StrategyAware
+    
     valid_count = 0
     skipped_count = 0
     
     for r in records:
-        # Normalize all distributions
+        # Get clipped (unnormalized) beliefs for L1 scale-sensitive metric
+        llm_clipped = clip_belief(r["agent_belief"])
+        co_arr = clip_belief(r["oracle_card_only"])  # Oracles should already be valid
+        sa_arr = clip_belief(r["oracle_strategy_aware"])
+        
+        # Normalize all distributions for JS and L1 shape metrics
         llm = normalize_belief(r["agent_belief"])
         co = normalize_belief(r["oracle_card_only"])
         sa = normalize_belief(r["oracle_strategy_aware"])
@@ -187,10 +214,21 @@ def compute_js_metrics(records: list[dict]) -> dict:
         js_llm_co.append(jensenshannon(llm, co))
         js_llm_sa.append(jensenshannon(llm, sa))
         js_co_sa.append(jensenshannon(co, sa))
+        
+        # Compute L1 distances - SCALE-SENSITIVE (clipped but unnormalized)
+        # This captures sum inflation/deflation errors
+        l1_clipped_unnorm_co.append(compute_l1_distance(llm_clipped, co_arr))
+        l1_clipped_unnorm_sa.append(compute_l1_distance(llm_clipped, sa_arr))
+        
+        # Compute L1 distances - SHAPE-ONLY (normalized)
+        # This isolates distributional shape error
+        l1_normalized_co.append(compute_l1_distance(llm, co))
+        l1_normalized_sa.append(compute_l1_distance(llm, sa))
     
     return {
         "valid_count": valid_count,
         "skipped_count": skipped_count,
+        # JS metrics (existing)
         "js_llm_cardonly_mean": np.mean(js_llm_co) if js_llm_co else None,
         "js_llm_cardonly_std": np.std(js_llm_co) if js_llm_co else None,
         "js_llm_strataware_mean": np.mean(js_llm_sa) if js_llm_sa else None,
@@ -200,6 +238,19 @@ def compute_js_metrics(records: list[dict]) -> dict:
         # Key comparison
         "llm_closer_to": "CardOnly" if np.mean(js_llm_co) < np.mean(js_llm_sa) else "StrategyAware",
         "js_difference": np.mean(js_llm_co) - np.mean(js_llm_sa) if js_llm_co else None,
+        # NEW: L1 metrics - SCALE-SENSITIVE (clipped, unnormalized)
+        "l1_clipped_unnorm_cardonly_mean": np.mean(l1_clipped_unnorm_co) if l1_clipped_unnorm_co else None,
+        "l1_clipped_unnorm_cardonly_std": np.std(l1_clipped_unnorm_co) if l1_clipped_unnorm_co else None,
+        "l1_clipped_unnorm_strataware_mean": np.mean(l1_clipped_unnorm_sa) if l1_clipped_unnorm_sa else None,
+        "l1_clipped_unnorm_strataware_std": np.std(l1_clipped_unnorm_sa) if l1_clipped_unnorm_sa else None,
+        # NEW: L1 metrics - SHAPE-ONLY (normalized)
+        "l1_normalized_cardonly_mean": np.mean(l1_normalized_co) if l1_normalized_co else None,
+        "l1_normalized_cardonly_std": np.std(l1_normalized_co) if l1_normalized_co else None,
+        "l1_normalized_strataware_mean": np.mean(l1_normalized_sa) if l1_normalized_sa else None,
+        "l1_normalized_strataware_std": np.std(l1_normalized_sa) if l1_normalized_sa else None,
+        # NEW: L1 comparison (which oracle is LLM closer to under each metric)
+        "l1_clipped_unnorm_closer_to": "CardOnly" if np.mean(l1_clipped_unnorm_co) < np.mean(l1_clipped_unnorm_sa) else "StrategyAware" if l1_clipped_unnorm_co else None,
+        "l1_normalized_closer_to": "CardOnly" if np.mean(l1_normalized_co) < np.mean(l1_normalized_sa) else "StrategyAware" if l1_normalized_co else None,
     }
 
 
@@ -369,6 +420,26 @@ Note: Using JS DISTANCE (sqrt of JS divergence), range [0, 1], via scipy.jensens
 
 Note: CardOnly = BucketCountPrior (pure combinatorics). Being closer to CardOnly
 means the LLM's belief *shape* resembles combo-counting more than Bayesian updating.
+""")
+
+    # Part 2b: L1 Distance Analysis
+    print("=" * 70)
+    print("PART 2b: L1 DISTANCE ANALYSIS (Scale vs Shape)")
+    print("=" * 70)
+    print(f"""
+This separates SCALE ERRORS from SHAPE ERRORS:
+- L1(clipped, unnorm): Scale-sensitive - captures sum inflation/deflation
+- L1(normalized): Shape-only - isolates distributional shape error
+
+| Metric | vs CardOnly | vs StrategyAware | Closer To |
+|--------|-------------|------------------|-----------|
+| L1 (clipped, unnorm) | {js_metrics['l1_clipped_unnorm_cardonly_mean']:.4f} ± {js_metrics['l1_clipped_unnorm_cardonly_std']:.4f} | {js_metrics['l1_clipped_unnorm_strataware_mean']:.4f} ± {js_metrics['l1_clipped_unnorm_strataware_std']:.4f} | {js_metrics['l1_clipped_unnorm_closer_to']} |
+| L1 (normalized) | {js_metrics['l1_normalized_cardonly_mean']:.4f} ± {js_metrics['l1_normalized_cardonly_std']:.4f} | {js_metrics['l1_normalized_strataware_mean']:.4f} ± {js_metrics['l1_normalized_strataware_std']:.4f} | {js_metrics['l1_normalized_closer_to']} |
+
+Interpretation:
+- Scale-sensitive L1 captures how far raw outputs are from valid probabilities
+- Shape-only L1 confirms the JS finding (which oracle matches LLM's distribution shape)
+- If both metrics agree, the "closer to CardOnly" finding is robust to normalization
 """)
     
     # Part 3: Action-Conditioning

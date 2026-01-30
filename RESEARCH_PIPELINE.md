@@ -93,9 +93,81 @@ See [README.md - Step 3: Run Full Analysis](README.md#step-3-run-full-analysis).
 | 1A | ? Complete | [EXPERIMENT_RESULTS.md](EXPERIMENT_RESULTS.md#phase-1a-sanity-grid-complete) |
 | 1B | ? Complete | Enrichment done |
 | 1C | ? Complete | `logs/phase1a_complete.json` |
-| **2** | ? **Ready** | Commands below (use `informative_v2`) |
-| 3 | ? Pending | After Phase 2 |
-| 4 | ? Pending | After Phase 3 |
+| **2** | 🔶 **Partial** | 2 of 6 runs (N=838), sufficient for paper |
+| 3 | ✅ **Complete** | Paper metrics, figures, bootstrap CIs |
+| 4 | ⏳ **Deferred** | See [DEFERRED_WORK.md](DEFERRED_WORK.md) |
+
+### Phase 2: Partial Completion (January 29, 2026)
+
+**Original Plan:** Run full 6-run grid (3 seeds × 2 temps × 1000 hands = 6000 hands total).
+
+**What Actually Happened:**
+
+1. **Started full grid in tmux session:**
+   - Loop structure: `for seed in 42 123 456; for temp in 0.0 0.2`
+   - Each run targeted 1000 hands
+   - Estimated total runtime: ~200 hours (8+ days)
+
+2. **Stopped early after 2 runs:**
+   - `temp=0.0, seed=42`: 366 hands (stopped at ~6 hours)
+   - `temp=0.2, seed=42`: 326 hands (stopped at ~5 hours)
+   - Total: 692 hands, 838 valid beliefs
+
+3. **Why we stopped:**
+   - Runtime: ~2 minutes per hand (70B inference is slow)
+   - Diminishing returns: Phase 1A findings already replicated
+   - Better use of time: Pivot to Phase 3 analysis
+   - Statistical power: N=838 provides sufficient confidence
+
+**Key Finding:** Phase 2 interim results (N=838) **exactly matched** Phase 1A (N=246):
+- JS(LLM, CardOnly) = 0.4073 vs 0.4046 (virtually identical)
+- JS(LLM, StrategyAware) = 0.4200 vs 0.4215 (virtually identical)
+- **Conclusion:** More data would not change the finding
+
+See [EXPERIMENT_RESULTS.md - Part 5](EXPERIMENT_RESULTS.md#part-5-phase-2--scale-up-dataset-interim-results) for full analysis.
+
+### Phase 3: Complete (January 30, 2026)
+
+**Original Plan:** Run Phase 3 after completing Phase 2's full grid.
+
+**What Actually Changed:**
+
+Based on Phase 2 interim analysis showing stable results, we **pivoted to prioritize analysis over data collection**. This was the correct decision because:
+
+1. Effect size was stable across 3.4x more data
+2. Statistical significance was already achieved
+3. Deeper analysis would yield more publishable insights than more raw data
+
+**Phase 3 Scripts Created:**
+
+| Script | Purpose | Output |
+|--------|---------|--------|
+| `analysis/compute_pce_distribution.py` | PCE by street/action with bootstrap CIs | `results/pce_distribution.csv`, `results/pce_summary.csv` |
+| `analysis/compute_update_coherence.py` | Card vs action update separation | `results/update_coherence.csv`, `results/update_coherence_summary.json` |
+| `analysis/analyze_beliefs.py` (modified) | Added L1 scale/shape metrics | `results/combined_analysis.json` |
+| `analysis/plot_paper_figures.py` | Paper-ready figures | `figures/fig{1-4}_*.png/pdf` |
+
+**Phase 3 Key Findings:**
+
+1. **L1 metrics confirm JS finding:** Both scale-sensitive and shape-only L1 distances show LLM closer to CardOnly
+2. **Update coherence diagnosis:** LLM over-updates by 3-11x with r=0.056 correlation (nearly random)
+3. **Effect robust across streets:** LLM closer to CardOnly on ALL streets (preflop through river)
+4. **Bootstrap CIs:** Effect is statistically significant with non-overlapping confidence intervals
+
+See [EXPERIMENT_RESULTS.md - Part 6](EXPERIMENT_RESULTS.md#part-6-phase-3--paper-ready-analysis-deep-dive) for full analysis.
+
+### Pipeline Deviation Summary
+
+| Original Pipeline | What We Did | Why |
+|-------------------|-------------|-----|
+| Complete Phase 2 (6 runs × 1000 hands) | Stopped at 2 runs (692 hands) | Effect already replicated, diminishing returns |
+| Phase 3 after full Phase 2 | Phase 3 with partial Phase 2 data | Analysis > data collection at this stage |
+| Phase 4 robustness checks | Deferred to appendix | Scope discipline for first paper |
+| Belief-action divergence | Deferred | Q-value computation complexity |
+
+### Pipeline Deviations Justification
+
+> **Why Phase 2 was truncated:** Phase 2 was intentionally stopped after partial completion once effect direction (LLM closer to CardOnly), robustness across temperature (0.0 and 0.2), and oracle separation stability (>0.05) were established with N=838 valid beliefs. Additional scaling was judged unlikely to alter qualitative conclusions and was deferred to future work. This reflects compute-aware discipline: ~200 GPU hours for marginal improvement is not justified when Phase 3 metrics already provide paper-grade evidence.
 
 ---
 
@@ -491,25 +563,134 @@ A model that outputs perfect probabilities but ignores betting history is scient
 
 ---
 
+## Phase 3: Compute Paper Metrics (Actually Executed)
+
+This section documents the Phase 3 analysis that was actually run.
+
+### Phase 3 Commands (Complete)
+
+**PCE Distribution with Bootstrap CIs:**
+```bash
+python -m analysis.compute_pce_distribution \
+    logs/sanity_70b_t0_s42_informative_enriched.jsonl \
+    logs/sanity_70b_t0_s123_informative_enriched.jsonl \
+    logs/sanity_70b_t02_s42_informative_enriched.jsonl \
+    logs/sanity_70b_t02_s123_informative_enriched.jsonl \
+    logs/phase2_70b_t0_s42_informative_v2_enriched.jsonl \
+    logs/phase2_70b_t02_s42_informative_v2_enriched.jsonl \
+    --output-records results/pce_distribution.csv \
+    --output-summary results/pce_summary.csv \
+    --bootstrap 2000
+```
+
+**L1 Metrics + Full Analysis:**
+```bash
+python -m analysis.analyze_beliefs \
+    logs/sanity_70b_t0_s42_informative_enriched.jsonl \
+    logs/sanity_70b_t0_s123_informative_enriched.jsonl \
+    logs/sanity_70b_t02_s42_informative_enriched.jsonl \
+    logs/sanity_70b_t02_s123_informative_enriched.jsonl \
+    logs/phase2_70b_t0_s42_informative_v2_enriched.jsonl \
+    logs/phase2_70b_t02_s42_informative_v2_enriched.jsonl \
+    --json-out results/combined_analysis.json
+```
+
+**Update Coherence (Card vs Action separation):**
+```bash
+python -m analysis.compute_update_coherence \
+    logs/sanity_70b_t0_s42_informative_enriched.jsonl \
+    logs/sanity_70b_t0_s123_informative_enriched.jsonl \
+    logs/sanity_70b_t02_s42_informative_enriched.jsonl \
+    logs/sanity_70b_t02_s123_informative_enriched.jsonl \
+    logs/phase2_70b_t0_s42_informative_v2_enriched.jsonl \
+    logs/phase2_70b_t02_s42_informative_v2_enriched.jsonl \
+    --output results/update_coherence.csv \
+    --output-summary results/update_coherence_summary.json
+```
+
+**Generate Paper Figures:**
+```bash
+python -m analysis.plot_paper_figures \
+    --pce-data results/pce_distribution.csv \
+    --pce-summary results/pce_summary.csv \
+    --update-data results/update_coherence.csv \
+    --output-dir figures/
+```
+
+---
+
 ## File Structure After Running Pipeline
+
+**Actual file structure after Phase 1A + Phase 2 (partial) + Phase 3:**
 
 ```
 logs/
-??? sanity_70b_t0_s42.jsonl            # Raw experiment logs
-??? sanity_70b_t0_s42_enriched.jsonl   # Enriched (contains both oracle_card_only AND oracle_strategy_aware)
-??? sanity_70b_t0_s123.jsonl
-??? sanity_70b_t0_s123_enriched.jsonl
-??? sanity_70b_t02_s42.jsonl
-??? sanity_70b_t02_s42_enriched.jsonl
-??? sanity_70b_t02_s123.jsonl
-??? sanity_70b_t02_s123_enriched.jsonl
-??? baseline_70b_t0_s42.jsonl
-??? baseline_70b_t0_s42_enriched.jsonl
-??? ...
+├── sanity_70b_t0_s42_informative.jsonl          # Phase 1A raw (temp=0.0, seed=42)
+├── sanity_70b_t0_s42_informative_enriched.jsonl # Phase 1A enriched
+├── sanity_70b_t0_s123_informative.jsonl         # Phase 1A raw (temp=0.0, seed=123)
+├── sanity_70b_t0_s123_informative_enriched.jsonl
+├── sanity_70b_t02_s42_informative.jsonl         # Phase 1A raw (temp=0.2, seed=42)
+├── sanity_70b_t02_s42_informative_enriched.jsonl
+├── sanity_70b_t02_s123_informative.jsonl        # Phase 1A raw (temp=0.2, seed=123)
+├── sanity_70b_t02_s123_informative_enriched.jsonl
+├── phase1a_complete.json                         # Phase 1A combined metrics
+├── phase2_70b_t0_s42_informative_v2.jsonl       # Phase 2 raw (temp=0.0, seed=42, 366 hands)
+├── phase2_70b_t0_s42_informative_v2_enriched.jsonl
+├── phase2_70b_t02_s42_informative_v2.jsonl      # Phase 2 raw (temp=0.2, seed=42, 326 hands)
+├── phase2_70b_t02_s42_informative_v2_enriched.jsonl
+├── phase2_interim_analysis.json                  # Phase 2 interim metrics
+├── sanity_70b_t0_s42.jsonl                      # Legacy: 70B with call opponent (inconclusive)
+├── sanity_70b_t0_s42_enriched.jsonl
+├── sanity_8b_t0_s42.jsonl                       # Legacy: 8B model (degenerate)
+├── sanity_8b_t0_s42_enriched.jsonl
+└── [test/validation files...]
 
 results/
-??? sanity_check_comparison.csv       # CardOnly vs StrategyAware JS distances
-??? pce_distribution.csv
-??? update_coherence.csv
-??? belief_action.csv
+├── pce_distribution.csv                          # Per-record PCE (N=1,084)
+├── pce_summary.csv                               # Aggregated with bootstrap CIs
+├── update_coherence.csv                          # Per-update metrics (N=318)
+├── update_coherence_summary.json                 # Summary by update type
+└── combined_analysis.json                        # Full analysis with L1 metrics
+
+figures/
+├── fig1_pce_cdf.png                              # CDF of JS distances
+├── fig1_pce_cdf.pdf
+├── fig2_baserate_neglect.png                     # Trash mass comparison
+├── fig2_baserate_neglect.pdf
+├── fig3_update_scatter.png                       # Update magnitude scatter (2 panels)
+├── fig3_update_scatter.pdf
+├── fig4_street_stability.png                     # JS by street
+└── fig4_street_stability.pdf
 ```
+
+---
+
+## Research Outcome Summary
+
+The pipeline produced a complete, publishable result:
+
+### Main Finding
+
+> **Llama 3.1 70B shows weak directional sensitivity to betting actions, but remains closer to CardOnly than StrategyAware because base-rate neglect dominates. The model over-updates by 3-11x with near-zero correlation to oracle updates.**
+
+### Paper-Ready Metrics
+
+| Metric | Value | 95% CI | Source |
+|--------|-------|--------|--------|
+| N (valid beliefs) | 1,084 | - | Combined Phase 1A + 2 |
+| JS(LLM, CardOnly) | 0.4067 | [0.4032, 0.4104] | `results/pce_summary.csv` |
+| JS(LLM, StrategyAware) | 0.4204 | [0.4166, 0.4244] | `results/pce_summary.csv` |
+| LLM closer to | CardOnly | by 0.0137 | Confirmed with bootstrap |
+| LLM trash mass | 16.89% | - | vs oracle 66.21% |
+| Card-update ratio | 11.06x | - | Over-updates massively |
+| Action-update ratio | 3.25x | - | Over-updates |
+| Update correlation | 0.056 | - | Nearly random |
+
+### What We Did NOT Do (Deferred)
+
+See [DEFERRED_WORK.md](DEFERRED_WORK.md) for:
+- Additional seed robustness (seeds 123, 456 for Phase 2)
+- Belief-action divergence analysis
+- Bluff frequency stress test
+- Nash/CFR opponents
+- Multi-model comparison

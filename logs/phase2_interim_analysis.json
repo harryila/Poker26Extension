@@ -1,0 +1,54 @@
+{
+  "validity_audit": {
+    "total_records": 851,
+    "records_with_beliefs": 851,
+    "negative_entries": 0,
+    "records_with_negatives": 0,
+    "all_zero_records": 13,
+    "valid_for_js": 838,
+    "min_value_seen": 0.0,
+    "max_value_seen": 0.52,
+    "prob_sum_mean": 1.1211104582843714,
+    "prob_sum_std": 0.16099869578162967,
+    "prob_sum_min": 0.0,
+    "prob_sum_max": 1.475
+  },
+  "js_divergence": {
+    "valid_count": 838,
+    "skipped_count": 13,
+    "js_llm_cardonly_mean": 0.4072896848357157,
+    "js_llm_cardonly_std": 0.05965797226032186,
+    "js_llm_strataware_mean": 0.4200367372996617,
+    "js_llm_strataware_std": 0.0633309537020905,
+    "js_cardonly_strataware_mean": 0.05040487839972339,
+    "js_cardonly_strataware_std": 0.017419879875652723,
+    "llm_closer_to": "CardOnly",
+    "js_difference": -0.012747052463945974
+  },
+  "action_conditioning": {
+    "by_category": {
+      "AGGRESSIVE": {
+        "n": 655,
+        "llm_strong_mean": 0.23438288751914954,
+        "sa_strong_mean": 0.060748070191823246,
+        "llm_trash_mean": 0.16517565723575953,
+        "sa_trash_mean": 0.6400293659850085
+      },
+      "PASSIVE": {
+        "n": 183,
+        "llm_strong_mean": 0.20950946158446387,
+        "sa_strong_mean": 0.03011788265976449,
+        "llm_trash_mean": 0.17434770604518238,
+        "sa_trash_mean": 0.7328301896763768
+      }
+    },
+    "shift_analysis": {
+      "oracle_strong_shift": 0.030630187532058754,
+      "llm_strong_shift": 0.024873425934685667,
+      "oracle_trash_shift": -0.09280082369136833,
+      "llm_trash_shift": -0.00917204880942285,
+      "strong_shift_ratio": 0.812055946724197,
+      "trash_shift_ratio": 0.09883585559463055
+    }
+  }
+}

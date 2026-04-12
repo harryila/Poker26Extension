@@ -334,7 +334,7 @@ def figure4_street_stability(summary: pd.DataFrame, output_dir: Path) -> None:
     ax.text(0.02, 0.02, 
             "CardOnly consistently closer\nat all streets",
             transform=ax.transAxes, fontsize=9, va='bottom',
-            bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.92, edgecolor='black', linewidth=0.8))
     
     # Save
     fig.savefig(output_dir / 'fig4_street_stability.png')

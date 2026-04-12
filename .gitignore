@@ -29,6 +29,12 @@ htmlcov/
 # Keep logs folder but ignore very large files
 logs/*.tmp
 
+# Paper source (compiled on Overleaf, not tracked here)
+iclr26/
+
+# Legacy cleanup artifacts
+legacy/
+
 # Distribution
 dist/
 build/

@@ -21,7 +21,23 @@ from pathlib import Path
 from typing import Optional
 from scipy.spatial.distance import jensenshannon
 
-from analysis.buckets import BUCKET_NAMES
+# Inline BUCKET_NAMES to avoid Python 3.10+ syntax in buckets.py
+BUCKET_NAMES = [
+    "premium_pairs",
+    "strong_pairs", 
+    "medium_pairs",
+    "small_pairs",
+    "premium_broadway",
+    "strong_broadway",
+    "medium_broadway",
+    "suited_aces",
+    "suited_connectors",
+    "suited_gappers",
+    "offsuit_connectors",
+    "weak_broadway",
+    "speculative_suited",
+    "trash",
+]
 
 
 def get_opponent_last_action(history: list[dict], player_to_act: int) -> str:
@@ -192,8 +208,51 @@ def process_records(records: list[dict]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def bootstrap_ci_clustered(df: pd.DataFrame, col: str, n_bootstrap: int = 2000, ci: float = 0.95) -> tuple[float, float, float]:
+    """
+    Compute bootstrap confidence interval with clustering by hand_id.
+    
+    Resamples hands (not individual decisions) to account for within-hand dependence.
+    """
+    if len(df) == 0:
+        return np.nan, np.nan, np.nan
+    
+    data = df[col].values
+    mean = np.mean(data)
+    
+    # Get unique hands
+    hand_ids = df["hand_id"].unique()
+    n_hands = len(hand_ids)
+    
+    if n_hands < 2:
+        return mean, np.nan, np.nan
+    
+    # Create mapping from hand_id to indices
+    hand_to_indices = df.groupby("hand_id").indices
+    
+    # Bootstrap resampling at hand level
+    boot_means = []
+    for _ in range(n_bootstrap):
+        # Sample hands with replacement
+        sampled_hands = np.random.choice(hand_ids, size=n_hands, replace=True)
+        
+        # Gather all indices from sampled hands
+        sampled_indices = []
+        for h in sampled_hands:
+            sampled_indices.extend(hand_to_indices[h])
+        
+        # Compute mean on the resampled data
+        boot_means.append(np.mean(data[sampled_indices]))
+    
+    alpha = (1 - ci) / 2
+    ci_lo = np.percentile(boot_means, alpha * 100)
+    ci_hi = np.percentile(boot_means, (1 - alpha) * 100)
+    
+    return mean, ci_lo, ci_hi
+
+
 def bootstrap_ci(data: np.ndarray, n_bootstrap: int = 2000, ci: float = 0.95) -> tuple[float, float, float]:
-    """Compute bootstrap confidence interval."""
+    """Compute bootstrap confidence interval (unclustered, for backward compatibility)."""
     if len(data) == 0:
         return np.nan, np.nan, np.nan
     
@@ -215,8 +274,14 @@ def bootstrap_ci(data: np.ndarray, n_bootstrap: int = 2000, ci: float = 0.95) ->
     return mean, ci_lo, ci_hi
 
 
-def compute_summary(df: pd.DataFrame, n_bootstrap: int = 2000) -> pd.DataFrame:
-    """Compute aggregated summary with bootstrap CIs."""
+def compute_summary(df: pd.DataFrame, n_bootstrap: int = 2000, clustered: bool = True) -> pd.DataFrame:
+    """Compute aggregated summary with bootstrap CIs.
+    
+    Args:
+        df: DataFrame with records
+        n_bootstrap: Number of bootstrap samples
+        clustered: If True, use hand-level clustering for CIs
+    """
     
     # Define grouping columns
     group_cols = ["street", "opp_action"]
@@ -224,8 +289,12 @@ def compute_summary(df: pd.DataFrame, n_bootstrap: int = 2000) -> pd.DataFrame:
     summaries = []
     
     # Overall summary
-    mean_co, ci_lo_co, ci_hi_co = bootstrap_ci(df["js_cardonly"].values, n_bootstrap)
-    mean_sa, ci_lo_sa, ci_hi_sa = bootstrap_ci(df["js_strategyaware"].values, n_bootstrap)
+    if clustered:
+        mean_co, ci_lo_co, ci_hi_co = bootstrap_ci_clustered(df, "js_cardonly", n_bootstrap)
+        mean_sa, ci_lo_sa, ci_hi_sa = bootstrap_ci_clustered(df, "js_strategyaware", n_bootstrap)
+    else:
+        mean_co, ci_lo_co, ci_hi_co = bootstrap_ci(df["js_cardonly"].values, n_bootstrap)
+        mean_sa, ci_lo_sa, ci_hi_sa = bootstrap_ci(df["js_strategyaware"].values, n_bootstrap)
     
     summaries.append({
         "group": "OVERALL",
@@ -250,8 +319,12 @@ def compute_summary(df: pd.DataFrame, n_bootstrap: int = 2000) -> pd.DataFrame:
         if len(subset) == 0:
             continue
         
-        mean_co, ci_lo_co, ci_hi_co = bootstrap_ci(subset["js_cardonly"].values, n_bootstrap)
-        mean_sa, ci_lo_sa, ci_hi_sa = bootstrap_ci(subset["js_strategyaware"].values, n_bootstrap)
+        if clustered:
+            mean_co, ci_lo_co, ci_hi_co = bootstrap_ci_clustered(subset, "js_cardonly", n_bootstrap)
+            mean_sa, ci_lo_sa, ci_hi_sa = bootstrap_ci_clustered(subset, "js_strategyaware", n_bootstrap)
+        else:
+            mean_co, ci_lo_co, ci_hi_co = bootstrap_ci(subset["js_cardonly"].values, n_bootstrap)
+            mean_sa, ci_lo_sa, ci_hi_sa = bootstrap_ci(subset["js_strategyaware"].values, n_bootstrap)
         
         summaries.append({
             "group": f"street={street}",
@@ -276,8 +349,12 @@ def compute_summary(df: pd.DataFrame, n_bootstrap: int = 2000) -> pd.DataFrame:
         if len(subset) == 0:
             continue
         
-        mean_co, ci_lo_co, ci_hi_co = bootstrap_ci(subset["js_cardonly"].values, n_bootstrap)
-        mean_sa, ci_lo_sa, ci_hi_sa = bootstrap_ci(subset["js_strategyaware"].values, n_bootstrap)
+        if clustered:
+            mean_co, ci_lo_co, ci_hi_co = bootstrap_ci_clustered(subset, "js_cardonly", n_bootstrap)
+            mean_sa, ci_lo_sa, ci_hi_sa = bootstrap_ci_clustered(subset, "js_strategyaware", n_bootstrap)
+        else:
+            mean_co, ci_lo_co, ci_hi_co = bootstrap_ci(subset["js_cardonly"].values, n_bootstrap)
+            mean_sa, ci_lo_sa, ci_hi_sa = bootstrap_ci(subset["js_strategyaware"].values, n_bootstrap)
         
         summaries.append({
             "group": f"opp_action={opp_action}",
@@ -303,8 +380,12 @@ def compute_summary(df: pd.DataFrame, n_bootstrap: int = 2000) -> pd.DataFrame:
             if len(subset) < 5:  # Skip tiny groups
                 continue
             
-            mean_co, ci_lo_co, ci_hi_co = bootstrap_ci(subset["js_cardonly"].values, n_bootstrap)
-            mean_sa, ci_lo_sa, ci_hi_sa = bootstrap_ci(subset["js_strategyaware"].values, n_bootstrap)
+            if clustered:
+                mean_co, ci_lo_co, ci_hi_co = bootstrap_ci_clustered(subset, "js_cardonly", n_bootstrap)
+                mean_sa, ci_lo_sa, ci_hi_sa = bootstrap_ci_clustered(subset, "js_strategyaware", n_bootstrap)
+            else:
+                mean_co, ci_lo_co, ci_hi_co = bootstrap_ci(subset["js_cardonly"].values, n_bootstrap)
+                mean_sa, ci_lo_sa, ci_hi_sa = bootstrap_ci(subset["js_strategyaware"].values, n_bootstrap)
             
             summaries.append({
                 "group": f"{street}×{opp_action}",
@@ -337,6 +418,10 @@ def main():
                         help="Number of bootstrap samples for CIs")
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed for bootstrap")
+    parser.add_argument("--clustered", action="store_true", default=True,
+                        help="Use hand-level clustered bootstrap (default: True)")
+    parser.add_argument("--no-clustered", dest="clustered", action="store_false",
+                        help="Use unclustered bootstrap")
     
     args = parser.parse_args()
     
@@ -360,8 +445,9 @@ def main():
     print(f"Saved per-record CSV to {args.output_records}")
     
     # Compute and save summary
-    print(f"Computing summary with {args.bootstrap} bootstrap samples...")
-    summary = compute_summary(df, args.bootstrap)
+    cluster_str = "clustered" if args.clustered else "unclustered"
+    print(f"Computing summary with {args.bootstrap} {cluster_str} bootstrap samples...")
+    summary = compute_summary(df, args.bootstrap, clustered=args.clustered)
     summary.to_csv(args.output_summary, index=False)
     print(f"Saved summary CSV to {args.output_summary}")
     

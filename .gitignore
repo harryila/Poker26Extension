@@ -32,6 +32,9 @@ logs/*.tmp
 # Paper source (compiled on Overleaf, not tracked here)
 iclr26/
 
+# Extension repo (separate git history)
+xpoker2026Extension/
+
 # Legacy cleanup artifacts
 legacy/
 

@@ -1,0 +1,645 @@
+"""
+Comprehensive belief analysis script.
+
+Analyzes enriched experiment logs to compute:
+1. Belief validity metrics (raw outputs)
+2. JS divergence to oracles (normalized)
+3. Action-conditioning analysis (does LLM respond to opponent behavior?)
+4. Summary table for paper
+
+Uses the existing analysis infrastructure:
+- belief_utils.py for normalization
+- metrics/calibration.py for divergences
+"""
+
+import json
+import argparse
+import numpy as np
+from pathlib import Path
+from collections import defaultdict
+from typing import Optional
+
+from scipy.spatial.distance import jensenshannon
+
+from analysis.buckets import BUCKET_NAMES
+from analysis.belief_utils import dict_to_compact, validate_belief
+from analysis.build_dataset import load_analysis_dataset
+
+
+# ============================================================================
+# Constants
+# ============================================================================
+
+# Bucket indices for action-conditioning analysis
+STRONG_BUCKETS = ["premium_pairs", "strong_pairs", "premium_broadway", "strong_broadway"]
+STRONG_INDICES = [BUCKET_NAMES.index(b) for b in STRONG_BUCKETS]
+TRASH_INDEX = BUCKET_NAMES.index("trash")
+
+
+# ============================================================================
+# Data Loading
+# ============================================================================
+
+def load_records_from_files(filepaths: list[str]) -> list[dict]:
+    """Load decision records from multiple enriched JSONL files."""
+    all_records = []
+    for path in filepaths:
+        records = load_analysis_dataset(path)
+        all_records.extend(records)
+    return all_records
+
+
+def filter_records_with_beliefs(records: list[dict]) -> list[dict]:
+    """Filter to records that have agent beliefs and oracle posteriors."""
+    valid = []
+    for r in records:
+        if (r.get("agent_belief") and 
+            r.get("oracle_card_only") and 
+            r.get("oracle_strategy_aware")):
+            valid.append(r)
+    return valid
+
+
+# ============================================================================
+# Belief Validity Audit (Raw Outputs)
+# ============================================================================
+
+def audit_belief_validity(records: list[dict]) -> dict:
+    """
+    Audit raw belief outputs for validity issues.
+    
+    This measures OUTPUT VALIDITY - whether LLM follows probability constraints.
+    Computed on RAW outputs, not normalized.
+    """
+    stats = {
+        "total_records": len(records),
+        "records_with_beliefs": 0,
+        "negative_entries": 0,
+        "records_with_negatives": 0,
+        "records_with_parse_errors": 0,
+        "all_zero_records": 0,
+        "valid_for_js": 0,
+        "prob_sums": [],
+        "min_value_seen": float('inf'),
+        "max_value_seen": float('-inf'),
+    }
+    
+    for r in records:
+        belief = r.get("agent_belief")
+        if not belief:
+            continue
+        
+        stats["records_with_beliefs"] += 1
+        
+        # Extract probabilities in bucket order
+        try:
+            probs = [float(belief.get(b, 0.0)) for b in BUCKET_NAMES]
+        except (ValueError, TypeError):
+            stats["records_with_parse_errors"] += 1
+            continue
+        
+        # Check for negatives
+        neg_count = sum(1 for p in probs if p < 0)
+        if neg_count > 0:
+            stats["negative_entries"] += neg_count
+            stats["records_with_negatives"] += 1
+        
+        # Track min/max
+        stats["min_value_seen"] = min(stats["min_value_seen"], min(probs))
+        stats["max_value_seen"] = max(stats["max_value_seen"], max(probs))
+        
+        # Track sum
+        prob_sum = sum(probs)
+        stats["prob_sums"].append(prob_sum)
+        
+        # Check for all zeros
+        if prob_sum == 0:
+            stats["all_zero_records"] += 1
+        else:
+            stats["valid_for_js"] += 1
+    
+    # Compute summary stats
+    if stats["prob_sums"]:
+        stats["prob_sum_mean"] = np.mean(stats["prob_sums"])
+        stats["prob_sum_std"] = np.std(stats["prob_sums"])
+        stats["prob_sum_min"] = min(stats["prob_sums"])
+        stats["prob_sum_max"] = max(stats["prob_sums"])
+    
+    return stats
+
+
+# ============================================================================
+# JS Divergence Analysis (Normalized)
+# ============================================================================
+
+def normalize_belief(belief: dict[str, float]) -> Optional[np.ndarray]:
+    """
+    Normalize belief to valid distribution for JS computation.
+    
+    Process:
+    1. Clip negatives to 0
+    2. L1-normalize to sum to 1
+    3. Return None if all zeros
+    """
+    try:
+        probs = np.array([float(belief.get(b, 0.0)) for b in BUCKET_NAMES])
+    except (ValueError, TypeError):
+        return None
+    
+    # Clip negatives
+    probs = np.maximum(probs, 0)
+    
+    # Check for all zeros
+    total = probs.sum()
+    if total == 0:
+        return None
+    
+    # Normalize
+    return probs / total
+
+
+def clip_belief(belief: dict[str, float]) -> Optional[np.ndarray]:
+    """
+    Clip negative values to 0 but do NOT normalize.
+    
+    This preserves the original scale (sum may be != 1).
+    Used for scale-sensitive L1 metric.
+    """
+    try:
+        probs = np.array([float(belief.get(b, 0.0)) for b in BUCKET_NAMES])
+    except (ValueError, TypeError):
+        return None
+    return np.maximum(probs, 0)
+
+
+def compute_l1_distance(p: np.ndarray, q: np.ndarray) -> float:
+    """Compute L1 (Manhattan) distance between two arrays."""
+    return float(np.sum(np.abs(p - q)))
+
+
+def compute_js_metrics(records: list[dict]) -> dict:
+    """
+    Compute JS divergence metrics on normalized beliefs.
+    
+    This measures DISTRIBUTIONAL ACCURACY - how well LLM beliefs
+    match oracle posteriors in shape (ignoring scale).
+    """
+    js_llm_co = []  # LLM vs CardOnly
+    js_llm_sa = []  # LLM vs StrategyAware  
+    js_co_sa = []   # CardOnly vs StrategyAware (oracle separation)
+    
+    # NEW: L1 distance metrics (scale-sensitive and shape-only)
+    l1_clipped_unnorm_co = []  # L1 after clip only (scale-sensitive) vs CardOnly
+    l1_clipped_unnorm_sa = []  # L1 after clip only (scale-sensitive) vs StrategyAware
+    l1_normalized_co = []      # L1 after clip+normalize (shape-only) vs CardOnly
+    l1_normalized_sa = []      # L1 after clip+normalize (shape-only) vs StrategyAware
+    
+    valid_count = 0
+    skipped_count = 0
+    
+    for r in records:
+        # Get clipped (unnormalized) beliefs for L1 scale-sensitive metric
+        llm_clipped = clip_belief(r["agent_belief"])
+        co_arr = clip_belief(r["oracle_card_only"])  # Oracles should already be valid
+        sa_arr = clip_belief(r["oracle_strategy_aware"])
+        
+        # Normalize all distributions for JS and L1 shape metrics
+        llm = normalize_belief(r["agent_belief"])
+        co = normalize_belief(r["oracle_card_only"])
+        sa = normalize_belief(r["oracle_strategy_aware"])
+        
+        # Skip if LLM belief is degenerate
+        if llm is None:
+            skipped_count += 1
+            continue
+        
+        # Skip if oracles are degenerate (shouldn't happen)
+        if co is None or sa is None:
+            skipped_count += 1
+            continue
+        
+        valid_count += 1
+        
+        # Compute JS distances using scipy (returns sqrt of divergence)
+        # This is the standard "JS distance" used in ML literature
+        js_llm_co.append(jensenshannon(llm, co))
+        js_llm_sa.append(jensenshannon(llm, sa))
+        js_co_sa.append(jensenshannon(co, sa))
+        
+        # Compute L1 distances - SCALE-SENSITIVE (clipped but unnormalized)
+        # This captures sum inflation/deflation errors
+        if llm_clipped is not None and co_arr is not None and sa_arr is not None:
+            l1_clipped_unnorm_co.append(compute_l1_distance(llm_clipped, co_arr))
+            l1_clipped_unnorm_sa.append(compute_l1_distance(llm_clipped, sa_arr))
+        
+        # Compute L1 distances - SHAPE-ONLY (normalized)
+        # This isolates distributional shape error
+        l1_normalized_co.append(compute_l1_distance(llm, co))
+        l1_normalized_sa.append(compute_l1_distance(llm, sa))
+    
+    return {
+        "valid_count": valid_count,
+        "skipped_count": skipped_count,
+        # JS metrics (existing)
+        "js_llm_cardonly_mean": np.mean(js_llm_co) if js_llm_co else None,
+        "js_llm_cardonly_std": np.std(js_llm_co) if js_llm_co else None,
+        "js_llm_strataware_mean": np.mean(js_llm_sa) if js_llm_sa else None,
+        "js_llm_strataware_std": np.std(js_llm_sa) if js_llm_sa else None,
+        "js_cardonly_strataware_mean": np.mean(js_co_sa) if js_co_sa else None,
+        "js_cardonly_strataware_std": np.std(js_co_sa) if js_co_sa else None,
+        # Key comparison
+        "llm_closer_to": ("CardOnly" if np.mean(js_llm_co) < np.mean(js_llm_sa) else "StrategyAware") if js_llm_co and js_llm_sa else None,
+        "js_difference": float(np.mean(js_llm_co) - np.mean(js_llm_sa)) if js_llm_co and js_llm_sa else None,
+        # NEW: L1 metrics - SCALE-SENSITIVE (clipped, unnormalized)
+        "l1_clipped_unnorm_cardonly_mean": np.mean(l1_clipped_unnorm_co) if l1_clipped_unnorm_co else None,
+        "l1_clipped_unnorm_cardonly_std": np.std(l1_clipped_unnorm_co) if l1_clipped_unnorm_co else None,
+        "l1_clipped_unnorm_strataware_mean": np.mean(l1_clipped_unnorm_sa) if l1_clipped_unnorm_sa else None,
+        "l1_clipped_unnorm_strataware_std": np.std(l1_clipped_unnorm_sa) if l1_clipped_unnorm_sa else None,
+        # NEW: L1 metrics - SHAPE-ONLY (normalized)
+        "l1_normalized_cardonly_mean": np.mean(l1_normalized_co) if l1_normalized_co else None,
+        "l1_normalized_cardonly_std": np.std(l1_normalized_co) if l1_normalized_co else None,
+        "l1_normalized_strataware_mean": np.mean(l1_normalized_sa) if l1_normalized_sa else None,
+        "l1_normalized_strataware_std": np.std(l1_normalized_sa) if l1_normalized_sa else None,
+        # NEW: L1 comparison (which oracle is LLM closer to under each metric)
+        "l1_clipped_unnorm_closer_to": ("CardOnly" if np.mean(l1_clipped_unnorm_co) < np.mean(l1_clipped_unnorm_sa) else "StrategyAware") if l1_clipped_unnorm_co and l1_clipped_unnorm_sa else None,
+        "l1_normalized_closer_to": ("CardOnly" if np.mean(l1_normalized_co) < np.mean(l1_normalized_sa) else "StrategyAware") if l1_normalized_co and l1_normalized_sa else None,
+    }
+
+
+# ============================================================================
+# Action-Conditioning Analysis
+# ============================================================================
+
+def get_opponent_action_category(history: list[dict], hero_index: int = 0) -> str:
+    """
+    Categorize opponent's most recent action.
+    
+    Returns: "AGGRESSIVE" (bet/raise), "PASSIVE" (call/check),
+             "FOLD", or "NO_ACTION"
+    """
+    _AGGRESSIVE = {"BET", "RAISE", "CompletionBettingOrRaisingTo"}
+    _PASSIVE = {"CHECK", "CALL", "CheckingOrCalling"}
+    _FOLD = {"FOLD", "Folding"}
+    _ALL_ACTIONS = _AGGRESSIVE | _PASSIVE | _FOLD
+
+    opp_actions = [
+        h for h in history 
+        if h.get("player") is not None and h.get("player") != hero_index
+        and (h.get("event") or h.get("op", "")) in _ALL_ACTIONS
+    ]
+    
+    if not opp_actions:
+        return "NO_ACTION"
+    
+    last_action = opp_actions[-1].get("event") or opp_actions[-1].get("op", "")
+    
+    if last_action in _AGGRESSIVE:
+        return "AGGRESSIVE"
+    elif last_action in _PASSIVE:
+        return "PASSIVE"
+    elif last_action in _FOLD:
+        return "FOLD"
+    else:
+        return "NO_ACTION"
+
+
+def compute_action_conditioning(records: list[dict]) -> dict:
+    """
+    Analyze whether LLM shifts beliefs after opponent aggression.
+    
+    Key test: Does LLM put more mass on strong hands after opponent raises?
+    Expected under StrategyAware: yes
+    If LLM ignores history: no shift
+    """
+    # Group records by opponent action category
+    by_category = defaultdict(list)
+    
+    for r in records:
+        # Normalize beliefs
+        llm = normalize_belief(r["agent_belief"])
+        sa = normalize_belief(r["oracle_strategy_aware"])
+        
+        if llm is None or sa is None:
+            continue
+        
+        # Get action category
+        history = r.get("obs", {}).get("history", [])
+        hero_idx = r.get("player_to_act", 0)
+        category = get_opponent_action_category(history, hero_index=hero_idx)
+        
+        by_category[category].append({
+            "llm": llm,
+            "sa": sa,
+            "llm_strong": llm[STRONG_INDICES].sum(),
+            "sa_strong": sa[STRONG_INDICES].sum(),
+            "llm_trash": llm[TRASH_INDEX],
+            "sa_trash": sa[TRASH_INDEX],
+        })
+    
+    # Compute per-category stats
+    results = {}
+    for cat in ["AGGRESSIVE", "PASSIVE", "FOLD", "NO_ACTION"]:
+        if cat not in by_category:
+            continue
+        
+        recs = by_category[cat]
+        results[cat] = {
+            "n": len(recs),
+            "llm_strong_mean": np.mean([r["llm_strong"] for r in recs]),
+            "sa_strong_mean": np.mean([r["sa_strong"] for r in recs]),
+            "llm_trash_mean": np.mean([r["llm_trash"] for r in recs]),
+            "sa_trash_mean": np.mean([r["sa_trash"] for r in recs]),
+        }
+    
+    # Compute shifts (AGGRESSIVE vs PASSIVE)
+    shift_analysis = {}
+    if "AGGRESSIVE" in results and "PASSIVE" in results:
+        agg = results["AGGRESSIVE"]
+        pas = results["PASSIVE"]
+        
+        shift_analysis = {
+            "oracle_strong_shift": agg["sa_strong_mean"] - pas["sa_strong_mean"],
+            "llm_strong_shift": agg["llm_strong_mean"] - pas["llm_strong_mean"],
+            "oracle_trash_shift": agg["sa_trash_mean"] - pas["sa_trash_mean"],
+            "llm_trash_shift": agg["llm_trash_mean"] - pas["llm_trash_mean"],
+        }
+        
+        # Compute ratio (LLM responsiveness relative to oracle)
+        if abs(shift_analysis["oracle_strong_shift"]) > 0.001:
+            shift_analysis["strong_shift_ratio"] = (
+                shift_analysis["llm_strong_shift"] / shift_analysis["oracle_strong_shift"]
+            )
+        
+        if abs(shift_analysis["oracle_trash_shift"]) > 0.001:
+            shift_analysis["trash_shift_ratio"] = (
+                shift_analysis["llm_trash_shift"] / shift_analysis["oracle_trash_shift"]
+            )
+    
+    return {
+        "by_category": results,
+        "shift_analysis": shift_analysis,
+    }
+
+
+# ============================================================================
+# Summary Report
+# ============================================================================
+
+def print_report(
+    validity: dict,
+    js_metrics: dict,
+    action_cond: dict,
+    files: list[str],
+) -> None:
+    """Print comprehensive analysis report."""
+    
+    print("=" * 70)
+    print("BELIEF ANALYSIS REPORT")
+    print("=" * 70)
+    print(f"\nFiles analyzed: {len(files)}")
+    for f in files:
+        print(f"  - {f}")
+    
+    # Part 1: Validity Audit
+    print("\n" + "=" * 70)
+    print("PART 1: BELIEF VALIDITY AUDIT (Raw Outputs)")
+    print("=" * 70)
+    print(f"""
+This measures OUTPUT VALIDITY - whether LLM follows probability constraints.
+Computed on RAW model outputs (not normalized).
+
+| Metric | Value |
+|--------|-------|
+| Total records | {validity['total_records']} |
+| Records with beliefs | {validity['records_with_beliefs']} |
+| Records with negatives | {validity['records_with_negatives']} |
+| Records with parse errors | {validity['records_with_parse_errors']} |
+| All-zero records | {validity['all_zero_records']} |
+| Valid for JS analysis | {validity['valid_for_js']} |
+| Prob sum (mean) | {validity.get('prob_sum_mean', 0):.4f} |
+| Prob sum (min/max) | {validity.get('prob_sum_min', 0):.4f} / {validity.get('prob_sum_max', 0):.4f} |
+| Min value seen | {validity.get('min_value_seen', 0):.6f} |
+""")
+    
+    # Part 2: JS Divergence
+    print("=" * 70)
+    print("PART 2: JS DISTANCE ANALYSIS (Normalized)")
+    print("=" * 70)
+    
+    _has_js = js_metrics.get('js_llm_cardonly_mean') is not None
+    
+    if not _has_js:
+        print("\n  No valid belief records for JS analysis (all skipped).\n")
+    else:
+        print(f"""
+This measures DISTRIBUTIONAL ACCURACY - how well LLM beliefs match oracles.
+Computed on L1-normalized distributions (negatives clipped, then normalized).
+All-zero records excluded (N={js_metrics['skipped_count']} dropped).
+
+Note: Using JS DISTANCE (sqrt of JS divergence), range [0, 1], via scipy.jensenshannon.
+
+| Comparison | Mean JS Dist | Std |
+|------------|--------------|-----|
+| JS(LLM, CardOnly) | {js_metrics['js_llm_cardonly_mean']:.4f} | {js_metrics['js_llm_cardonly_std']:.4f} |
+| JS(LLM, StrategyAware) | {js_metrics['js_llm_strataware_mean']:.4f} | {js_metrics['js_llm_strataware_std']:.4f} |
+| JS(CardOnly, StrategyAware) | {js_metrics['js_cardonly_strataware_mean']:.4f} | {js_metrics['js_cardonly_strataware_std']:.4f} |
+
+**LLM is closer to: {js_metrics['llm_closer_to']}** (by {abs(js_metrics['js_difference']):.4f})
+
+Note: CardOnly = BucketCountPrior (pure combinatorics). Being closer to CardOnly
+means the LLM's belief *shape* resembles combo-counting more than Bayesian updating.
+""")
+
+        # Part 2b: L1 Distance Analysis
+        print("=" * 70)
+        print("PART 2b: L1 DISTANCE ANALYSIS (Scale vs Shape)")
+        print("=" * 70)
+        _has_l1 = js_metrics.get('l1_clipped_unnorm_cardonly_mean') is not None
+        if not _has_l1:
+            print("\n  No valid belief records for L1 analysis.\n")
+        else:
+            print(f"""
+This separates SCALE ERRORS from SHAPE ERRORS:
+- L1(clipped, unnorm): Scale-sensitive - captures sum inflation/deflation
+- L1(normalized): Shape-only - isolates distributional shape error
+
+| Metric | vs CardOnly | vs StrategyAware | Closer To |
+|--------|-------------|------------------|-----------|
+| L1 (clipped, unnorm) | {js_metrics['l1_clipped_unnorm_cardonly_mean']:.4f} ± {js_metrics['l1_clipped_unnorm_cardonly_std']:.4f} | {js_metrics['l1_clipped_unnorm_strataware_mean']:.4f} ± {js_metrics['l1_clipped_unnorm_strataware_std']:.4f} | {js_metrics['l1_clipped_unnorm_closer_to']} |
+| L1 (normalized) | {js_metrics['l1_normalized_cardonly_mean']:.4f} ± {js_metrics['l1_normalized_cardonly_std']:.4f} | {js_metrics['l1_normalized_strataware_mean']:.4f} ± {js_metrics['l1_normalized_strataware_std']:.4f} | {js_metrics['l1_normalized_closer_to']} |
+
+Interpretation:
+- Scale-sensitive L1 captures how far raw outputs are from valid probabilities
+- Shape-only L1 confirms the JS finding (which oracle matches LLM's distribution shape)
+- If both metrics agree, the "closer to CardOnly" finding is robust to normalization
+""")
+    
+    # Part 3: Action-Conditioning
+    print("=" * 70)
+    print("PART 3: ACTION-CONDITIONING ANALYSIS")
+    print("=" * 70)
+    print("""
+This tests: Does LLM shift beliefs after opponent aggression?
+Expected under StrategyAware: More mass on strong hands after RAISE/BET.
+""")
+    
+    if action_cond["by_category"]:
+        print("| After Opponent | N | LLM Strong | Oracle Strong | LLM Trash | Oracle Trash |")
+        print("|----------------|---|------------|---------------|-----------|--------------|")
+        for cat in ["AGGRESSIVE", "PASSIVE", "FOLD", "NO_ACTION"]:
+            if cat in action_cond["by_category"]:
+                c = action_cond["by_category"][cat]
+                print(f"| {cat:<14} | {c['n']:>1} | {c['llm_strong_mean']:.4f} | {c['sa_strong_mean']:.4f} | {c['llm_trash_mean']:.4f} | {c['sa_trash_mean']:.4f} |")
+    
+    if action_cond["shift_analysis"]:
+        s = action_cond["shift_analysis"]
+        print(f"""
+**Shift Analysis (AGGRESSIVE vs PASSIVE):**
+
+| Metric | Oracle Shift | LLM Shift | Ratio |
+|--------|--------------|-----------|-------|
+| Strong-mass | {s['oracle_strong_shift']:+.4f} | {s['llm_strong_shift']:+.4f} | {s.get('strong_shift_ratio', 0):.2f}x |
+| Trash-mass | {s['oracle_trash_shift']:+.4f} | {s['llm_trash_shift']:+.4f} | {s.get('trash_shift_ratio', 0):.2f}x |
+""")
+        
+        # Interpretation
+        if s.get('strong_shift_ratio', 0) > 0.5:
+            print("Interpretation: LLM shows SOME directional sensitivity to opponent aggression.")
+        else:
+            print("Interpretation: LLM is largely INSENSITIVE to opponent aggression.")
+    
+    # Part 4: Summary Table for Paper
+    print("\n" + "=" * 70)
+    print("SUMMARY TABLE FOR PAPER")
+    print("=" * 70)
+    
+    if not _has_js:
+        print("\n  No valid JS data for summary table.\n")
+    else:
+        shift = action_cond.get("shift_analysis", {})
+        oracle_shift = shift.get("oracle_strong_shift", 0)
+        llm_shift = shift.get("llm_strong_shift", 0)
+        shift_pct = (llm_shift / oracle_shift * 100) if oracle_shift != 0 else 0
+        
+        agg_data = action_cond.get("by_category", {}).get("AGGRESSIVE", {})
+        pas_data = action_cond.get("by_category", {}).get("PASSIVE", {})
+        avg_llm_trash = np.mean([
+            agg_data.get("llm_trash_mean", 0),
+            pas_data.get("llm_trash_mean", 0)
+        ]) if agg_data and pas_data else 0
+        avg_oracle_trash = np.mean([
+            agg_data.get("sa_trash_mean", 0),
+            pas_data.get("sa_trash_mean", 0)
+        ]) if agg_data and pas_data else 0
+        
+        print(f"""
+| Metric | Value | Interpretation |
+|--------|-------|----------------|
+| N (valid beliefs) | {js_metrics['valid_count']} | - |
+| JS(LLM, CardOnly) | {js_metrics['js_llm_cardonly_mean']:.4f} | Distance to combo-counting |
+| JS(LLM, StrategyAware) | {js_metrics['js_llm_strataware_mean']:.4f} | Distance to Bayesian posterior |
+| JS(CardOnly, StrategyAware) | {js_metrics['js_cardonly_strataware_mean']:.4f} | Oracle separation (test validity) |
+| LLM closer to | {js_metrics['llm_closer_to']} by {abs(js_metrics['js_difference']):.4f} | {js_metrics['llm_closer_to']} = ignores history |
+| Oracle strong-shift (AGG vs PAS) | {oracle_shift:+.4f} | Aggression = stronger hands |
+| LLM strong-shift (AGG vs PAS) | {llm_shift:+.4f} | LLM response ({shift_pct:.0f}% of oracle) |
+| Avg LLM trash mass | {avg_llm_trash:.3f} | Should be ~0.65 |
+| Avg Oracle trash mass | {avg_oracle_trash:.3f} | Baseline |
+""")
+
+
+def _json_safe(obj):
+    """Recursively convert numpy types and non-finite floats for JSON serialization."""
+    import math
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_safe(v) for v in obj]
+    if hasattr(obj, 'item'):
+        obj = obj.item()
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+    return obj
+
+
+def save_json_report(
+    validity: dict,
+    js_metrics: dict,
+    action_cond: dict,
+    output_path: str,
+) -> None:
+    """Save analysis results as JSON for programmatic access."""
+    # Clean up non-serializable items
+    validity_clean = {k: v for k, v in validity.items() if k != "prob_sums"}
+    
+    report = _json_safe({
+        "validity_audit": validity_clean,
+        "js_divergence": js_metrics,
+        "action_conditioning": action_cond,
+    })
+    
+    with open(output_path, "w") as f:
+        json.dump(report, f, indent=2)
+    
+    print(f"\nJSON report saved to: {output_path}")
+
+
+# ============================================================================
+# CLI
+# ============================================================================
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Analyze LLM beliefs against oracle posteriors",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Analyze a single enriched file
+  python -m analysis.analyze_beliefs logs/experiment_enriched.jsonl
+
+  # Analyze multiple files
+  python -m analysis.analyze_beliefs logs/run1_enriched.jsonl logs/run2_enriched.jsonl
+
+  # Save JSON report
+  python -m analysis.analyze_beliefs logs/experiment_enriched.jsonl --json-out results.json
+"""
+    )
+    
+    parser.add_argument(
+        "files",
+        nargs="+",
+        help="Enriched JSONL files to analyze",
+    )
+    parser.add_argument(
+        "--json-out",
+        help="Optional path to save JSON report",
+    )
+    
+    args = parser.parse_args()
+    
+    # Load data
+    print("Loading records...")
+    records = load_records_from_files(args.files)
+    records = filter_records_with_beliefs(records)
+    print(f"Loaded {len(records)} records with beliefs")
+    
+    # Run analyses
+    print("Running validity audit...")
+    validity = audit_belief_validity(records)
+    
+    print("Computing JS divergences...")
+    js_metrics = compute_js_metrics(records)
+    
+    print("Running action-conditioning analysis...")
+    action_cond = compute_action_conditioning(records)
+    
+    # Print report
+    print_report(validity, js_metrics, action_cond, args.files)
+    
+    # Optionally save JSON
+    if args.json_out:
+        save_json_report(validity, js_metrics, action_cond, args.json_out)
+
+
+if __name__ == "__main__":
+    main()

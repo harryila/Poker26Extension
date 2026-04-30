@@ -33,7 +33,7 @@ logs/*.tmp
 iclr26/
 
 # Extension repo (separate git history)
-xpoker2026Extension/
+# xpoker2026Extension/
 
 # Legacy cleanup artifacts
 legacy/

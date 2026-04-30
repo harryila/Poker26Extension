@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+.env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs and data
+# logs/ - REMOVED: experiment logs are now tracked for reproducibility
+*.log
+
+# Keep logs folder but ignore very large files
+logs/*.tmp
+
+# Paper source (compiled on Overleaf, not tracked here)
+iclr26/
+
+# Extension repo (separate git history)
+xpoker2026Extension/
+
+# Legacy cleanup artifacts
+legacy/
+
+# Distribution
+dist/
+build/
+*.egg-info/

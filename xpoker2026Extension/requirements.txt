@@ -1,0 +1,37 @@
+# Poker Environment for LLM Belief Modeling Research
+# Requires Python >= 3.11
+
+# Core dependency - poker game engine
+pokerkit>=0.6.0
+
+# Analysis dependencies
+numpy>=1.24.0
+scipy>=1.10.0
+pandas>=2.0.0
+
+# Visualization (for paper figures)
+matplotlib>=3.7.0
+
+# Testing
+pytest>=7.0.0
+
+# LLM Agent dependencies (optional - for HFAgent)
+# Install separately if not using GPU: pip install torch transformers accelerate
+torch>=2.0.0
+transformers>=4.35.0
+accelerate>=0.24.0
+huggingface_hub>=0.19.0
+
+# API Agent dependencies (optional - for closed models)
+openai>=1.0.0
+anthropic>=0.20.0
+google-genai>=1.0.0
+
+# Mechanistic interpretability (optional)
+captum>=0.7.0
+
+# Linear probing
+scikit-learn>=1.3.0
+
+# Sidecar storage for logit-lens data
+h5py>=3.9.0

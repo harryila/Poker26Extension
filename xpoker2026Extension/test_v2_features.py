@@ -149,25 +149,41 @@ def test_template_ids():
 
 def test_model_registry():
     from poker_env.config import MODEL_REGISTRY
+    # 8B class
     assert "llama-8b" in MODEL_REGISTRY
+    assert "qwen-8b" in MODEL_REGISTRY
+    assert "ministral-8b" in MODEL_REGISTRY
+    # 70B class
     assert "llama-70b" in MODEL_REGISTRY
-    assert "mistral-7b" in MODEL_REGISTRY
-    assert "qwen-7b" in MODEL_REGISTRY
-    assert MODEL_REGISTRY["mistral-7b"]["supports_system_role"] is False
-    assert MODEL_REGISTRY["qwen-7b"]["supports_system_role"] is True
+    assert "llama-3.3-70b" in MODEL_REGISTRY
+    assert "qwen-72b" in MODEL_REGISTRY
+    # Qwen 3 must be flagged as thinking-mode-capable so HFAgent disables it
+    # for non-CoT runs. Without this flag, qwen-8b silently does internal CoT.
+    assert MODEL_REGISTRY["qwen-8b"].get("has_thinking_mode") is True
+    # No other model should claim thinking-mode support
+    for name, cfg in MODEL_REGISTRY.items():
+        if name == "qwen-8b":
+            continue
+        assert cfg.get("has_thinking_mode", False) is False, f"{name} unexpectedly has thinking mode"
 
 def test_resolve_model_id():
     from poker_env.config import resolve_model_id
     assert resolve_model_id("llama-8b") == "meta-llama/Llama-3.1-8B-Instruct"
-    assert resolve_model_id("mistral-7b") == "mistralai/Mistral-7B-Instruct-v0.3"
-    assert resolve_model_id("qwen-7b") == "Qwen/Qwen2.5-7B-Instruct"
+    assert resolve_model_id("qwen-8b") == "Qwen/Qwen3-8B"
+    assert resolve_model_id("ministral-8b") == "mistralai/Ministral-8B-Instruct-2410"
+    assert resolve_model_id("llama-70b") == "meta-llama/Llama-3.1-70B-Instruct"
+    assert resolve_model_id("llama-3.3-70b") == "meta-llama/Llama-3.3-70B-Instruct"
+    assert resolve_model_id("qwen-72b") == "Qwen/Qwen2.5-72B-Instruct"
     # Pass-through for full IDs
     assert resolve_model_id("some/custom-model") == "some/custom-model"
 
 def test_get_model_config():
     from poker_env.config import get_model_config
-    cfg = get_model_config("mistral-7b")
-    assert cfg["supports_system_role"] is False
+    cfg = get_model_config("ministral-8b")
+    assert cfg["supports_system_role"] is True
+    # Qwen 3 thinking mode flag visible via get_model_config
+    cfg_qwen = get_model_config("qwen-8b")
+    assert cfg_qwen.get("has_thinking_mode") is True
     # Full ID lookup
     cfg2 = get_model_config("meta-llama/Llama-3.1-8B-Instruct")
     assert cfg2["supports_system_role"] is True

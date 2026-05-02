@@ -160,6 +160,10 @@ class HFAgent(BaseAgent):
         model_cfg = get_model_config(raw_model_id)
         self.model_id = resolve_model_id(raw_model_id)
         self.supports_system_role = model_cfg.get("supports_system_role", True)
+        # Qwen 3 ships an `enable_thinking` switch in its chat template that is ON
+        # by default. For non-CoT runs we MUST disable it, otherwise the model
+        # silently performs internal CoT and the cross-family baseline is invalid.
+        self.has_thinking_mode = model_cfg.get("has_thinking_mode", False)
 
         self.temperature = temperature if temperature is not None else DEFAULT_TEMPERATURE
         self.top_p = top_p if top_p is not None else DEFAULT_TOP_P
@@ -398,6 +402,8 @@ class HFAgent(BaseAgent):
             "logit_lens": self.logit_lens_enabled,
             "capture_logprobs": self.capture_logprobs,
             "top_logprobs": self.top_logprobs if self.capture_logprobs else 0,
+            "has_thinking_mode": self.has_thinking_mode,
+            "enable_thinking": (bool(self.cot_mode) if self.has_thinking_mode else None),
         }
 
     # ========================================================================
@@ -416,11 +422,13 @@ class HFAgent(BaseAgent):
                 {"role": "user", "content": f"{system_message}\n\n{user_prompt}"},
             ]
 
-        prompt = self.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True,
-        )
+        chat_kwargs: dict[str, Any] = {
+            "tokenize": False,
+            "add_generation_prompt": True,
+        }
+        if self.has_thinking_mode:
+            chat_kwargs["enable_thinking"] = bool(self.cot_mode)
+        prompt = self.tokenizer.apply_chat_template(messages, **chat_kwargs)
 
         inputs = self.tokenizer(
             prompt,

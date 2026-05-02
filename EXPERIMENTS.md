@@ -43,13 +43,13 @@ To stay **equally representative** for the paper-replication parts of the new su
 | Reviewer concern | # reviewers | Test tier |
 |------------------|------------:|-----------|
 | Try Chain-of-Thought prompting | 3 | Tier 1 |
-| Test other model families (GPT, Claude, Qwen, Mistral, Gemini) | 3 | Tier 2 |
-| Address scaling / emergence (8B → 70B → frontier) | 1 | Tier 3 |
+| Test other model families (GPT, Claude, Qwen, Mistral, Gemini) | 3 | Tier 1A (open-weights) + Tier 2 (API) |
+| Address scaling / emergence (8B → 70B → frontier) | 1 | Tier 1A.small + Tier 3 |
 | Opponent-model uncertainty / mismatch | 1 | Tier 4 |
 | Internal vs verbalized calibration (logprobs / interp) | 2 | Tier 5 |
 | Equity threshold isn't EV (pot-odds analysis) | 1 | Tier 6 |
 | Soften general claims (writing only) | 2 | (writing change) |
-| Strengthen statistical validity (clustered bootstraps) | 1 | Already in base |
+| Strengthen statistical validity (clustered bootstraps) | 1 | Already in base + Tier 1A (3 seeds) |
 
 ---
 
@@ -77,6 +77,99 @@ python -m analysis.compute_update_coherence \
 ```
 
 **Pass criterion:** Numbers within ±2× the published bootstrap CI. If not, the extension's modified analysis is producing different metrics — investigate before running anything else.
+
+---
+
+### Tier 1A — Scaled non-CoT baseline (BEFORE CoT)
+
+**Why this comes first:** Before adding CoT (the new-prompt confound), we need to know how the *original* belief-elicitation prompt behaves across **(a) more seeds** and **(b) other model families at matched scale**. This addresses two reviewer concerns at once: scaling/emergence and family generalization, *without* introducing a prompt change. Any CoT effect in Tier 1 can then be measured against this stronger baseline rather than against the single-seed paper anchor.
+
+**Two parallel sub-tiers, run on the same env / opponent / belief schema as the paper:**
+
+#### Sub-tier 1A.large — ~70B class (paper-scale)
+
+Tests whether belief inertia is Llama-3.1-specific or persists across (i) the next Llama generation and (ii) a different-family model at matched scale.
+
+| Model | Registry name | Params | Vintage |
+|-------|---------------|-------:|---------|
+| Llama 3.1 70B Instruct (paper anchor) | `llama-70b` | 70B | Jul 2024 |
+| Llama 3.3 70B Instruct | `llama-3.3-70b` | 70B | Dec 2024 |
+| Qwen 2.5 72B Instruct | `qwen-72b` | 72B | Sep 2024 |
+
+- **Grid:** 3 models × 3 seeds (42, 123, 456) × 2 temps (0.0, 0.2) = **18 cells**
+- **Hands per cell:** 500 for `llama-70b` (anchor, target ~3× paper sample for tighter CIs), 350 for `llama-3.3-70b` and `qwen-72b` (paper-quality)
+- **Total:** ~7,200 hands of HF compute
+- **Captures:** beliefs + per-token logprobs (free with `--capture-logprobs`)
+
+#### Sub-tier 1A.small — 8B class (capability-floor, parameter-matched)
+
+Tests whether the 8B failure mode reported in the appendix is Llama-3.1-specific or a general property of small dense models. All three models are exactly 8B parameters so any difference reflects family / training, not capacity.
+
+| Model | Registry name | HF model_id | Params | Vintage |
+|-------|---------------|-------------|-------:|---------|
+| Llama 3.1 8B Instruct | `llama-8b` | `meta-llama/Llama-3.1-8B-Instruct` | 8B | Jul 2024 |
+| Qwen 3 8B | `qwen-8b` | `Qwen/Qwen3-8B` | 8B | Apr 2025 |
+| Ministral 8B Instruct (2410) | `ministral-8b` | `mistralai/Ministral-8B-Instruct-2410` | 8B | Oct 2024 |
+
+- **Grid:** 3 models × 3 seeds × 2 temps = **18 cells**
+- **Hands per cell:** 100 (8B inference is fast; the original 8B sanity used 50 hands and was clearly degenerate, 100 is enough to confirm or rule out the same pattern in Qwen 3 8B and Ministral 8B)
+- **Total:** ~1,800 hands of HF compute (much faster wall-clock than the 70B tier)
+
+**Qwen 3 thinking-mode caveat:** Qwen 3's chat template has `enable_thinking=True` by default, which would silently inject internal CoT into every response and confound the non-CoT baseline. The HFAgent now gates this on `self.cot_mode`, so non-CoT runs of `qwen-8b` correctly disable thinking. This is logged as `enable_thinking=False` in the agent config of every Tier 1A run. When `--cot` is passed (Tier 1), thinking is re-enabled.
+
+**Vintage caveat:** The three 8B models span Jul 2024 → Apr 2025, vs the 70B tier which spans Jul–Dec 2024. This is unavoidable: there is no Llama 3.1-era exact-8B Qwen or Mistral release. The matched-parameter design keeps the comparison cleaner than mixing 7B and 8B; vintage drift is reported as a caveat in the writeup.
+
+**Commands** — recommended, dedicated per-tier scripts that auto-launch in tmux and run analysis after each model so you get incremental results:
+
+```bash
+cd xpoker2026Extension
+
+# Tier 1A.small (8B class) — ~3-6h on 1xH100/A100
+bash scripts/run_tier1a_small.sh
+#   - Creates and attaches you to tmux session 'poker_tier1a_small'
+#   - You manually Ctrl-B D to detach when you want to leave
+#   - Runs llama-8b -> qwen-8b -> ministral-8b sequentially
+#   - Per-model: run cells, enrich, run PCE+UC; then cross-model pool
+#   - Outputs in results/tier1a_small/
+
+# Tier 1A.large (70B class) — overnight on 1xH100 80GB or multi-GPU
+bash scripts/run_tier1a_large.sh
+#   - Same pattern, session 'poker_tier1a_large'
+#   - Runs llama-70b (500 hands/cell) -> llama-3.3-70b -> qwen-72b (350 each)
+#   - Outputs in results/tier1a_large/
+
+# Alternative: original "do everything" script (no tmux, no per-model analysis)
+bash scripts/run_scaled_baseline.sh                  # all 36 cells (both tiers)
+bash scripts/run_scaled_baseline.sh large            # only 70B tier
+bash scripts/run_scaled_baseline.sh small            # only 8B tier
+bash scripts/run_scaled_baseline.sh llama-70b        # one model only
+# then:
+bash scripts/enrich_scaled_baseline.sh               # build oracle posteriors
+bash scripts/analyze_scaled_baseline.sh              # PCE + UC + pot-odds, grouped by tier
+```
+
+**Headline outputs (per tier):**
+- Per-model JS-to-StrategyAware (mean ± 95% clustered bootstrap CI)
+- Cross-seed variance: is the paper's 0.014 stable across 3 seeds, or seed-dependent?
+- Cross-family agreement: do Qwen 72B / Llama 3.3 70B reproduce Llama 3.1 70B's gap?
+- Small-tier degeneracy fingerprint: action diversity, parsed-belief rate, JS distance to uniform
+
+**Why equally representative:**
+- Same env, same opponent (`informative_v2`), same belief schema (`buckets_14_v1`), same statistical pipeline (clustered bootstrap, parsed-only filter) as the paper
+- 70B-class hand counts ≥ paper's per-cell sample; pooled CIs will be tighter than paper's
+- 8B-class hand counts at 100/cell are 2× the original 8B sanity, which itself produced the appendix claim
+
+#### Tier 1A.future (NOT run now — noted for later)
+
+A "newer-architecture, mid-scale" tier where all three families have a dense model at roughly comparable scale. Would test whether belief inertia persists in newer training recipes.
+
+| Model | Params | Notes |
+|-------|-------:|-------|
+| Qwen 3 32B | 32B | Apr 2025, largest dense Qwen 3 |
+| Gemma 4 31B | 31B | 2026, latest dense Gemma |
+| Mistral Small 24B | 24B | 2025, ~25% smaller than the others |
+
+Scale span 24–32B (1.3×) is tight enough to call "matched mid-scale". Not run yet because (a) Tier 1A.large/small already covers the reviewers' family-generalization ask, and (b) downloading/running three new model families is significant additional infra work. Re-evaluate after Tier 1A results.
 
 ---
 
@@ -285,12 +378,15 @@ This **directly replaces** the paper's "46.6% equity, calling was clearly correc
 | Tier | What changes | Budget | Reviewer concern addressed |
 |------|--------------|-------:|----------------------------|
 | 0 | Re-run analysis on existing logs | minutes | Sanity / regression check |
+| 1A.large | 3 models × 3 seeds × 2 temps at ~70B | ~7,200 hands HF | Cross-family at scale + seed stability |
+| 1A.small | 3 models × 3 seeds × 2 temps at ~7-8B | ~1,800 hands HF | Capability-floor generalization |
 | 1 | Llama 70B + `--cot`, paper grid | ~700 hands HF | CoT (3 reviewers) |
-| 2 | 5 model families, 50-hand grid | ~250 hands HF + ~150 API calls | Multi-family generalization (3 reviewers) |
-| 3 | Frontier model on 8B/70B grid | 50 API calls | Emergence/scaling (1 reviewer) |
+| 2 | 3 closed-source frontier APIs, 50-hand grid | ~150 API calls | API-only family generalization |
+| 3 | Frontier model on 8B/70B grid | 50 API calls | Emergence/scaling endpoint |
 | 4 | 5 opponent presets, fixed model | 250 hands HF | Opponent-model uncertainty (1 reviewer) |
 | 5 | Logprobs + logit lens on Tier 1 | included in Tier 1 | Internal vs verbalized calibration (2 reviewers) |
 | 6 | Pot-odds analysis on existing logs | minutes | EV / clearly-correct framing (1 reviewer) |
+| 1A.future | Qwen 3 32B + Gemma 4 31B + Mistral 24B | ~3,600 hands HF | Newer-architecture mid-scale (deferred) |
 
 ---
 
@@ -316,12 +412,15 @@ This **directly replaces** the paper's "46.6% equity, calling was clearly correc
 
 ## Suggested Run Order
 
-1. **Tier 0** (5 min) — verify extension reproduces paper numbers
+1. **Tier 0** (5 min) — verify extension reproduces paper numbers ✓ done
 2. **Tier 6** (10 min) — re-frame the existing "clearly correct" claim with EV
-3. **Tier 1** (overnight on a 70B-capable GPU) — the headline new experiment
-4. **Tier 4** (overnight) — opponent robustness
-5. **Tier 2** (one day, depends on API rate limits + budget) — cross-family
-6. **Tier 5** (re-runs of Tier 1 logs with `--logit-lens`, ~6 hours)
-7. **Tier 3** (~30 min API calls) — frontier scaling point
+3. **Tier 1A.large** (overnight on a 70B-capable GPU) — scaled non-CoT baseline at 70B class
+4. **Tier 1A.small** (a few hours on the same GPU) — 8B-class capability-floor sweep
+5. **Tier 1** (overnight on a 70B-capable GPU) — CoT, the headline new experiment
+6. **Tier 4** (overnight) — opponent robustness
+7. **Tier 2** (one day, depends on API rate limits + budget) — cross-family API models
+8. **Tier 5** (re-runs of Tier 1 logs with `--logit-lens`, ~6 hours)
+9. **Tier 3** (~30 min API calls) — frontier scaling point
+10. **Tier 1A.future** (deferred) — 24-32B mid-scale across Qwen / Gemma / Mistral
 
-Tiers 1, 4, 5 can run sequentially on the same GPU. Tiers 2, 3, 6 are CPU/API-bound and can interleave.
+Tiers 1A.large, 1A.small, 1, 4, 5 can run sequentially on the same GPU. Tiers 2, 3, 6 are CPU/API-bound and can interleave.

@@ -18,38 +18,47 @@ DEFAULT_MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
 # Research model - requires 96GB+ VRAM (GH200, H100, or multi-GPU)
 RESEARCH_MODEL_ID = "meta-llama/Llama-3.1-70B-Instruct"
 
-# Additional model IDs
-MISTRAL_MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.3"
-QWEN_MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"
-
-# 70B-scale open-weights models for cross-family scaling experiments.
+# 70B-class open-weights models for the Tier 1A.large scaling experiments.
 # These match the parameter scale of the paper's anchor (Llama 3.1 70B)
 # so that any difference reflects model family / training, not capacity.
-QWEN_72B_MODEL_ID = "Qwen/Qwen2.5-72B-Instruct"
 LLAMA_3_3_70B_MODEL_ID = "meta-llama/Llama-3.3-70B-Instruct"
+QWEN_72B_MODEL_ID = "Qwen/Qwen2.5-72B-Instruct"
+
+# 8B-class open-weights models for the Tier 1A.small experiments.
+# All exactly 8B parameters for parameter-matched comparison with Llama 3.1 8B.
+# NOTE: Qwen3 has a built-in "thinking mode" enabled by default in its chat
+# template. The HFAgent gates this on self.cot_mode so non-CoT runs disable it.
+QWEN_3_8B_MODEL_ID = "Qwen/Qwen3-8B"
+MINISTRAL_8B_MODEL_ID = "mistralai/Ministral-8B-Instruct-2410"
 
 # Registry mapping short names -> model config.
 # supports_system_role: whether the chat template has a native system role.
 #   When False, system message is merged into the first user message.
+# has_thinking_mode: whether the chat template accepts an `enable_thinking` kwarg
+#   (Qwen 3 family). When True, HFAgent passes enable_thinking=self.cot_mode so
+#   thinking is OFF for non-CoT runs and ON when --cot is requested.
 MODEL_REGISTRY: dict[str, dict] = {
+    # ---- 8B class (Tier 1A.small) ----
     "llama-8b": {
         "model_id": DEFAULT_MODEL_ID,
         "supports_system_role": True,
     },
+    "qwen-8b": {
+        "model_id": QWEN_3_8B_MODEL_ID,
+        "supports_system_role": True,
+        "has_thinking_mode": True,
+    },
+    "ministral-8b": {
+        "model_id": MINISTRAL_8B_MODEL_ID,
+        "supports_system_role": True,
+    },
+    # ---- 70B class (Tier 1A.large) ----
     "llama-70b": {
         "model_id": RESEARCH_MODEL_ID,
         "supports_system_role": True,
     },
     "llama-3.3-70b": {
         "model_id": LLAMA_3_3_70B_MODEL_ID,
-        "supports_system_role": True,
-    },
-    "mistral-7b": {
-        "model_id": MISTRAL_MODEL_ID,
-        "supports_system_role": False,
-    },
-    "qwen-7b": {
-        "model_id": QWEN_MODEL_ID,
         "supports_system_role": True,
     },
     "qwen-72b": {

@@ -9,8 +9,8 @@ Usage:
     # HF agent with default 8B model
     python run_experiment.py --agent hf --opponent call --hands 10 --elicit-beliefs -v
 
-    # HF agent with Mistral via short name
-    python run_experiment.py --agent hf --hf-model mistral-7b --opponent threshold --hands 20 -v
+    # HF agent with Ministral 8B via short name
+    python run_experiment.py --agent hf --hf-model ministral-8b --opponent threshold --hands 20 -v
 
     # API agent (OpenAI GPT-4o)
     python run_experiment.py --agent api --api-provider openai --api-model gpt-4o --opponent threshold --hands 10 -v

@@ -37,9 +37,11 @@ A separate **EquityOracle** computes win/tie/lose probabilities given true hole 
 | Short Name | Model ID | System Role | Notes |
 |:-----------|:---------|:-----------:|:------|
 | `llama-8b` | `meta-llama/Llama-3.1-8B-Instruct` | Yes | Default dev model |
-| `llama-70b` | `meta-llama/Llama-3.1-70B-Instruct` | Yes | Research model (96 GB+ VRAM) |
-| `mistral-7b` | `mistralai/Mistral-7B-Instruct-v0.3` | No | System msg merged into user turn |
-| `qwen-7b` | `Qwen/Qwen2.5-7B-Instruct` | Yes | — |
+| `qwen-8b` | `Qwen/Qwen3-8B` | Yes | Has thinking mode — auto-gated on `--cot` |
+| `ministral-8b` | `mistralai/Ministral-8B-Instruct-2410` | Yes | — |
+| `llama-70b` | `meta-llama/Llama-3.1-70B-Instruct` | Yes | Paper anchor (96 GB+ VRAM) |
+| `llama-3.3-70b` | `meta-llama/Llama-3.3-70B-Instruct` | Yes | Newer Llama at same scale |
+| `qwen-72b` | `Qwen/Qwen2.5-72B-Instruct` | Yes | Cross-family at scale (96 GB+ VRAM) |
 
 Any HuggingFace model ID can also be passed directly via `--hf-model`.
 
@@ -121,15 +123,15 @@ python run_experiment.py \
     --opponent threshold --opponent-preset informative_v2 \
     --hands 50 --seed 42 --elicit-beliefs -v
 
-# Mistral 7B with Chain-of-Thought
+# Ministral 8B with Chain-of-Thought
 python run_experiment.py \
-    --agent hf --hf-model mistral-7b \
+    --agent hf --hf-model ministral-8b \
     --opponent threshold --opponent-preset informative_v2 \
     --hands 50 --seed 42 --elicit-beliefs --cot -v
 
-# Qwen 7B with logit lens capture
+# Qwen 3 8B with logit lens capture (thinking mode auto-disabled without --cot)
 python run_experiment.py \
-    --agent hf --hf-model qwen-7b \
+    --agent hf --hf-model qwen-8b \
     --opponent threshold --opponent-preset informative_v2 \
     --hands 20 --seed 42 --elicit-beliefs --logit-lens -v
 

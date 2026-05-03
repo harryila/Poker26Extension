@@ -35,8 +35,12 @@ MINISTRAL_8B_MODEL_ID = "mistralai/Ministral-8B-Instruct-2410"
 # supports_system_role: whether the chat template has a native system role.
 #   When False, system message is merged into the first user message.
 # has_thinking_mode: whether the chat template accepts an `enable_thinking` kwarg
-#   (Qwen 3 family). When True, HFAgent passes enable_thinking=self.cot_mode so
-#   thinking is OFF for non-CoT runs and ON when --cot is requested.
+#   (Qwen 3 family). When True, HFAgent ALWAYS passes enable_thinking=False —
+#   prompt-level CoT (--cot) does the reasoning across all families uniformly.
+#   Native thinking is disabled because (a) it invalidates the non-CoT baseline
+#   and (b) combined with --cot it is double-CoT and overflows the token budget
+#   (Qwen 3 emits 1500-3000 chars of <think>...</think> content, far exceeding
+#   DEFAULT_COT_BELIEF_MAX_TOKENS=768). See hf_agent.py for details.
 MODEL_REGISTRY: dict[str, dict] = {
     # ---- 8B class (Tier 1A.small) ----
     "llama-8b": {

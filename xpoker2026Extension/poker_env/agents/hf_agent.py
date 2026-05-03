@@ -161,8 +161,16 @@ class HFAgent(BaseAgent):
         self.model_id = resolve_model_id(raw_model_id)
         self.supports_system_role = model_cfg.get("supports_system_role", True)
         # Qwen 3 ships an `enable_thinking` switch in its chat template that is ON
-        # by default. For non-CoT runs we MUST disable it, otherwise the model
-        # silently performs internal CoT and the cross-family baseline is invalid.
+        # by default. We ALWAYS disable it (see _generate). Two reasons:
+        #   1. For non-CoT runs, leaving it on means the model silently performs
+        #      internal CoT, invalidating the cross-family direct-prompt baseline.
+        #   2. For --cot runs, prompt-level CoT (REASONING:/JSON:) already does
+        #      the reasoning. Leaving native thinking ON is "double CoT" and
+        #      blows the token budget — Qwen 3 routinely emits 1500-3000 chars
+        #      of <think>...</think> content, exceeding DEFAULT_COT_BELIEF_MAX_TOKENS
+        #      (768) and truncating before the JSON is ever generated.
+        # If we ever want to study Qwen's native thinking specifically, that
+        # should be a deliberate, separately-flagged condition.
         self.has_thinking_mode = model_cfg.get("has_thinking_mode", False)
 
         self.temperature = temperature if temperature is not None else DEFAULT_TEMPERATURE
@@ -403,7 +411,7 @@ class HFAgent(BaseAgent):
             "capture_logprobs": self.capture_logprobs,
             "top_logprobs": self.top_logprobs if self.capture_logprobs else 0,
             "has_thinking_mode": self.has_thinking_mode,
-            "enable_thinking": (bool(self.cot_mode) if self.has_thinking_mode else None),
+            "enable_thinking": (False if self.has_thinking_mode else None),
         }
 
     # ========================================================================
@@ -427,7 +435,7 @@ class HFAgent(BaseAgent):
             "add_generation_prompt": True,
         }
         if self.has_thinking_mode:
-            chat_kwargs["enable_thinking"] = bool(self.cot_mode)
+            chat_kwargs["enable_thinking"] = False
         prompt = self.tokenizer.apply_chat_template(messages, **chat_kwargs)
 
         inputs = self.tokenizer(

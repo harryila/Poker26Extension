@@ -1,0 +1,45 @@
+{
+  "files": [
+    {
+      "path": "logs/cot_pilot_qwen8b_t0_s42_informative_v2.jsonl.gz",
+      "n_decisions": 512,
+      "n_belief_attempts": 306,
+      "original_parse_ok": 5,
+      "no_think_tag": 0,
+      "closed_think_stripped": 6,
+      "unterminated_think": 300,
+      "after_fix_b_parse_ok": 5,
+      "newly_recovered": 0,
+      "still_broken_unterminated": 300,
+      "still_broken_other_reasons": {
+        "no_json_extracted": 1
+      },
+      "sample_recoveries": []
+    },
+    {
+      "path": "logs/cot_pilot_qwen8b_t02_s42_informative_v2.jsonl.gz",
+      "n_decisions": 505,
+      "n_belief_attempts": 302,
+      "original_parse_ok": 3,
+      "no_think_tag": 0,
+      "closed_think_stripped": 8,
+      "unterminated_think": 294,
+      "after_fix_b_parse_ok": 3,
+      "newly_recovered": 0,
+      "still_broken_unterminated": 294,
+      "still_broken_other_reasons": {
+        "no_json_extracted": 5
+      },
+      "sample_recoveries": []
+    }
+  ],
+  "totals": {
+    "belief_attempts": 608,
+    "original_parse_ok": 8,
+    "after_fix_b_parse_ok": 8,
+    "newly_recovered_by_fix_b": 0,
+    "still_broken_unterminated_think": 594,
+    "original_parse_rate_pct": 1.3157894736842106,
+    "after_fix_b_parse_rate_pct": 1.3157894736842106
+  }
+}

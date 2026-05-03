@@ -55,11 +55,13 @@
 #
 # Qwen3-8B's chat template enables "thinking mode" by default, which would
 # silently inject internal CoT reasoning and invalidate this baseline.
-# poker_env/agents/hf_agent.py passes enable_thinking=self.cot_mode to the
-# tokenizer ONLY for models flagged has_thinking_mode=True in the registry.
-# Since this script does NOT pass --cot, qwen-8b runs with thinking OFF.
+# Post-bugfix policy (2026-05-03, see updates.md §7): poker_env/agents/hf_agent.py
+# ALWAYS passes enable_thinking=False for models flagged has_thinking_mode=True,
+# regardless of cot_mode. Native thinking is suppressed in all conditions; only
+# prompt-level CoT (--cot) drives reasoning, uniformly across model families.
 # The agent config logged in every JSONL will show enable_thinking: false.
-# A pre-flight check below verifies this and aborts if it's not the case.
+# A pre-flight check below verifies the registry flag is set so the gating
+# code path is exercised.
 # =============================================================================
 
 set -euo pipefail
@@ -145,8 +147,8 @@ assert cfg.get("has_thinking_mode") is True, (
     "the non-CoT baseline. Aborting."
 )
 print(f"  qwen-8b registered: {cfg['model_id']}")
-print(f"  has_thinking_mode=True  -> HFAgent will pass enable_thinking=cot_mode")
-print(f"  This script does NOT pass --cot, so cot_mode=False")
+print(f"  has_thinking_mode=True  -> HFAgent will pass enable_thinking=False")
+print(f"  (post-bugfix policy: native thinking is OFF regardless of cot_mode)")
 print(f"  -> enable_thinking=False (verified in agent config of every log)")
 PY
 echo

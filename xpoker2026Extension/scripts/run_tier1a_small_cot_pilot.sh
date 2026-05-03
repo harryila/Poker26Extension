@@ -106,17 +106,23 @@ temp_suffix() {
     esac
 }
 
-# ---- Pre-flight: confirm Qwen 3 will get enable_thinking=TRUE under --cot ----
+# ---- Pre-flight: confirm Qwen 3 native thinking is OFF under --cot ----
+# Post-bugfix (2026-05-03): native thinking is now ALWAYS off. The previous
+# pilot ran with native thinking ON under --cot, which produced 98% truncated
+# <think> blocks (token budget overflow) and a misleading "1.3% parse rate"
+# for Qwen 8B. Prompt-level CoT (REASONING:/JSON:) does the reasoning uniformly
+# across all families now. See updates.md §7 for the full diagnosis.
 echo "=== Pre-flight: Qwen 3 thinking-mode gating under --cot ==="
 python <<'PY'
 from poker_env.config import MODEL_REGISTRY
 cfg = MODEL_REGISTRY["qwen-8b"]
 assert cfg.get("has_thinking_mode") is True, "qwen-8b missing has_thinking_mode flag"
-print("  qwen-8b has_thinking_mode=True")
+print("  qwen-8b has_thinking_mode=True (registry flag)")
 print("  This script DOES pass --cot, so cot_mode=True")
-print("  -> enable_thinking=True (Qwen 3 native thinking ON during pilot)")
-print("  This is intentional: when the experiment is 'does CoT help?', we want")
-print("  ALL CoT mechanisms on (prompt-level REASONING: + Qwen native thinking).")
+print("  -> HFAgent ALWAYS passes enable_thinking=False (post-bugfix policy)")
+print("  Result: only prompt-level CoT (REASONING:/JSON:) runs; native <think>")
+print("          is suppressed. This makes Qwen directly comparable to Llama")
+print("          and Ministral under --cot, and prevents token-budget overflow.")
 PY
 echo
 

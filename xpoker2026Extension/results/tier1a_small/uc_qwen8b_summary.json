@@ -1,0 +1,25 @@
+{
+  "total_updates": 1475,
+  "by_type": {
+    "CARD_REVEAL": {
+      "n": 619,
+      "llm_magnitude_mean": 0.0,
+      "llm_magnitude_std": 0.0,
+      "oracle_magnitude_mean": 0.015428707571741196,
+      "oracle_magnitude_std": 0.015419132951013926,
+      "correlation_mean": NaN,
+      "direction_agreement_mean": 0.304754211862451,
+      "magnitude_ratio_mean": 0.0
+    },
+    "ACTION": {
+      "n": 856,
+      "llm_magnitude_mean": 0.0,
+      "llm_magnitude_std": 0.0,
+      "oracle_magnitude_mean": 0.02084143800726353,
+      "oracle_magnitude_std": 0.004097746081720499,
+      "correlation_mean": NaN,
+      "direction_agreement_mean": 0.14886515353805072,
+      "magnitude_ratio_mean": 0.0
+    }
+  }
+}

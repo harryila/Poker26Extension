@@ -1,0 +1,15 @@
+{
+  "total_updates": 2,
+  "by_type": {
+    "ACTION": {
+      "n": 2,
+      "llm_magnitude_mean": 0.423260244883379,
+      "llm_magnitude_std": 0.5858835162228477,
+      "oracle_magnitude_mean": 0.014567699292741758,
+      "oracle_magnitude_std": 0.0004843913005136503,
+      "correlation_mean": 0.24352248980208402,
+      "direction_agreement_mean": 0.5714285714285714,
+      "magnitude_ratio_mean": 29.739793467970802
+    }
+  }
+}

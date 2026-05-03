@@ -209,9 +209,8 @@ run_model() {
         fi
         echo "    [enrich] $f -> $out_enr"
         python -m analysis.build_dataset \
-            --input "$f" \
-            --output "$out_enr" \
-            --opponent-preset "$OPPONENT_PRESET"
+            "$f" "$out_enr" \
+            --opponent "$OPPONENT_PRESET"
     done
 
     # ---- Phase 3: per-model analysis ----

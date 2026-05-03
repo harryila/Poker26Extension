@@ -38,9 +38,8 @@ for f in "${filtered[@]}"; do
     fi
     echo "[enrich] $f -> $out"
     python -m analysis.build_dataset \
-        --input "$f" \
-        --output "$out" \
-        --opponent-preset "$OPPONENT_PRESET"
+        "$f" "$out" \
+        --opponent "$OPPONENT_PRESET"
 done
 
 echo ""

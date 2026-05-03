@@ -152,12 +152,18 @@ PY
 echo
 
 # ---- Per-model run/enrich/analyze loop ----
-# Format: "<short_name>:<filename_tag>"
+# Format: "<short_name>:<filename_tag>:<hub_dirname>"
 MODELS=(
-    "llama-8b:llama8b"
-    "qwen-8b:qwen8b"
-    "ministral-8b:ministral8b"
+    "llama-8b:llama8b:models--meta-llama--Llama-3.1-8B-Instruct"
+    "qwen-8b:qwen8b:models--Qwen--Qwen3-8B"
+    "ministral-8b:ministral8b:models--mistralai--Ministral-8B-Instruct-2410"
 )
+
+# When PURGE_HF_CACHE_AFTER_MODEL=1, delete each model's weights after its
+# run/enrich/analyze finishes. Required when the HF cache filesystem has a
+# tight quota (e.g. RunPod /workspace MooseFS) and the 3 x 8B model weights
+# (~48GB) won't fit simultaneously.
+PURGE_HF_CACHE_AFTER_MODEL="${PURGE_HF_CACHE_AFTER_MODEL:-0}"
 
 run_model() {
     local short="$1"
@@ -210,9 +216,8 @@ run_model() {
         fi
         echo "    [enrich] $f -> $out_enr"
         python -m analysis.build_dataset \
-            --input "$f" \
-            --output "$out_enr" \
-            --opponent-preset "$OPPONENT_PRESET"
+            "$f" "$out_enr" \
+            --opponent "$OPPONENT_PRESET"
     done
 
     # ---- Phase 3: per-model analysis ----
@@ -243,9 +248,22 @@ run_model() {
 
 # ---- Run each model in turn ----
 for entry in "${MODELS[@]}"; do
-    short="${entry%%:*}"
-    tag="${entry#*:}"
+    IFS=':' read -r short tag hub_dirname <<< "$entry"
     run_model "$short" "$tag"
+    if [[ "$PURGE_HF_CACHE_AFTER_MODEL" == "1" ]]; then
+        hub_root="${HF_HUB_CACHE:-${HF_HOME:-$HOME/.cache/huggingface}/hub}"
+        target="${hub_root%/}/${hub_dirname}"
+        if [[ -d "$target" ]]; then
+            echo "  [purge] freeing ${target}"
+            rm -rf "$target"
+        fi
+        # Also purge any xet temp/incomplete data so the next download starts clean.
+        xet_dir="$(dirname "$hub_root")/xet"
+        if [[ -d "$xet_dir" ]]; then
+            echo "  [purge] freeing ${xet_dir}"
+            rm -rf "${xet_dir:?}"/*
+        fi
+    fi
 done
 
 # ---- Final cross-model pool ----

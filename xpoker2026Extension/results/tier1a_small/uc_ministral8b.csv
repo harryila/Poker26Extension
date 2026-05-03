@@ -1,0 +1,3 @@
+hand_id,source,prev_decision_idx,curr_decision_idx,prev_street,curr_street,update_type,llm_magnitude,oracle_magnitude,correlation,direction_agreement,magnitude_ratio
+5c7a327e,scaled_ministral8b_t02_s42_informative_v2_enriched.jsonl,2,4,FLOP,FLOP,ACTION,0.8375424521899733,0.014225182919400784,0.6538742086359268,0.7857142857142857,58.87744691477426
+ade5a3f9,scaled_ministral8b_t02_s42_informative_v2_enriched.jsonl,2,4,FLOP,FLOP,ACTION,0.008978037576784753,0.01491021566608273,-0.16682922903175879,0.35714285714285715,0.6021400211673463

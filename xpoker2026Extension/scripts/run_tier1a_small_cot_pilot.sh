@@ -120,12 +120,18 @@ print("  ALL CoT mechanisms on (prompt-level REASONING: + Qwen native thinking).
 PY
 echo
 
-# Format: "<short_name>:<filename_tag>"
+# Format: "<short_name>:<filename_tag>:<hub_dirname>"
 MODELS=(
-    "llama-8b:llama8b"
-    "qwen-8b:qwen8b"
-    "ministral-8b:ministral8b"
+    "llama-8b:llama8b:models--meta-llama--Llama-3.1-8B-Instruct"
+    "qwen-8b:qwen8b:models--Qwen--Qwen3-8B"
+    "ministral-8b:ministral8b:models--mistralai--Ministral-8B-Instruct-2410"
 )
+
+# Rolling-cache mode: free each model's weights after its run/enrich/analyze
+# completes. Required when HF cache lives on a tight-quota mount (e.g. /dev/shm
+# tmpfs or 20 GB overlay) where the 3 x 8B model weights (~48 GB) won't fit
+# simultaneously. Same pattern as run_tier1a_small.sh.
+PURGE_HF_CACHE_AFTER_MODEL="${PURGE_HF_CACHE_AFTER_MODEL:-0}"
 
 run_model() {
     local short="$1" tag="$2"
@@ -174,8 +180,8 @@ run_model() {
         fi
         echo "    [enrich] $f -> $out_enr"
         python -m analysis.build_dataset \
-            --input "$f" --output "$out_enr" \
-            --opponent-preset "$OPPONENT_PRESET"
+            "$f" "$out_enr" \
+            --opponent "$OPPONENT_PRESET"
     done
 
     # ---- Phase 3: standard PCE + dedicated CoT analysis ----
@@ -202,8 +208,21 @@ run_model() {
 }
 
 for entry in "${MODELS[@]}"; do
-    short="${entry%%:*}"; tag="${entry#*:}"
+    IFS=':' read -r short tag hub_dirname <<< "$entry"
     run_model "$short" "$tag"
+    if [[ "$PURGE_HF_CACHE_AFTER_MODEL" == "1" ]]; then
+        hub_root="${HF_HUB_CACHE:-${HF_HOME:-$HOME/.cache/huggingface}/hub}"
+        target="${hub_root%/}/${hub_dirname}"
+        if [[ -d "$target" ]]; then
+            echo "  [purge] freeing ${target}"
+            rm -rf "$target"
+        fi
+        xet_dir="$(dirname "$hub_root")/xet"
+        if [[ -d "$xet_dir" ]]; then
+            echo "  [purge] freeing ${xet_dir}"
+            rm -rf "${xet_dir:?}"/*
+        fi
+    fi
 done
 
 # =============================================================================

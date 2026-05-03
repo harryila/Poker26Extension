@@ -1,0 +1,50 @@
+{
+  "cot_pilot_qwen8b_t02_s42_informative_v2_enriched": {
+    "total_decisions": 505,
+    "decisions_with_cot": 22,
+    "parse_success_rate": 0.023762376237623763,
+    "fallback_rate": 0.5742574257425742,
+    "reasoning": {
+      "avg_length": 327.22727272727275,
+      "frac_mentions_opponent_actions": 1.0,
+      "frac_mentions_board_texture": 0.6363636363636364,
+      "frac_mentions_hand_combos": 0.8636363636363636,
+      "avg_quality_score": 0.8333333333333333
+    },
+    "belief_js_to_card_only": {
+      "mean": 0.45198613840857416,
+      "std": 0.04000500153516,
+      "n": 3
+    },
+    "belief_js_to_strategy_aware": {
+      "mean": 0.4984155921627409,
+      "std": 0.038494447752645856,
+      "n": 3
+    },
+    "quality_js_correlation": null
+  },
+  "cot_pilot_qwen8b_t0_s42_informative_v2_enriched": {
+    "total_decisions": 512,
+    "decisions_with_cot": 19,
+    "parse_success_rate": 0.02734375,
+    "fallback_rate": 0.5703125,
+    "reasoning": {
+      "avg_length": 329.3157894736842,
+      "frac_mentions_opponent_actions": 1.0,
+      "frac_mentions_board_texture": 0.631578947368421,
+      "frac_mentions_hand_combos": 0.9473684210526315,
+      "avg_quality_score": 0.8596491228070174
+    },
+    "belief_js_to_card_only": {
+      "mean": 0.492736789472484,
+      "std": 0.01597579893091381,
+      "n": 5
+    },
+    "belief_js_to_strategy_aware": {
+      "mean": 0.5404651155935065,
+      "std": 0.013360978979812973,
+      "n": 5
+    },
+    "quality_js_correlation": null
+  }
+}

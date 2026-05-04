@@ -1,0 +1,146 @@
+{
+  "cot_ministral8b_t02_s123_informative_v2_enriched": {
+    "total_decisions": 206,
+    "decisions_with_cot": 104,
+    "parse_success_rate": 0.49514563106796117,
+    "fallback_rate": 0.009708737864077669,
+    "reasoning": {
+      "avg_length": 449.40384615384613,
+      "frac_mentions_opponent_actions": 1.0,
+      "frac_mentions_board_texture": 0.9615384615384616,
+      "frac_mentions_hand_combos": 1.0,
+      "avg_quality_score": 0.9871794871794872
+    },
+    "belief_js_to_card_only": {
+      "mean": 0.5368294594669558,
+      "std": 0.02494040523347077,
+      "n": 104
+    },
+    "belief_js_to_strategy_aware": {
+      "mean": 0.5194945591270563,
+      "std": 0.023397040116213377,
+      "n": 104
+    },
+    "quality_js_correlation": 0.06208318831588907
+  },
+  "cot_ministral8b_t02_s42_informative_v2_enriched": {
+    "total_decisions": 519,
+    "decisions_with_cot": 309,
+    "parse_success_rate": 0.2350674373795761,
+    "fallback_rate": 0.3603082851637765,
+    "reasoning": {
+      "avg_length": 555.1359223300971,
+      "frac_mentions_opponent_actions": 1.0,
+      "frac_mentions_board_texture": 0.970873786407767,
+      "frac_mentions_hand_combos": 0.9902912621359223,
+      "avg_quality_score": 0.9870550161812298
+    },
+    "belief_js_to_card_only": {
+      "mean": 0.52114878254804,
+      "std": 0.025434971797139317,
+      "n": 308
+    },
+    "belief_js_to_strategy_aware": {
+      "mean": 0.5713130578018042,
+      "std": 0.024042747109333327,
+      "n": 308
+    },
+    "quality_js_correlation": -0.05650195972263873
+  },
+  "cot_ministral8b_t02_s456_informative_v2_enriched": {
+    "total_decisions": 221,
+    "decisions_with_cot": 114,
+    "parse_success_rate": 0.4841628959276018,
+    "fallback_rate": 0.03167420814479638,
+    "reasoning": {
+      "avg_length": 477.0263157894737,
+      "frac_mentions_opponent_actions": 1.0,
+      "frac_mentions_board_texture": 0.9824561403508771,
+      "frac_mentions_hand_combos": 1.0,
+      "avg_quality_score": 0.9941520467836257
+    },
+    "belief_js_to_card_only": {
+      "mean": 0.5437643819524564,
+      "std": 0.03964550942385902,
+      "n": 113
+    },
+    "belief_js_to_strategy_aware": {
+      "mean": 0.525826058019945,
+      "std": 0.0406650665712039,
+      "n": 113
+    },
+    "quality_js_correlation": -0.32908137578160607
+  },
+  "cot_ministral8b_t0_s123_informative_v2_enriched": {
+    "total_decisions": 203,
+    "decisions_with_cot": 102,
+    "parse_success_rate": 0.4975369458128079,
+    "fallback_rate": 0.0049261083743842365,
+    "reasoning": {
+      "avg_length": 470.7156862745098,
+      "frac_mentions_opponent_actions": 1.0,
+      "frac_mentions_board_texture": 0.9705882352941176,
+      "frac_mentions_hand_combos": 1.0,
+      "avg_quality_score": 0.9901960784313726
+    },
+    "belief_js_to_card_only": {
+      "mean": 0.5351403000057429,
+      "std": 0.01732821501321907,
+      "n": 102
+    },
+    "belief_js_to_strategy_aware": {
+      "mean": 0.5172368650517155,
+      "std": 0.017960788288411755,
+      "n": 102
+    },
+    "quality_js_correlation": 0.07645626186859343
+  },
+  "cot_ministral8b_t0_s42_informative_v2_enriched": {
+    "total_decisions": 525,
+    "decisions_with_cot": 313,
+    "parse_success_rate": 0.21714285714285714,
+    "fallback_rate": 0.379047619047619,
+    "reasoning": {
+      "avg_length": 555.7987220447284,
+      "frac_mentions_opponent_actions": 1.0,
+      "frac_mentions_board_texture": 0.9968051118210862,
+      "frac_mentions_hand_combos": 0.987220447284345,
+      "avg_quality_score": 0.9946751863684771
+    },
+    "belief_js_to_card_only": {
+      "mean": 0.5216024686993258,
+      "std": 0.014508376337800713,
+      "n": 311
+    },
+    "belief_js_to_strategy_aware": {
+      "mean": 0.5719410936165069,
+      "std": 0.01593579452523828,
+      "n": 311
+    },
+    "quality_js_correlation": 0.03328807059259396
+  },
+  "cot_ministral8b_t0_s456_informative_v2_enriched": {
+    "total_decisions": 209,
+    "decisions_with_cot": 106,
+    "parse_success_rate": 0.49282296650717705,
+    "fallback_rate": 0.014354066985645933,
+    "reasoning": {
+      "avg_length": 481.00943396226415,
+      "frac_mentions_opponent_actions": 1.0,
+      "frac_mentions_board_texture": 0.9811320754716981,
+      "frac_mentions_hand_combos": 1.0,
+      "avg_quality_score": 0.9937106918238994
+    },
+    "belief_js_to_card_only": {
+      "mean": 0.5381455052391231,
+      "std": 0.039228522665701426,
+      "n": 106
+    },
+    "belief_js_to_strategy_aware": {
+      "mean": 0.5202662312349796,
+      "std": 0.041107726932143346,
+      "n": 106
+    },
+    "quality_js_correlation": 0.046607506850172
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "llama8b": {
+    "no_cot": {
+      "files": 6,
+      "decisions": 8989,
+      "belief_attempts": 4949,
+      "parse_ok": 4949,
+      "parse_rate_pct": 100.0,
+      "trash_one_hot": 4949,
+      "trash_one_hot_pct_of_parsed": 100.0,
+      "actions": {
+        "BET_OR_RAISE": 5995,
+        "CHECK_OR_CALL": 2685,
+        "FOLD": 309
+      },
+      "n_reasoning_traces": 0,
+      "mean_reasoning_chars": 0
+    },
+    "cot": {
+      "files": 6,
+      "decisions": 3446,
+      "belief_attempts": 2035,
+      "parse_ok": 2028,
+      "parse_rate_pct": 99.65601965601965,
+      "trash_one_hot": 30,
+      "trash_one_hot_pct_of_parsed": 1.4792899408284024,
+      "actions": {
+        "CHECK_OR_CALL": 1579,
+        "BET_OR_RAISE": 1290,
+        "FOLD": 577
+      },
+      "n_reasoning_traces": 2035,
+      "mean_reasoning_chars": 815.2820638820639
+    }
+  },
+  "qwen8b": {
+    "no_cot": {
+      "files": 6,
+      "decisions": 3571,
+      "belief_attempts": 2075,
+      "parse_ok": 2075,
+      "parse_rate_pct": 100.0,
+      "trash_one_hot": 2075,
+      "trash_one_hot_pct_of_parsed": 100.0,
+      "actions": {
+        "BET_OR_RAISE": 1938,
+        "CHECK_OR_CALL": 1039,
+        "FOLD": 594
+      },
+      "n_reasoning_traces": 0,
+      "mean_reasoning_chars": 0
+    },
+    "cot": {
+      "files": 6,
+      "decisions": 3999,
+      "belief_attempts": 2302,
+      "parse_ok": 2296,
+      "parse_rate_pct": 99.73935708079931,
+      "trash_one_hot": 6,
+      "trash_one_hot_pct_of_parsed": 0.2613240418118467,
+      "actions": {
+        "BET_OR_RAISE": 1921,
+        "CHECK_OR_CALL": 1552,
+        "FOLD": 526
+      },
+      "n_reasoning_traces": 2302,
+      "mean_reasoning_chars": 618.0390964378801
+    }
+  },
+  "ministral8b": {
+    "no_cot": {
+      "files": 6,
+      "decisions": 1644,
+      "belief_attempts": 844,
+      "parse_ok": 49,
+      "parse_rate_pct": 5.80568720379147,
+      "trash_one_hot": 0,
+      "trash_one_hot_pct_of_parsed": 0.0,
+      "actions": {
+        "BET_OR_RAISE": 756,
+        "FOLD": 600,
+        "CHECK_OR_CALL": 288
+      },
+      "n_reasoning_traces": 0,
+      "mean_reasoning_chars": 0
+    },
+    "cot": {
+      "files": 6,
+      "decisions": 1883,
+      "belief_attempts": 1048,
+      "parse_ok": 1044,
+      "parse_rate_pct": 99.61832061068702,
+      "trash_one_hot": 1,
+      "trash_one_hot_pct_of_parsed": 0.09578544061302681,
+      "actions": {
+        "CHECK_OR_CALL": 653,
+        "BET_OR_RAISE": 634,
+        "FOLD": 596
+      },
+      "n_reasoning_traces": 1048,
+      "mean_reasoning_chars": 520.6307251908397
+    }
+  }
+}

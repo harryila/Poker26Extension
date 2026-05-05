@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Tier 1A.large — Scaled non-CoT baseline at 70B class
+# Tier 1A.large — Scaled non-CoT baseline at 70B class (+ logit-lens by default)
 # =============================================================================
 #
 # What this script does (in order, per model):
 #   1. Run all 6 cells: 3 seeds (42, 123, 456) x 2 temps (0.0, 0.2)
+#      With --capture-logprobs (always) and --logit-lens (default ON; see env).
 #   2. Enrich each cell's log with oracle posteriors (StrategyAware + CardOnly)
-#   3. Run PCE distribution + update coherence on that model's pooled logs
-#   4. Move on to the next model
+#   3. Run PCE distribution + update coherence on that model's pooled logs.
+#   4. If logit-lens is ON, run analyze_logit_lens per cell to dump
+#      crystallization-layer + per-layer entropy curves to results/.
+#   5. Move on to the next model.
 #
 # Models (~70B class, parameter-matched within ~3%):
 #   - llama-70b      (meta-llama/Llama-3.1-70B-Instruct)   <-- paper anchor
@@ -19,18 +22,33 @@
 #   llama-3.3-70b  : 350 hands/cell  (paper-quality)
 #   qwen-72b       : 350 hands/cell  (paper-quality)
 #   Total: 500*6 + 350*6 + 350*6 = 7,200 hands of 70B HF compute.
-#   Wall-clock: roughly overnight on one H100 80GB (or multi-GPU H100/A100).
+#
+# Wall-clock estimates:
+#   - WITHOUT logit-lens (CAPTURE_LOGIT_LENS=0):  ~overnight on one H100 80GB.
+#   - WITH    logit-lens (default):               ~1.5x-2x slower than that.
+#       The extra cost is per-token lm_head projections: 80 layers × ~500
+#       generated tokens × (8192 × 128000) matmuls per decision. Hooks store
+#       hidden states on CPU; expect +1-3 GB CPU RAM and a per-cell sidecar
+#       file of ~50-300 MB. If wall-clock matters more than mechanistic data,
+#       disable logit-lens for this run and re-run a smaller logit-lens-only
+#       grid later (mirror of scripts/run_tier1a_small_cot_logitlens.sh).
 #
 # Outputs (written incrementally as each model completes):
 #   logs/scaled_<tag>_<temp>_s<seed>_informative_v2.jsonl            (raw)
 #   logs/scaled_<tag>_<temp>_s<seed>_informative_v2_enriched.jsonl   (enriched)
+#   logs/scaled_<tag>_<temp>_s<seed>_informative_v2_logit_lens.jsonl (sidecar; ON by default)
 #   results/tier1a_large/pce_<tag>_records.csv                       (per-decision)
 #   results/tier1a_large/pce_<tag>_summary.csv                       (clustered bootstrap)
 #   results/tier1a_large/uc_<tag>.csv + uc_<tag>_summary.json
+#   results/tier1a_large/logitlens_<tag>_<temp>_s<seed>.json         (per-cell, if ON)
+#   results/tier1a_large/entropy_<tag>_<temp>_s<seed>.png            (per-cell, if ON)
 #   results/tier1a_large/pce_pool_summary.csv                        (cross-model pool)
 #
 # Failure isolation: if model N crashes, models 1..N-1 results are already on
 # disk. Re-running this script will skip any cell whose log already exists.
+#
+# To disable logit-lens (faster, smaller logs):
+#   CAPTURE_LOGIT_LENS=0 bash scripts/run_tier1a_large.sh
 #
 # =============================================================================
 # tmux behaviour
@@ -117,6 +135,20 @@ OPPONENT_PRESET="informative_v2"
 LLAMA_70B_HANDS="${LLAMA_70B_HANDS:-500}"
 CROSS_FAMILY_HANDS="${CROSS_FAMILY_HANDS:-350}"
 
+# Logit-lens capture: ON by default. Set CAPTURE_LOGIT_LENS=0 to skip the
+# per-token per-layer lm_head projections (faster wall-clock, no sidecars,
+# loses Tier 5 mechanistic data). See header comment for cost estimates.
+CAPTURE_LOGIT_LENS="${CAPTURE_LOGIT_LENS:-1}"
+if [[ "$CAPTURE_LOGIT_LENS" == "1" ]]; then
+    LOGIT_LENS_FLAG=(--logit-lens)
+    echo "Logit-lens capture: ON  (sidecars at logs/scaled_*_logit_lens.jsonl)"
+    echo "  -> set CAPTURE_LOGIT_LENS=0 to disable for faster runs."
+else
+    LOGIT_LENS_FLAG=()
+    echo "Logit-lens capture: OFF (CAPTURE_LOGIT_LENS=0)"
+fi
+echo
+
 temp_suffix() {
     case "$1" in
         0.0|0) echo "t0" ;;
@@ -149,6 +181,20 @@ except ImportError:
 PY
 echo
 
+# ---- Pre-flight 2: logit-lens module imports cleanly (only if enabled) ----
+# Catch import / architecture-accessor failures BEFORE we spend hours loading
+# a 70B model. Same check the small-tier logit-lens script runs.
+if [[ "$CAPTURE_LOGIT_LENS" == "1" ]]; then
+    echo "=== Pre-flight: logit-lens module import ==="
+    python <<'PY'
+from poker_env.interp.logit_lens import LogitLensExtractor
+print("  LogitLensExtractor imported OK from poker_env.interp.logit_lens")
+print("  (architecture support: model.model.layers + model.lm_head;")
+print("   verified for Llama 3.x / Qwen 2.x — both 70B-class models in this run.)")
+PY
+    echo
+fi
+
 # ---- Per-model run/enrich/analyze loop ----
 # Format: "<short_name>:<filename_tag>:<hands>"
 MODELS=(
@@ -180,7 +226,7 @@ run_model() {
                 echo "  [skip] $out already exists"
                 continue
             fi
-            echo "  [run]  $out  (seed=$seed temp=$temp hands=$hands)"
+            echo "  [run]  $out  (seed=$seed temp=$temp hands=$hands logit_lens=$CAPTURE_LOGIT_LENS)"
             python run_experiment.py \
                 --agent hf \
                 --hf-model "$short" \
@@ -191,6 +237,7 @@ run_model() {
                 --temperature "$temp" \
                 --elicit-beliefs \
                 --capture-logprobs \
+                "${LOGIT_LENS_FLAG[@]}" \
                 --out "$out" \
                 -v
         done
@@ -232,10 +279,40 @@ run_model() {
         --output "${RESULTS_DIR}/uc_${tag}.csv" \
         --output-summary "${RESULTS_DIR}/uc_${tag}_summary.json"
 
+    # ---- Phase 3b: per-cell logit-lens analysis (only if sidecars exist) ----
+    # analyze_logit_lens.py operates on a single sidecar at a time. We loop
+    # over whatever sidecars actually got produced so partial runs still get
+    # partial results.
+    if [[ "$CAPTURE_LOGIT_LENS" == "1" ]]; then
+        echo
+        echo "  [analyze_logit_lens] $tag"
+        shopt -s nullglob
+        for sidecar in "${LOGS_DIR}"/scaled_${tag}_*_${OPPONENT_PRESET}_logit_lens.jsonl; do
+            local stem
+            stem="$(basename "${sidecar%_logit_lens.jsonl}")"
+            local cell_id="${stem#scaled_${tag}_}"  # e.g. t0_s42_informative_v2
+            local json_out="${RESULTS_DIR}/logitlens_${tag}_${cell_id}.json"
+            local plot_out="${RESULTS_DIR}/entropy_${tag}_${cell_id}.png"
+            if [[ -f "$json_out" ]]; then
+                echo "    [skip] $json_out already exists"
+                continue
+            fi
+            echo "    [analyze] $sidecar -> $json_out"
+            python -m analysis.analyze_logit_lens \
+                "$sidecar" \
+                --json-out "$json_out" \
+                --plot "$plot_out" \
+                || echo "    (analyze_logit_lens failed for $sidecar)"
+        done
+    fi
+
     local elapsed=$(( $(date +%s) - started_at ))
     echo
     echo "## DONE $short in ${elapsed}s"
     echo "## Results: ${RESULTS_DIR}/pce_${tag}_*.csv, uc_${tag}.*"
+    if [[ "$CAPTURE_LOGIT_LENS" == "1" ]]; then
+        echo "## Logit-lens: ${RESULTS_DIR}/logitlens_${tag}_*.json (+ entropy_${tag}_*.png)"
+    fi
     echo
 }
 
@@ -275,4 +352,11 @@ echo "Tier 1A.large COMPLETE."
 echo "  Logs:    $LOGS_DIR/scaled_{llama70b,llama33-70b,qwen72b}_*"
 echo "  Results: $RESULTS_DIR/"
 echo "  Compare each model's mean_js_to_sa to the paper anchor 0.014."
+if [[ "$CAPTURE_LOGIT_LENS" == "1" ]]; then
+    echo
+    echo "  Logit-lens sidecars: $LOGS_DIR/scaled_*_logit_lens.jsonl"
+    echo "  Per-cell descriptive stats: $RESULTS_DIR/logitlens_*.json"
+    echo "  (Crystallization-layer + per-layer entropy curves; full failure-mode"
+    echo "   cross-join lives in analysis/analyze_logit_lens_by_failure_mode.py — TODO)"
+fi
 echo "============================================================"

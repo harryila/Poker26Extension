@@ -1,0 +1,21 @@
+{
+  "n": 221,
+  "mean_pot_odds": 0.23223982805429863,
+  "mean_equity_truth": 0.4991934886877829,
+  "frac_equity_threshold_correct": 0.11504424778761062,
+  "frac_ev_truth_optimal": 0.2986425339366516,
+  "frac_ev_oracle_optimal": 0.26244343891402716,
+  "frac_ev_belief_optimal": 0.0,
+  "mean_ev_truth_regret": 1.711011764705883,
+  "mean_ev_oracle_regret": 1.4410610859728503,
+  "mean_ev_belief_regret": null,
+  "frac_threshold_agrees_with_ev_truth": 0.34841628959276016,
+  "n_threshold_vs_ev_compared": 221,
+  "input": "logs/cot_ministral8b_t02_s456_informative_v2_enriched.jsonl.gz",
+  "output": "results/pot_odds_full_grid/cot_ministral8b_t02_s456.csv",
+  "n_seen": 221,
+  "n_skipped": 0,
+  "num_rollouts": 30,
+  "samples_per_bucket": 2,
+  "opponent_preset": "informative_v2"
+}

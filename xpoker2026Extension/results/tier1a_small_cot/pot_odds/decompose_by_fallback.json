@@ -1,0 +1,86 @@
+{
+  "Ministral CoT t=0 s42": {
+    "clean": {
+      "n": 114,
+      "mean_ev_truth_regret": 3.369592105263158,
+      "frac_ev_truth_optimal": 0.42105263157894735
+    },
+    "illegal_fold_rescued": {
+      "n": 179,
+      "mean_ev_truth_regret": 0.5541916201117318,
+      "frac_ev_truth_optimal": 0.6089385474860335
+    },
+    "no_action": {
+      "n": 212,
+      "mean_ev_truth_regret": 0.7685509433962261,
+      "frac_ev_truth_optimal": 0.41509433962264153
+    },
+    "other_fallback": {
+      "n": 20,
+      "mean_ev_truth_regret": 1.0000000000000002,
+      "frac_ev_truth_optimal": 0.4
+    },
+    "_total": {
+      "n_decisions_in_pot_odds_csv": 525,
+      "n_decisions_classified": 525
+    }
+  },
+  "Ministral CoT t=0.2 s42": {
+    "clean": {
+      "n": 122,
+      "mean_ev_truth_regret": 3.002186065573771,
+      "frac_ev_truth_optimal": 0.4426229508196721
+    },
+    "illegal_fold_rescued": {
+      "n": 160,
+      "mean_ev_truth_regret": 0.5858368750000003,
+      "frac_ev_truth_optimal": 0.5125
+    },
+    "no_action": {
+      "n": 210,
+      "mean_ev_truth_regret": 0.7215861904761904,
+      "frac_ev_truth_optimal": 0.46190476190476193
+    },
+    "other_fallback": {
+      "n": 27,
+      "mean_ev_truth_regret": 0.9555555555555556,
+      "frac_ev_truth_optimal": 0.25925925925925924
+    },
+    "_total": {
+      "n_decisions_in_pot_odds_csv": 519,
+      "n_decisions_classified": 519
+    }
+  },
+  "Ministral non-CoT t=0 s42 (baseline)": {
+    "clean": {
+      "n": 215,
+      "mean_ev_truth_regret": 2.50728511627907,
+      "frac_ev_truth_optimal": 0.31627906976744186
+    },
+    "no_action": {
+      "n": 200,
+      "mean_ev_truth_regret": 0.8010029999999996,
+      "frac_ev_truth_optimal": 0.375
+    },
+    "_total": {
+      "n_decisions_in_pot_odds_csv": 415,
+      "n_decisions_classified": 415
+    }
+  },
+  "Ministral non-CoT t=0.2 s42 (baseline)": {
+    "clean": {
+      "n": 229,
+      "mean_ev_truth_regret": 2.386607423580786,
+      "frac_ev_truth_optimal": 0.3318777292576419
+    },
+    "no_action": {
+      "n": 200,
+      "mean_ev_truth_regret": 0.719334,
+      "frac_ev_truth_optimal": 0.37
+    },
+    "_total": {
+      "n_decisions_in_pot_odds_csv": 429,
+      "n_decisions_classified": 429
+    }
+  }
+}

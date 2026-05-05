@@ -14,7 +14,11 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from poker_env.agents.base import BaseAgent
-from poker_env.agents.json_utils import extract_json, parse_cot_response
+from poker_env.agents.json_utils import (
+    extract_json,
+    normalize_action_str,
+    parse_cot_response,
+)
 from poker_env.agents.prompts import (
     get_action_system_message,
     get_belief_system_message,
@@ -46,7 +50,23 @@ from poker_env.config import (
 
 @dataclass
 class ActionMetadata:
-    """Metadata about action selection for logging."""
+    """Metadata about action selection for logging.
+
+    Diagnostic fields (added 2026-05-03 after the tier1a_small CoT dig-in
+    revealed the old `parse_success` flag conflated three distinct failure
+    modes — see updates.md §11):
+
+      action_json_parsed:      JSON object successfully extracted from raw_response
+      action_recognized:       extracted action string mapped to a known action
+                               (after ACTION_ALIASES normalization in json_utils)
+      action_legal_in_context: that action was in obs.legal_actions
+
+    parse_success == (action_json_parsed AND action_recognized AND
+                      action_legal_in_context). Old logs only have
+    parse_success/fallback_used; the new fields default to None there so old
+    analysis code continues to work and new code can ask for finer-grained
+    failure attribution.
+    """
     parse_success: bool
     fallback_used: bool
     raw_response: str
@@ -59,6 +79,10 @@ class ActionMetadata:
     # Per-token logprobs (parity with APIMetadata; OpenAI-compatible shape).
     # Each entry: {"token": str, "logprob": float, "top_logprobs": [{"token", "logprob"}]}
     logprobs: list[dict] | None = None
+    # Diagnostic split of parse_success — see class docstring.
+    action_json_parsed: bool | None = None
+    action_recognized: bool | None = None
+    action_legal_in_context: bool | None = None
 
     def to_dict(self) -> dict:
         d = {
@@ -74,6 +98,12 @@ class ActionMetadata:
         }
         if self.logprobs is not None:
             d["logprobs"] = self.logprobs
+        if self.action_json_parsed is not None:
+            d["action_json_parsed"] = self.action_json_parsed
+        if self.action_recognized is not None:
+            d["action_recognized"] = self.action_recognized
+        if self.action_legal_in_context is not None:
+            d["action_legal_in_context"] = self.action_legal_in_context
         return d
 
 
@@ -272,27 +302,47 @@ class HFAgent(BaseAgent):
             parsed = extract_json(raw_response)
             self._last_action_cot_reasoning = None
 
-        if parsed and "action" in parsed and isinstance(parsed["action"], str):
-            action_str = parsed["action"].upper()
+        action_map = {
+            "FOLD": FOLD,
+            "CHECK_OR_CALL": CHECK_OR_CALL,
+            "BET_OR_RAISE": BET_OR_RAISE,
+        }
 
-            action_map = {
-                "FOLD": FOLD,
-                "CHECK_OR_CALL": CHECK_OR_CALL,
-                "BET_OR_RAISE": BET_OR_RAISE,
-            }
-            action_obj = action_map.get(action_str)
-            if action_obj and action_obj in obs.legal_actions:
-                return action_obj, ActionMetadata(
-                    parse_success=True,
-                    fallback_used=False,
-                    raw_response=raw_response,
-                    action_chosen=action_str,
-                    prompt_hash=prompt_hash,
-                    prompt_template_id=template_id,
-                    **base_metadata,
-                )
+        # Diagnostic flags — see ActionMetadata docstring.
+        json_parsed = bool(parsed and "action" in parsed and isinstance(parsed["action"], str))
+        recognized = False
+        legal = False
+        action_str_for_log: str | None = None
+        action_obj = None
 
-        return self._fallback_action(obs, raw_response, prompt_hash, template_id, base_metadata)
+        if json_parsed:
+            # Normalize aliases like "CHECK"/"CALL"/"BET"/"RAISE" before lookup.
+            action_str_for_log = normalize_action_str(parsed["action"])
+            action_obj = action_map.get(action_str_for_log)
+            recognized = action_obj is not None
+            legal = recognized and action_obj in obs.legal_actions
+
+        if json_parsed and recognized and legal:
+            return action_obj, ActionMetadata(
+                parse_success=True,
+                fallback_used=False,
+                raw_response=raw_response,
+                action_chosen=action_str_for_log,
+                prompt_hash=prompt_hash,
+                prompt_template_id=template_id,
+                action_json_parsed=True,
+                action_recognized=True,
+                action_legal_in_context=True,
+                **base_metadata,
+            )
+
+        return self._fallback_action(
+            obs, raw_response, prompt_hash, template_id, base_metadata,
+            action_json_parsed=json_parsed,
+            action_recognized=recognized,
+            action_legal_in_context=legal,
+            attempted_action_str=action_str_for_log,
+        )
 
     def belief(self, obs: Obs) -> dict | None:
         belief, metadata = self.belief_with_metadata(obs)
@@ -793,6 +843,10 @@ class HFAgent(BaseAgent):
         prompt_hash: str,
         template_id: str,
         base_metadata: dict,
+        action_json_parsed: bool | None = None,
+        action_recognized: bool | None = None,
+        action_legal_in_context: bool | None = None,
+        attempted_action_str: str | None = None,
     ) -> tuple[Action, ActionMetadata]:
         if not obs.legal_actions:
             raise ValueError("No legal actions available for fallback")
@@ -803,6 +857,9 @@ class HFAgent(BaseAgent):
         else:
             chosen = obs.legal_actions[0]
 
+        # We log action_chosen as the fallback's choice (what actually got
+        # played). The diagnostic flags tell the analysis pipeline *why* we
+        # ended up in fallback (JSON failed vs alias unrecognized vs illegal).
         return chosen, ActionMetadata(
             parse_success=False,
             fallback_used=True,
@@ -810,5 +867,8 @@ class HFAgent(BaseAgent):
             action_chosen=chosen.type.value,
             prompt_hash=prompt_hash,
             prompt_template_id=template_id,
+            action_json_parsed=action_json_parsed,
+            action_recognized=action_recognized,
+            action_legal_in_context=action_legal_in_context,
             **base_metadata,
         )

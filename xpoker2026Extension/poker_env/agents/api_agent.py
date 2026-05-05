@@ -12,7 +12,11 @@ import hashlib
 from dataclasses import dataclass
 
 from poker_env.agents.base import BaseAgent
-from poker_env.agents.json_utils import extract_json, parse_cot_response
+from poker_env.agents.json_utils import (
+    extract_json,
+    normalize_action_str,
+    parse_cot_response,
+)
 from poker_env.agents.prompts import (
     get_action_system_message,
     get_belief_system_message,
@@ -39,7 +43,13 @@ from poker_env.config import (
 
 @dataclass
 class APIMetadata:
-    """Metadata from an API call."""
+    """Metadata from an API call.
+
+    Diagnostic action fields (added 2026-05-03 — parity with
+    HFAgent.ActionMetadata, see updates.md §11):
+      action_json_parsed / action_recognized / action_legal_in_context
+    Default to None on belief calls and on old logs.
+    """
     parse_success: bool
     fallback_used: bool
     raw_response: str
@@ -63,6 +73,10 @@ class APIMetadata:
     repair_distance_l1: float | None = None
     repair_distance_l2: float | None = None
     belief_schema_id: str | None = None
+    # Action-failure diagnostic split — see class docstring.
+    action_json_parsed: bool | None = None
+    action_recognized: bool | None = None
+    action_legal_in_context: bool | None = None
 
     def to_dict(self) -> dict:
         d = {
@@ -96,6 +110,12 @@ class APIMetadata:
             d["repair_distance_l2"] = self.repair_distance_l2
         if self.belief_schema_id is not None:
             d["belief_schema_id"] = self.belief_schema_id
+        if self.action_json_parsed is not None:
+            d["action_json_parsed"] = self.action_json_parsed
+        if self.action_recognized is not None:
+            d["action_recognized"] = self.action_recognized
+        if self.action_legal_in_context is not None:
+            d["action_legal_in_context"] = self.action_legal_in_context
         return d
 
 
@@ -207,19 +227,37 @@ class APIAgent(BaseAgent):
             parsed = extract_json(raw_response)
             self._last_action_cot_reasoning = None
 
-        if parsed and "action" in parsed and isinstance(parsed["action"], str):
-            action_str = parsed["action"].upper()
-            action_map = {"FOLD": FOLD, "CHECK_OR_CALL": CHECK_OR_CALL, "BET_OR_RAISE": BET_OR_RAISE}
-            action_obj = action_map.get(action_str)
-            if action_obj and action_obj in obs.legal_actions:
-                return action_obj, APIMetadata(
-                    parse_success=True, fallback_used=False,
-                    raw_response=raw_response, action_chosen=action_str,
-                    prompt_hash=prompt_hash, prompt_template_id=template_id,
-                    **call_meta, **base,
-                )
+        action_map = {"FOLD": FOLD, "CHECK_OR_CALL": CHECK_OR_CALL, "BET_OR_RAISE": BET_OR_RAISE}
 
-        return self._fallback_action(obs, raw_response, prompt_hash, template_id, call_meta, base)
+        json_parsed = bool(parsed and "action" in parsed and isinstance(parsed["action"], str))
+        recognized = False
+        legal = False
+        action_str_for_log: str | None = None
+        action_obj = None
+
+        if json_parsed:
+            action_str_for_log = normalize_action_str(parsed["action"])
+            action_obj = action_map.get(action_str_for_log)
+            recognized = action_obj is not None
+            legal = recognized and action_obj in obs.legal_actions
+
+        if json_parsed and recognized and legal:
+            return action_obj, APIMetadata(
+                parse_success=True, fallback_used=False,
+                raw_response=raw_response, action_chosen=action_str_for_log,
+                prompt_hash=prompt_hash, prompt_template_id=template_id,
+                action_json_parsed=True,
+                action_recognized=True,
+                action_legal_in_context=True,
+                **call_meta, **base,
+            )
+
+        return self._fallback_action(
+            obs, raw_response, prompt_hash, template_id, call_meta, base,
+            action_json_parsed=json_parsed,
+            action_recognized=recognized,
+            action_legal_in_context=legal,
+        )
 
     def belief(self, obs: Obs) -> dict | None:
         belief, metadata = self.belief_with_metadata(obs)
@@ -639,6 +677,9 @@ class APIAgent(BaseAgent):
     def _fallback_action(
         self, obs: Obs, raw_response: str, prompt_hash: str,
         template_id: str, call_meta: dict, base: dict,
+        action_json_parsed: bool | None = None,
+        action_recognized: bool | None = None,
+        action_legal_in_context: bool | None = None,
     ) -> tuple[Action, APIMetadata]:
         if not obs.legal_actions:
             raise ValueError("No legal actions available for fallback")
@@ -652,5 +693,8 @@ class APIAgent(BaseAgent):
             parse_success=False, fallback_used=True,
             raw_response=raw_response, action_chosen=chosen.type.value,
             prompt_hash=prompt_hash, prompt_template_id=template_id,
+            action_json_parsed=action_json_parsed,
+            action_recognized=action_recognized,
+            action_legal_in_context=action_legal_in_context,
             **call_meta, **base,
         )

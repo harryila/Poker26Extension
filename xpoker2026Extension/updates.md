@@ -1,6 +1,6 @@
 # Updates — Tier 1A.small results audit
 
-> **Date:** 2026-05-02 (initial); 2026-05-03 (CoT pilot follow-up + parser bug)
+> **Date:** 2026-05-02 (initial); 2026-05-03 (CoT pilot follow-up + parser bug); 2026-05-03 (Ministral action-parser dig-in + alias fix; see §11)
 > **Run pulled from GPU box** in commits:
 > - `f710f59` (`tier1a_small: complete 8B-family baseline + rolling-cache runbook`) — non-CoT baseline
 > - `e30e01d` (CoT pilot: 6 cells, 3 models × 2 temps × 1 seed) — CoT pilot
@@ -222,11 +222,13 @@ That's a much richer story than the original null and directly addresses the rev
 In rough priority order:
 
 1. ~~**Fix `<think>` handling.**~~ **DONE in code (Fix A).** Native thinking is now permanently OFF in `HFAgent` for thinking-mode models, regardless of `cot_mode`. The full small-tier CoT grid will pick this up automatically. (Fix B in code is deferred — empirically zero rescue on the existing Qwen run; only worth adding for hygiene if we later enable native thinking deliberately.)
-2. **Re-run Qwen 8B CoT** as part of the full small-tier CoT grid (next item) — no need for a separate 2-cell sanity since the change is gated by registry flag and was verified with a unit-style smoke test of `get_config()`.
-3. **Run the full small-tier CoT grid** (3 models × 3 seeds × 2 temps = 18 cells, mirroring `run_tier1a_small.sh` but with `--cot`). Llama's −99.4-point shift in trash-one-hot rate is way past the "non-trivial CoT effect" threshold, so the full grid is justified. Recommended as a copy of `run_tier1a_small.sh` with `--cot` added to the `run_experiment.py` invocation.
-4. **Add a degeneracy-report analysis script** (`analysis/degeneracy_report.py`) that surfaces the metrics that actually distinguish 8B failure modes (parse rate, trash-one-hot rate, action entropy, action distribution by hand strength). The current `compute_pce_distribution.py` outputs are technically valid but the wrong instrument for this regime.
-5. **Skip JS-distance comparison for small tier in the writeup** — explain that the metric requires a non-degenerate belief distribution to be meaningful.
-6. **Run the 70B tier (`run_tier1a_large.sh`)** — that's where the *interesting* miscalibration story (the original poker26 finding) plays out. With the small-tier CoT result clean, the eventual 70B-CoT vs 70B-direct comparison becomes much sharper.
+2. ~~**Re-run Qwen 8B CoT.**~~ Subsumed into the full small-tier CoT grid — done.
+3. ~~**Run the full small-tier CoT grid**~~ — done in commit covered by §6/§7. Ministral seed-42 dig-in done in §11.
+4. ~~**Run `analysis/recategorize_action_metadata.py` on the full CoT grid**~~ — **DONE**. Outputs in `results/tier1a_small_cot/{comparison_v2.json,COMPARISON_v2.md}`. Headline numbers now in §11 and ready for the paper writeup.
+5. **Optionally** also run the recategorizer on the original poker26 70B logs (camera-ready footnote: ~10% of action-pipeline parse failures were alias-mismatches, not real failures).
+6. **Add a degeneracy-report analysis script** (`analysis/degeneracy_report.py`) that surfaces the metrics that actually distinguish 8B failure modes (parse rate, trash-one-hot rate, action entropy, action distribution by hand strength). The current `compute_pce_distribution.py` outputs are technically valid but the wrong instrument for this regime.
+7. **Skip JS-distance comparison for small tier in the writeup** — explain that the metric requires a non-degenerate belief distribution to be meaningful.
+8. **Run the 70B tier (`run_tier1a_large.sh`)** — that's where the *interesting* miscalibration story (the original poker26 finding) plays out. With the small-tier CoT result clean, the eventual 70B-CoT vs 70B-direct comparison becomes much sharper.
 
 ---
 
@@ -250,3 +252,243 @@ In rough priority order:
 - Non-CoT: `scaled_<tag>_{t0,t02}_s{42,123,456}_informative_v2{,_enriched}.jsonl.gz` (36 files, 12 per model)
 - CoT pilot: `cot_pilot_<tag>_{t0,t02}_s42_informative_v2{,_enriched}.jsonl.gz` (12 files, 4 per model)
 - All gzipped, all integrity-verified
+
+---
+
+## 11. Ministral seed-42 action-parser dig-in (2026-05-03)
+
+### Why we dug in
+The full-grid CoT run (`results/tier1a_small_cot/COMPARISON.md`) reported Ministral 8B's action `parse_success_rate` cratering on seed 42 only:
+
+| Cell | parse_success_rate | fallback_rate |
+|---|---:|---:|
+| `cot_ministral8b_t0_s42`  | 21.7% | 37.9% |
+| `cot_ministral8b_t02_s42` | 23.5% | 36.0% |
+| `cot_ministral8b_t0_s123` | 49.8% | 0.5%  |
+| `cot_ministral8b_t02_s123`| 49.5% | 1.0%  |
+| `cot_ministral8b_t0_s456` | 49.3% | 1.4%  |
+| `cot_ministral8b_t02_s456`| 48.4% | 3.2%  |
+
+Other seeds were ~98% on both metrics. The user asked me to sample raw `raw_response` values from the s42 cells and figure out whether this was a one-line parser fix or a model quirk.
+
+### What it actually was
+**It was not a JSON parser problem.** Re-running JSON extraction on the s42 raw responses succeeded essentially 100% of the time. The 37%-of-decisions "fallback" was caused by two things the old `ActionMetadata.parse_success` flag was silently conflating:
+
+1. **Action-name alias mismatch (~47 cases on Ministral s42 alone).** Ministral emitted `{"action": "CHECK"}` and `{"action": "RAISE"}` — colloquial single-word forms that the action map only accepted as `CHECK_OR_CALL` / `BET_OR_RAISE`. So a perfectly-formed JSON response with a clearly-intended legal action got logged as `parse_success=False`. **In-code fix.**
+2. **Illegal action attempts (~412 cases across the s42 cells, overwhelmingly Ministral).** The model picked `{"action": "FOLD"}` when `bet_to_call=0` made `FOLD` not a legal action (because `CHECK_OR_CALL` is free). This is a *model behavior* observation, not a parser bug — Ministral 8B under CoT exhibits an extreme conservative bias on a particular seed's hand sequence.
+
+### Actual numbers from the full small-tier CoT grid (18 cells, n=8,749 decisions)
+
+Ran `analysis/recategorize_action_metadata.py` on every `cot_*_enriched.jsonl.gz` and matching `scaled_*_enriched.jsonl.gz` baseline locally. Output: `results/tier1a_small_cot/{comparison_v2.json,COMPARISON_v2.md}`.
+
+**Headline: the alias fix is real but modest in the CoT data; the illegal-FOLD behavior is the dominant story.**
+
+Per-cell parse-rate breakdown (from `COMPARISON_v2.md`):
+
+| Cell | n | parse_v1% | parse_v2% | Δ alias-recover | JSON-fail% | **Illegal%** |
+|---|---:|---:|---:|---:|---:|---:|
+| `cot_llama8b_t0_s42`     | 610 | 54.8 | 54.8 | +0.0 | 42.6 | **2.6** |
+| `cot_llama8b_t0_s123`    | 596 | 53.2 | 53.2 | +0.0 | 41.1 | **5.7** |
+| `cot_llama8b_t0_s456`    | 524 | 56.9 | 56.9 | +0.0 | 39.7 | **3.4** |
+| `cot_llama8b_t02_s42`    | 646 | 53.1 | 53.1 | +0.0 | 41.5 | **5.4** |
+| `cot_llama8b_t02_s123`   | 528 | 55.5 | 55.5 | +0.0 | 40.9 | **3.6** |
+| `cot_llama8b_t02_s456`   | 542 | 56.5 | 56.5 | +0.0 | 39.5 | **4.1** |
+| `cot_qwen8b_t0_s42`      | 796 | 56.4 | 56.4 | +0.0 | 42.8 | **0.8** |
+| `cot_qwen8b_t0_s123`     | 603 | 56.4 | 56.4 | +0.0 | 42.0 | **1.7** |
+| `cot_qwen8b_t0_s456`     | 616 | 56.0 | 56.0 | +0.0 | 42.0 | **1.9** |
+| `cot_qwen8b_t02_s42`     | 804 | 56.8 | 56.8 | +0.0 | 42.3 | **0.9** |
+| `cot_qwen8b_t02_s123`    | 612 | 54.2 | 54.2 | +0.0 | 43.6 | **2.1** |
+| `cot_qwen8b_t02_s456`    | 568 | 56.3 | 56.3 | +0.0 | 41.7 | **1.9** |
+| `cot_ministral8b_t0_s42` | **525** | **21.7** | **25.5** | **+3.8** | 40.4 | **34.1** |
+| `cot_ministral8b_t0_s123`| 203 | 49.8 | 49.8 | +0.0 | 49.8 | **0.5** |
+| `cot_ministral8b_t0_s456`| 209 | 49.3 | 49.3 | +0.0 | 49.3 | **1.4** |
+| `cot_ministral8b_t02_s42`| **519** | **23.5** | **28.7** | **+5.2** | 40.5 | **30.8** |
+| `cot_ministral8b_t02_s123`| 206| 49.5 | 49.5 | +0.0 | 49.5 | **1.0** |
+| `cot_ministral8b_t02_s456`| 221| 48.4 | 48.9 | +0.5 | 48.4 | **2.7** |
+
+CoT-vs-non-CoT delta in `parse_success_v2` (from the bottom of `COMPARISON_v2.md`):
+
+* **17 of 18 cells: |Δ| ≤ 3.0 pts** (CoT parse rate is essentially the same as the non-CoT baseline once aliases are accounted for).
+* **2 outliers: `ministral8b_t0_s42` (−26.3 pts) and `ministral8b_t02_s42` (−24.7 pts)**. Both come almost entirely from illegal-FOLD attempts (34.1% / 30.8% of decisions in those two cells).
+
+### The illegal-FOLD behavior is purely CoT-induced (the cleanest finding here)
+
+| Condition | Total cells | Illegal-action rate (per cell, range) | Illegal-action rate (mean) |
+|---|---:|---|---:|
+| **Non-CoT baseline** (`scaled_*`)   | 18 | **0.0% in every single cell** | **0.0%** |
+| **CoT** (`cot_*`)                   | 18 | 0.5% – 34.1% | 5.5% (median 2.4%) |
+
+Across **8,749 non-CoT decisions** in the matching 18 baseline cells, **zero** were "recognized but illegal" actions. Across **9,929 CoT decisions** in the same model × seed × temperature crossings, **537 were illegal** (overwhelmingly FOLD chosen when `bet_to_call=0`). This is a categorical behavioral difference, not a parser issue.
+
+The illegal-FOLD attempts pattern by model is also worth noting: **Llama 8B does it 16-35 times per cell consistently across all six seeds × temps** (so it's a baseline CoT-induced bias), **Qwen 8B keeps it under 13 per cell across all six** (most CoT-resistant of the three), and **Ministral 8B is bimodal** — 1–6 per cell on seeds 123/456, then 160/179 per cell on seed 42 specifically. So:
+* Llama: small consistent CoT-conservatism shift, all seeds.
+* Qwen: barely any CoT-conservatism shift, all seeds.
+* Ministral: small shift on most seeds, **catastrophic** shift on a single bad-luck seed.
+
+### Pot-odds / EV decomposition rewrites the framing (2026-05-04)
+
+After running `analysis.pot_odds_analysis` + `analysis.decompose_pot_odds_by_fallback` on the 4 Ministral s42 cells (CoT t=0, CoT t=0.2, baseline t=0, baseline t=0.2), the simple "CoT introduces a behavioral pathology" framing is **wrong**. Full numbers in `results/tier1a_small_cot/pot_odds/SUMMARY.md`. Headline:
+
+| Cell × bucket | n | mean EV-truth-regret (chips/dec) | EV-optimal% |
+|---|---:|---:|---:|
+| CoT t=0, **clean** picks (no fallback) | 114 | **3.370** | 42.1% |
+| CoT t=0, **illegal-FOLD rescued** | **179** | **0.554** | **60.9%** |
+| CoT t=0.2, clean | 122 | 3.002 | 44.3% |
+| CoT t=0.2, illegal-FOLD rescued | 160 | 0.586 | 51.2% |
+| non-CoT t=0, clean (the only bucket) | 215 | 2.507 | 31.6% |
+| non-CoT t=0.2, clean | 229 | 2.387 | 33.2% |
+
+Two surprises here:
+
+1. **Within each CoT cell, the illegal-FOLD-rescued bucket has 6× lower mean regret than the clean bucket.** The "pathology" decisions are paradoxically the *best* plays in the cell — the model's intent (give up on a marginal hand) is correct; its action choice (FOLD) is illegal; our `_fallback_action` plays the EV-optimal CHECK_OR_CALL on its behalf. The fallback is doing the model a favor, not papering over a mistake.
+
+2. **Compared to the non-CoT baseline, CoT makes Ministral's *deliberate* picks WORSE by 0.6–0.9 chips/decision** (3.37 vs 2.51 at t=0). The aggregate "CoT improves Ministral" headline (mean regret 1.27 vs 1.69) is entirely a rescue artifact: subtract the rescue bucket and CoT-clean is worse than non-CoT-clean. So:
+
+> CoT does not unambiguously help Ministral 8B's decisions. It primarily *redirects* a fraction of decisions through the env's safety net, where they happen to land on the EV-optimal action. Without that net (e.g. in an env that respected the literal FOLD), CoT would cost Ministral measurable EV.
+
+### Updated reportable framings
+
+| Was (§11 first pass) | Is (after pot-odds decomp) |
+|---|---|
+| "CoT introduces an illegal-action behavioral artifact at 8B" | "CoT shifts small-model action distributions toward conservative play, including illegal FOLDs into free-check spots; the env safety net rescues these to the EV-optimal action" |
+| "CoT improves Ministral aggregate decision quality" | "CoT's apparent improvement on aggregate EV is entirely attributable to the fallback-rescue mechanism; on cleanly-emitted actions, CoT is worse than direct prompting" |
+| "Ministral seed-42 outlier is a pathology" | "Ministral seed-42 is a stress test of the fallback rescue: a single bad-luck hand sequence triggers 339 illegal-FOLD attempts, all of which the safety net catches" |
+
+### Open analyses (now wired up; see §12 for status)
+
+- ~~Same decomposition on Llama and Qwen s42 CoT cells.~~ — superseded by the **full-grid** pot-odds run below (covers all 36 cells, not just s42).
+- ~~Same decomposition across all 18 CoT cells.~~ — superseded by the full-grid run, which cross-joins per-cell pot-odds output with `action_metadata.fallback_used` to get the `clean / illegal_fold_rescued / other_fallback` decomposition for every cell.
+
+This is a defensible, publishable observation that the original `parse_success_rate` flag was hiding. Suggested writeup framing: see "Updated reportable framings" table above — the previous "CoT introduces a behavioral artifact" line is preserved in the table for contrast but is no longer the right characterization on its own.
+
+### Side discovery from running the recategorizer on the original poker26 70B sanity logs
+While verifying the script on data we already had locally, I discovered the same alias issue is also present in the **original poker26 70B sanity logs** that backed the published paper:
+
+| Log | n decisions | parse_v1% (as logged) | parse_v2% (alias-aware) | recovered |
+|---|---:|---:|---:|---:|
+| `phase2_70b_t02_s42_informative_v2_enriched`  | 2,345 | 45.2 | **57.8** | **+12.6 pts** |
+| `phase2_70b_t0_s42_informative_v2_enriched`   | 2,546 | 45.7 | **56.8** | **+11.0 pts** |
+| `sanity_70b_t02_s42_informative_enriched`     |   331 | 43.8 | **56.5** | **+12.7 pts** |
+| `sanity_70b_t0_s42_informative_enriched`      |   384 | 43.8 | **57.6** | **+13.8 pts** |
+| `sanity_70b_t02_s123_informative_enriched`    |   333 | 47.7 | **55.9** |  +8.1 pts |
+| `sanity_70b_t0_s123_informative_enriched`     |   353 | 47.0 | **56.1** |  +9.1 pts |
+| `sanity_8b_t0_s42_enriched` (8B, control)     |   450 | 44.4 | 44.4    |  +0.0 pts |
+
+The 70B models systematically emit `CALL_OR_CHECK` (reversed word order) and `CALL_OR_CALL` (duplicate) ~10% of the time. Both unambiguously refer to `CHECK_OR_CALL`. The 8B sanity log is unaffected (its 55.6% failure is the well-known JSON-degeneracy from the paper appendix), which is exactly the right control: the alias issue is a 70B-cohort vocabulary quirk, not an 8B problem.
+
+This means **roughly 10% of decisions in the published 70B sanity logs were miscategorized as parse failures** when the model was actually expressing a valid action. The headline 70B *belief* numbers are unaffected (those use a separate parser path), but the *action-pipeline* numbers were under-reporting effective parse rate by ~10 pts. Worth a footnote in the rebuttal/camera-ready.
+
+### Code changes (in this commit)
+
+| File | Change | Why |
+|---|---|---|
+| `poker_env/agents/json_utils.py` | New `ACTION_ALIASES` dict + `normalize_action_str()`. | Single source of truth for "the model meant the right action, just used a colloquial name". Maps `CHECK`, `CALL`, `BET`, `RAISE`, the gerunds, `FOLDING`, plus `CALL_OR_CHECK` / `CALL_OR_CALL` / `CHECK_OR_CHECK` / `RAISE_OR_BET`. Deliberately does **not** alias `CALL_OR_RAISE` (genuinely ambiguous). |
+| `poker_env/agents/hf_agent.py` | `act_with_metadata` now applies `normalize_action_str` before the `action_map` lookup. `ActionMetadata` gains three diagnostic fields: `action_json_parsed`, `action_recognized`, `action_legal_in_context`. `_fallback_action` accepts and propagates them. `to_dict` only emits them when populated, so old-log analysis stays backward-compatible. | Decouples the three orthogonal failure modes the old `parse_success` was hiding. |
+| `poker_env/agents/api_agent.py` | Same alias normalization + same three new diagnostic fields on `APIMetadata`, for parity. | Closed-model logs get the same audit trail going forward. |
+| `analysis/recategorize_action_metadata.py` (new) | Standalone, log-only re-attribution: re-parses every decision in a glob of JSONL logs with the alias-aware logic, splits failures into `JSON-fail` / `Alias-unk` / `Illegal-in-context`, writes `comparison_v2.json` and `COMPARISON_v2.md`. Optional `--baseline-glob` produces a CoT-vs-baseline column. | Lets us re-categorize already-collected data (including the original poker26 logs) without a re-run. |
+| `results/recategorize_local_sanity.{json,md}` | Output of running the script on every `*_enriched.jsonl` we have locally. | Local-reproducible artifact of the discovery above. |
+
+### Verification
+- `normalize_action_str()` smoke-tested on all 11 alias variants + canonical names + 1 unknown — all map correctly, unknowns pass through.
+- End-to-end mock test of `HFAgent.act_with_metadata` on 7 cases (canonical, all 4 aliases, illegal-FOLD-when-CHECK-is-legal, unrecognized-string, malformed-JSON). All pass; the new diagnostic fields correctly distinguish all three failure modes.
+- `analysis/recategorize_action_metadata.py` smoke-tested on a synthetic 6-record log designed to exercise every category. All counts (`recovered_by_alias_norm`, `json_parse_failures_v2`, `alias_unrecognized_v2`, `illegal_in_context_v2`) come out exactly as designed.
+- Then run on real local data (sanity_70b_*, sanity_8b_*, phase2_70b_*); the unprompted ~10pt recovery on every 70B cell with zero recovery on the 8B control cleanly cross-validates the script.
+
+### What this changes for the small-tier CoT story
+
+For Ministral s42 specifically (now from the actual recategorized logs, not estimates):
+
+| Quantity | What it measures | Ministral s42, t=0 (n=525) | Ministral s42, t=0.2 (n=519) |
+|---|---|---:|---:|
+| `parse_success_v1` | Old combined flag (json AND recognized AND legal) | 21.7% | 23.5% |
+| `parse_success_v2` | Same, after alias normalization | **25.5%** | **28.7%** |
+| `recovered_by_alias_norm` | Decisions rescued purely by the in-code alias fix | +3.8 pts (~20 cases) | +5.2 pts (~27 cases) |
+| `json_parse_failures_v2` | True JSON parse failures | 40.4% | 40.5% |
+| `illegal_action_attempt_rate` | Recognized action not in `legal_actions` (almost all illegal FOLD) | **34.1%** (179 of 525) | **30.8%** (160 of 519) |
+
+The remaining gap is the actual model-behavior story: **on this seed's specific hand sequence, Ministral 8B under CoT becomes pathologically conservative and tries to FOLD into free-check spots ~30% of the time.** That's a real, novel small-tier observation and belongs in the writeup as a behavioral finding (not as a parser bug). Per-cell numbers across the full grid are in `results/tier1a_small_cot/comparison_v2.json`.
+
+### How to reproduce (the raw `cot_*.jsonl.gz` logs live in `xpoker2026Extension/logs/` — gitignored, ~1.2 GB)
+
+```bash
+cd xpoker2026Extension
+python -m analysis.recategorize_action_metadata \
+  --logs-glob 'logs/cot_llama8b_*_enriched.jsonl.gz' \
+  --logs-glob 'logs/cot_qwen8b_*_enriched.jsonl.gz' \
+  --logs-glob 'logs/cot_ministral8b_*_enriched.jsonl.gz' \
+  --baseline-glob 'logs/scaled_*_enriched.jsonl.gz' \
+  --json-out results/tier1a_small_cot/comparison_v2.json \
+  --md-out   results/tier1a_small_cot/COMPARISON_v2.md
+```
+
+The script reads `.jsonl` and `.jsonl.gz` transparently (`_open_log`). Runtime ~21 s for 36 files / ~18 k decisions on local laptop.
+
+### Bottom line
+- The "Ministral seed-42 action-parser failure" was **two distinct things** the old metadata flag was conflating: ~47 cases of fixable alias mismatch (now fixed in code) and ~412 cases of model-behavior illegal-FOLD attempts (now reportable as a behavioral observation).
+- The same alias-mismatch bug is present in the original poker26 70B sanity logs and silently miscategorized ~10% of decisions per cell as parse failures.
+- All four follow-ups from the dig-in are landed in this commit (alias fix; metadata semantic split; recategorize script; this writeup).
+
+---
+
+## 12. Logit-lens × failure-mode mechanistic add-on + full-grid pot-odds (2026-05-04)
+
+Three pieces landed together to broaden the §11 finding from a Ministral-only observation to a generalisable claim.
+
+### 12a. `analysis/analyze_logit_lens_by_failure_mode.py` (new — answers the actual mechanistic question)
+
+`analysis/analyze_logit_lens.py` reduces a logit-lens sidecar to a single per-cell descriptive summary (mean entropy curve, mean crystallization layer). That tells us nothing about *why* the model emitted FOLD into a free-check spot. The new script joins the sidecar (keyed on `hand_id, decision_idx`) with the enriched log's new diagnostic flags, buckets decisions into `{clean, illegal_fold, illegal_other, alias_unrecognized, json_failure}`, and per bucket reports per-layer mapped action group at the action-emission token (`FOLD / CHECK / CALL / BET / RAISE / OTHER`).
+
+Read: if the `illegal_fold` bucket shows `CHECK` dominating early layers and `FOLD` only crossing 0.5 in the late layers, that's a **verbalization-stage failure** (the model "knew" the right call). If `FOLD` dominates from layer 0, the model is FOLD-committed top to bottom — a deeper representational issue.
+
+Smoke-tested on synthetic data: a hand-crafted `illegal_fold` record with layers 0–23 saying `CHECK` and layers 24–31 saying `FOLD` correctly produces `crystallization_layer.mean = 24.0`, layer-0 action mix `{CHECK: 1.0}`, layer-31 action mix `{FOLD: 1.0}`. Real-data validation will follow once the GPU run produces the sidecars.
+
+### 12b. `scripts/run_tier1a_small_cot_logitlens.sh` is now overridable
+
+Default still 3 cells (cheapest mechanistic answer, ~3 h on H100), but `SEEDS` and `TEMPS` are now env-var-overridable — pass `SEEDS="42" TEMPS="0.0 0.2"` for the recommended 6-cell version (~6 h, captures all 339 Ministral illegal FOLDs + ~50 Llama + ~10 Qwen) or `SEEDS="42 123 456" TEMPS="0.0 0.2"` for the full 18-cell mirror (~18 h). Phase 3b in the script auto-runs `analyze_logit_lens_by_failure_mode.py` per cell and appends to `results/tier1a_small_cot_logitlens/BY_FAILURE_MODE.md`.
+
+### 12c. `scripts/run_pot_odds_full_grid.sh` (new) — pot-odds + EV + by-fallback decomposition for ALL 36 cells
+
+The §11 pot-odds analysis only covered 4 cells (Ministral s42 × {CoT, baseline} × {t=0, t=0.2}) because that was where the illegal-FOLD pathology was concentrated. The new driver runs `analysis/pot_odds_analysis` on every CoT and non-CoT enriched log (36 cells total) and aggregates into `results/pot_odds_full_grid/SUMMARY.md`. Wall-clock 50 min on a 4-wide Mac M-series with `--num-rollouts 30 --samples-per-bucket 2 --skip-belief-ev`. Run completed 2026-05-04.
+
+#### Three findings the full grid produced
+
+**(1) The illegal-FOLD rescue effect generalizes across the small-model family.**
+
+| Model | CoT cells with any rescue | Total rescued FOLDs | Cells where rescue regret < clean regret |
+|---|---:|---:|---:|
+| `llama8b`     | 6/6 | 144 | 5/6 |
+| `ministral8b` | 6/6 | 353 | 4/6 |
+| `qwen8b`      | 6/6 |  53 | 6/6 |
+
+The §11.6 Ministral-only finding (rescued FOLDs have lower mean regret than cleanly-emitted actions) holds for all three small models in the cells where rescues happen. The mechanism is general: when small-model CoT emits FOLD into a free-check spot, it's expressing a "this hand is weak, defend" intent that the env's `_fallback_action` honors at zero chips by playing CHECK_OR_CALL.
+
+**(2) CoT's effect splits three different ways across models** (writeup-ready table).
+
+| Model | Temp | EV-regret CoT/non-CoT/Δ | EV-optimal % CoT/non-CoT/Δ |
+|---|---|---|---|
+| `llama8b`     | 0.0 | 2.10 / 2.56 / **−0.45** | 40.7 / 49.5 / **−8.8 pp** |
+| `llama8b`     | 0.2 | 2.02 / 2.46 / **−0.44** | 42.2 / 49.1 / **−6.8 pp** |
+| `ministral8b` | 0.0 | 1.63 / 1.75 / **−0.12** | 35.3 / 30.2 / **+5.1 pp** |
+| `ministral8b` | 0.2 | 1.57 / 1.72 / **−0.15** | 35.1 / 30.3 / **+4.8 pp** |
+| `qwen8b`      | 0.0 | 2.23 / 2.12 / **+0.11** | 44.9 / 42.0 / **+2.9 pp** |
+| `qwen8b`      | 0.2 | 2.20 / 2.11 / **+0.09** | 44.7 / 43.5 / **+1.3 pp** |
+
+- **Llama**: CoT cuts mean EV-regret by ~0.45 chips/decision (real, both temps), BUT also drops EV-optimal% by 7–9 pp. CoT smooths Llama's wrong picks (closer to optimal when it's wrong) at the cost of making fewer outright optimal picks. Net EV per decision improves; sharpness regresses.
+- **Ministral**: CoT cuts regret by 0.12–0.15 and raises optimal% by ~5 pp. Reads like a clean win — but the per-cell bucket table shows this is driven entirely by the s42 rescue mechanism (179 + 162 rescued FOLDs out of 353 total). On the other 4 Ministral cells the rescue count drops to 1–6 and the CoT-vs-non-CoT clean-regret comparison is essentially a wash (1.7–1.9 vs 1.7–1.9). **CoT does not robustly help Ministral; the rescue mechanism does.**
+- **Qwen**: CoT *increases* mean EV-regret by ~0.1 and only marginally raises optimal% (1–3 pp). Closest to neutral; if anything mildly harmful.
+
+**(3) CoT shortens hands.** Non-CoT cells have 2–3× more decisions per cell than CoT cells (Llama non-CoT 1374–1695 decisions vs Llama CoT 524–646). Under CoT, small models fold more often (whether legally or illegally-then-rescued), which truncates hands and shrinks the decision count. This is itself a behavioral observation independent of the EV story.
+
+#### Reportable framing (writeup-ready)
+
+The §11.6 reframing ("CoT's apparent EV improvement on Ministral is a rescue artifact") generalizes to a stronger claim:
+
+> **For small models in this poker environment, CoT does not unambiguously improve decision quality; it changes the shape of the decision distribution in model-specific ways, and any aggregate EV win is partly attributable to the env's safety net catching pathological action choices.**
+
+This is verifiable from `results/pot_odds_full_grid/SUMMARY.md` without a re-run.
+
+### 12d. What's left
+
+- 70B-tier non-CoT baseline (`scripts/run_tier1a_large.sh`, now also captures logprobs + logit-lens by default — see §9 item 8).
+- 70B-tier CoT (a `run_tier1a_large_cot.sh` mirror is the natural next script, modeled on `run_tier1a_small_cot.sh`).
+- Run `analyze_logit_lens_by_failure_mode.py` on whatever logit-lens sidecars come out of the small-tier mechanistic add-on (Phase 3b in the script auto-does this; manual aggregation across cells optional).

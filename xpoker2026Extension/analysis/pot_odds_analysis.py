@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gzip
 import json
 from pathlib import Path
 from typing import Optional
@@ -344,9 +345,17 @@ def _round_optional(x: Optional[float], ndigits: int = 4) -> Optional[float]:
 # I/O
 # ============================================================================
 
+def _open_log(path: str):
+    """Open a .jsonl or .jsonl.gz transparently as a text iterator."""
+    if path.endswith(".gz"):
+        return gzip.open(path, "rt", encoding="utf-8")
+    return open(path, "r", encoding="utf-8")
+
+
 def iter_decision_records(input_path: str):
-    """Yield decision records from an enriched JSONL, skipping config/summary lines."""
-    with open(input_path, "r") as f:
+    """Yield decision records from an enriched JSONL (.jsonl or .jsonl.gz),
+    skipping config/summary lines."""
+    with _open_log(input_path) as f:
         for line in f:
             line = line.strip()
             if not line:

@@ -216,32 +216,27 @@ run_model() {
     echo "## Started: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "############################################################"
 
-    # ---- Phase 1: run all 6 cells for this model ----
-    for seed in "${SEEDS[@]}"; do
-        for temp in "${TEMPS[@]}"; do
-            local tsuf
-            tsuf="$(temp_suffix "$temp")"
-            local out="${LOGS_DIR}/scaled_${tag}_${tsuf}_s${seed}_${OPPONENT_PRESET}.jsonl"
-            if [[ -f "$out" ]]; then
-                echo "  [skip] $out already exists"
-                continue
-            fi
-            echo "  [run]  $out  (seed=$seed temp=$temp hands=$hands logit_lens=$CAPTURE_LOGIT_LENS)"
-            python run_experiment.py \
-                --agent hf \
-                --hf-model "$short" \
-                --opponent threshold \
-                --opponent-preset "$OPPONENT_PRESET" \
-                --hands "$hands" \
-                --seed "$seed" \
-                --temperature "$temp" \
-                --elicit-beliefs \
-                --capture-logprobs \
-                "${LOGIT_LENS_FLAG[@]}" \
-                --out "$out" \
-                -v
-        done
-    done
+    # ---- Phase 1: run all 6 cells for this model (single process) ----
+    # Model is loaded once, all seed x temp cells run, then model is unloaded.
+    local seeds_csv
+    seeds_csv="$(IFS=,; echo "${SEEDS[*]}")"
+    local temps_csv
+    temps_csv="$(IFS=,; echo "${TEMPS[*]}")"
+    echo "  [run]  multi-cell: seeds=${seeds_csv} temps=${temps_csv} hands=$hands logit_lens=$CAPTURE_LOGIT_LENS"
+    python run_experiment.py \
+        --agent hf \
+        --hf-model "$short" \
+        --opponent threshold \
+        --opponent-preset "$OPPONENT_PRESET" \
+        --hands "$hands" \
+        --seeds "$seeds_csv" \
+        --temps "$temps_csv" \
+        --out-dir "$LOGS_DIR" \
+        --out-prefix "scaled_${tag}" \
+        --elicit-beliefs \
+        --capture-logprobs \
+        "${LOGIT_LENS_FLAG[@]}" \
+        -v
 
     # ---- Phase 2: enrich logs with oracle posteriors ----
     echo

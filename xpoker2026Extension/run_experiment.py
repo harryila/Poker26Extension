@@ -440,8 +440,14 @@ def run_experiment(
     top_logprobs: int = 20,
     api_provider: str | None = None,
     api_model: str | None = None,
+    agents: list[BaseAgent] | None = None,
 ) -> dict:
-    """Run a full experiment with multiple hands."""
+    """Run a full experiment with multiple hands.
+
+    If *agents* is provided, those agent instances are used directly and
+    no new agents are created.  This lets callers load a heavy model once
+    and reuse it across multiple experiment invocations.
+    """
     with warnings.catch_warnings():
         if num_players > 2:
             warnings.filterwarnings("ignore", message="Multi-way.*")
@@ -454,25 +460,26 @@ def run_experiment(
             big_bet=big_bet,
         )
 
-    agents = create_agents(
-        agent_types,
-        num_players,
-        base_seed,
-        hf_model=hf_model,
-        temperature=temperature,
-        top_p=top_p,
-        action_max_new_tokens=action_max_new_tokens,
-        belief_max_new_tokens=belief_max_new_tokens,
-        max_input_tokens=max_input_tokens,
-        belief_format=belief_format,
-        opponent_preset=opponent_preset,
-        cot_mode=cot_mode,
-        logit_lens=logit_lens,
-        capture_logprobs=capture_logprobs,
-        top_logprobs=top_logprobs,
-        api_provider=api_provider,
-        api_model=api_model,
-    )
+    if agents is None:
+        agents = create_agents(
+            agent_types,
+            num_players,
+            base_seed,
+            hf_model=hf_model,
+            temperature=temperature,
+            top_p=top_p,
+            action_max_new_tokens=action_max_new_tokens,
+            belief_max_new_tokens=belief_max_new_tokens,
+            max_input_tokens=max_input_tokens,
+            belief_format=belief_format,
+            opponent_preset=opponent_preset,
+            cot_mode=cot_mode,
+            logit_lens=logit_lens,
+            capture_logprobs=capture_logprobs,
+            top_logprobs=top_logprobs,
+            api_provider=api_provider,
+            api_model=api_model,
+        )
 
     oracle = EquityOracle(num_samples=5000, seed=base_seed + 100)
 
@@ -528,6 +535,133 @@ def run_experiment(
         print(f"Output: {output_path}")
 
     return summary
+
+
+def _temp_suffix(t: float) -> str:
+    """Convert temperature to filename-safe suffix matching shell convention."""
+    if t == 0.0:
+        return "t0"
+    if t == 0.2:
+        return "t02"
+    return f"t{str(t).replace('.', '')}"
+
+
+def run_multi_cell(
+    seeds: list[int],
+    temps: list[float],
+    agent_types: list[str],
+    num_players: int,
+    num_hands: int,
+    out_dir: str,
+    out_prefix: str,
+    opponent_preset: str = "informative_v2",
+    verbose: bool = False,
+    hf_model: str | None = None,
+    top_p: float | None = None,
+    action_max_new_tokens: int | None = None,
+    belief_max_new_tokens: int | None = None,
+    max_input_tokens: int | None = None,
+    belief_format: str | None = None,
+    elicit_beliefs: bool = False,
+    randomize_probe_order: bool = False,
+    cot_mode: bool = False,
+    logit_lens: bool = False,
+    capture_logprobs: bool = False,
+    top_logprobs: int = 20,
+    api_provider: str | None = None,
+    api_model: str | None = None,
+    compute_oracle: bool = True,
+) -> list[dict]:
+    """Load model once, run all seed x temp cells, then return summaries.
+
+    The caller is responsible for calling agent.unload() afterwards if
+    explicit GPU cleanup is desired.
+    """
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+
+    agents = create_agents(
+        agent_types,
+        num_players,
+        base_seed=seeds[0],
+        hf_model=hf_model,
+        temperature=temps[0],
+        top_p=top_p,
+        action_max_new_tokens=action_max_new_tokens,
+        belief_max_new_tokens=belief_max_new_tokens,
+        max_input_tokens=max_input_tokens,
+        belief_format=belief_format,
+        opponent_preset=opponent_preset,
+        cot_mode=cot_mode,
+        logit_lens=logit_lens,
+        capture_logprobs=capture_logprobs,
+        top_logprobs=top_logprobs,
+        api_provider=api_provider,
+        api_model=api_model,
+    )
+
+    summaries: list[dict] = []
+    total_cells = len(seeds) * len(temps)
+    cell_num = 0
+
+    for seed in seeds:
+        for temp in temps:
+            cell_num += 1
+            tsuf = _temp_suffix(temp)
+            out_path = str(
+                Path(out_dir)
+                / f"{out_prefix}_{tsuf}_s{seed}_{opponent_preset}.jsonl"
+            )
+
+            if Path(out_path).exists():
+                if verbose:
+                    print(f"  [skip] {out_path} already exists")
+                continue
+
+            if verbose:
+                print(
+                    f"  [cell {cell_num}/{total_cells}] seed={seed} temp={temp} "
+                    f"hands={num_hands} -> {out_path}"
+                )
+
+            # Update temperature on the HF/API agent for this cell
+            for agent in agents:
+                if hasattr(agent, "temperature"):
+                    agent.temperature = temp
+
+            summary = run_experiment(
+                num_hands=num_hands,
+                agent_types=agent_types,
+                num_players=num_players,
+                output_path=out_path,
+                base_seed=seed,
+                compute_oracle=compute_oracle,
+                verbose=verbose,
+                hf_model=hf_model,
+                temperature=temp,
+                top_p=top_p,
+                action_max_new_tokens=action_max_new_tokens,
+                belief_max_new_tokens=belief_max_new_tokens,
+                max_input_tokens=max_input_tokens,
+                belief_format=belief_format,
+                elicit_beliefs=elicit_beliefs,
+                randomize_probe_order=randomize_probe_order,
+                opponent_preset=opponent_preset,
+                cot_mode=cot_mode,
+                logit_lens=logit_lens,
+                capture_logprobs=capture_logprobs,
+                top_logprobs=top_logprobs,
+                api_provider=api_provider,
+                api_model=api_model,
+                agents=agents,
+            )
+            summaries.append(summary)
+
+    # Explicitly unload heavy agents
+    for agent in agents:
+        if hasattr(agent, "unload"):
+            agent.unload()
+
+    return summaries
 
 
 def main():
@@ -616,6 +750,25 @@ def main():
     )
     parser.add_argument("--i-know-what-im-doing", action="store_true")
 
+    # Multi-cell mode: load model once, run all seed x temp cells, unload.
+    parser.add_argument(
+        "--seeds", type=str, default=None,
+        help="Comma-separated seeds for multi-cell mode (e.g. 42,123,456). "
+             "Loads the model once and runs every seed x temp combination.",
+    )
+    parser.add_argument(
+        "--temps", type=str, default=None,
+        help="Comma-separated temperatures for multi-cell mode (e.g. 0.0,0.2).",
+    )
+    parser.add_argument(
+        "--out-dir", type=str, default=None,
+        help="Output directory for multi-cell mode (default: logs).",
+    )
+    parser.add_argument(
+        "--out-prefix", type=str, default=None,
+        help="Filename prefix for multi-cell mode (e.g. scaled_llama70b).",
+    )
+
     args = parser.parse_args()
 
     if args.list_models:
@@ -653,6 +806,49 @@ def main():
     else:
         agent_types = [args.agent]
 
+    # Multi-cell mode: load model once, run all seed x temp cells, unload.
+    if args.seeds and args.temps:
+        seeds = [int(s.strip()) for s in args.seeds.split(",")]
+        temps = [float(t.strip()) for t in args.temps.split(",")]
+        out_dir = args.out_dir or "logs"
+        out_prefix = args.out_prefix or "experiment"
+
+        if args.verbose:
+            print(f"Multi-cell mode: {len(seeds)} seeds x {len(temps)} temps "
+                  f"= {len(seeds) * len(temps)} cells")
+            print(f"  seeds={seeds}  temps={temps}")
+            print(f"  out_dir={out_dir}  prefix={out_prefix}")
+            print()
+
+        run_multi_cell(
+            seeds=seeds,
+            temps=temps,
+            agent_types=agent_types,
+            num_players=args.num_players,
+            num_hands=args.hands,
+            out_dir=out_dir,
+            out_prefix=out_prefix,
+            opponent_preset=args.opponent_preset,
+            verbose=args.verbose,
+            hf_model=args.hf_model,
+            top_p=args.top_p,
+            action_max_new_tokens=args.action_max_new_tokens,
+            belief_max_new_tokens=args.belief_max_new_tokens,
+            max_input_tokens=args.max_input_tokens,
+            belief_format=args.belief_format,
+            elicit_beliefs=args.elicit_beliefs,
+            randomize_probe_order=args.randomize_probe_order,
+            cot_mode=args.cot,
+            logit_lens=args.logit_lens,
+            capture_logprobs=args.capture_logprobs,
+            top_logprobs=args.top_logprobs,
+            api_provider=args.api_provider,
+            api_model=args.api_model,
+            compute_oracle=not args.no_oracle,
+        )
+        return
+
+    # Single-cell mode (original behavior).
     run_experiment(
         num_hands=args.hands,
         agent_types=agent_types,

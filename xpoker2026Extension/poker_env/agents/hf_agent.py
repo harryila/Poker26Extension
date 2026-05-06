@@ -6,6 +6,7 @@ Implements the BaseAgent interface using instruction-tuned models
 parse success, coherence diagnostics, and reproducibility.
 """
 
+import gc
 import hashlib
 from dataclasses import dataclass
 from typing import Any
@@ -259,6 +260,43 @@ class HFAgent(BaseAgent):
         self._last_hidden_states: dict | None = None
         self._last_truncation_info: dict = {}
         self._last_generation_logprobs: list[dict] | None = None
+
+    # ========================================================================
+    # Lifecycle
+    # ========================================================================
+
+    def unload(self) -> None:
+        """Explicitly free GPU memory so the next model can load cleanly.
+
+        After calling this the agent is no longer usable for inference.
+        """
+        if self._logit_lens_extractor is not None:
+            try:
+                self._logit_lens_extractor.detach_hooks()
+            except Exception:
+                pass
+            del self._logit_lens_extractor
+            self._logit_lens_extractor = None
+
+        if self._attention_extractor is not None:
+            try:
+                self._attention_extractor.detach_hooks()
+            except Exception:
+                pass
+            del self._attention_extractor
+            self._attention_extractor = None
+
+        if hasattr(self, "model") and self.model is not None:
+            del self.model
+            self.model = None
+
+        if hasattr(self, "tokenizer") and self.tokenizer is not None:
+            del self.tokenizer
+            self.tokenizer = None
+
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     # ========================================================================
     # Core Interface

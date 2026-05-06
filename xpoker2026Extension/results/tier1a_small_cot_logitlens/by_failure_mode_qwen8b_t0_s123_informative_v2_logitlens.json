@@ -1,0 +1,492 @@
+{
+  "label": "qwen8b_t0_s123_informative_v2_logitlens",
+  "enriched_log": "logs/cot_qwen8b_t0_s123_informative_v2_logitlens_enriched.jsonl",
+  "logit_lens_sidecar": "logs/cot_qwen8b_t0_s123_informative_v2_logitlens_logit_lens.jsonl",
+  "stats": {
+    "enriched_decisions_seen": 603,
+    "enriched_decisions_with_action_metadata": 350,
+    "sidecar_records_loaded": 350,
+    "joined_records": 350,
+    "unmatched_enriched": 253
+  },
+  "buckets": {
+    "clean": {
+      "n_decisions": 340,
+      "n_with_logit_lens": 340,
+      "num_layers": 36,
+      "per_layer_action_fraction": [
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        }
+      ],
+      "per_layer_mean_entropy": [
+        6.2958,
+        6.037,
+        6.3378,
+        6.5296,
+        7.2342,
+        7.2951,
+        7.282,
+        7.4417,
+        7.109,
+        6.7014,
+        6.61,
+        6.6016,
+        6.5986,
+        6.4408,
+        6.4569,
+        6.576,
+        6.5198,
+        6.4112,
+        6.3134,
+        6.0012,
+        5.53,
+        5.222,
+        4.0264,
+        2.9858,
+        3.0919,
+        2.7104,
+        2.6876,
+        1.8868,
+        1.5411,
+        1.3002,
+        1.2481,
+        0.9321,
+        0.7332,
+        0.6551,
+        0.8463,
+        0.3212
+      ],
+      "crystallization_layer": null
+    },
+    "illegal_fold": {
+      "n_decisions": 9,
+      "n_with_logit_lens": 9,
+      "num_layers": 36,
+      "per_layer_action_fraction": [
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        }
+      ],
+      "per_layer_mean_entropy": [
+        6.349,
+        6.0821,
+        6.3795,
+        6.5023,
+        7.2324,
+        7.4454,
+        7.4831,
+        7.5602,
+        7.2826,
+        6.8096,
+        6.6666,
+        6.7456,
+        6.8199,
+        6.6454,
+        6.7487,
+        6.7646,
+        6.6804,
+        6.5068,
+        6.3507,
+        6.0854,
+        5.5123,
+        5.1257,
+        3.9216,
+        2.9852,
+        3.1485,
+        2.6646,
+        2.5947,
+        1.7713,
+        1.349,
+        1.3553,
+        1.2898,
+        0.9661,
+        0.7928,
+        0.6803,
+        0.8174,
+        0.3052
+      ],
+      "crystallization_layer": null
+    },
+    "illegal_other": {
+      "n_decisions": 1,
+      "n_with_logit_lens": 1,
+      "num_layers": 36,
+      "per_layer_action_fraction": [
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        },
+        {
+          "OTHER": 1.0
+        }
+      ],
+      "per_layer_mean_entropy": [
+        6.3872,
+        6.1326,
+        6.3813,
+        6.4613,
+        7.2363,
+        7.2982,
+        7.4053,
+        7.4539,
+        7.0025,
+        6.3899,
+        6.2503,
+        6.3161,
+        6.4315,
+        6.42,
+        6.388,
+        6.6817,
+        6.3568,
+        6.349,
+        6.3997,
+        6.1453,
+        5.709,
+        5.5388,
+        4.0192,
+        3.107,
+        3.2072,
+        2.8808,
+        2.9467,
+        1.8809,
+        1.6146,
+        1.3231,
+        1.2275,
+        0.9534,
+        0.6696,
+        0.4572,
+        0.5993,
+        0.267
+      ],
+      "crystallization_layer": null
+    },
+    "alias_unrecognized": {
+      "n_decisions": 0,
+      "n_with_logit_lens": 0,
+      "num_layers": 0,
+      "per_layer_action_fraction": [],
+      "per_layer_mean_entropy": [],
+      "crystallization_layer": null
+    },
+    "json_failure": {
+      "n_decisions": 253,
+      "n_with_logit_lens": 0,
+      "num_layers": 0,
+      "per_layer_action_fraction": [],
+      "per_layer_mean_entropy": [],
+      "crystallization_layer": null
+    }
+  }
+}

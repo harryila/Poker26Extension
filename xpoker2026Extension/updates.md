@@ -491,4 +491,92 @@ This is verifiable from `results/pot_odds_full_grid/SUMMARY.md` without a re-run
 
 - 70B-tier non-CoT baseline (`scripts/run_tier1a_large.sh`, now also captures logprobs + logit-lens by default — see §9 item 8).
 - 70B-tier CoT (a `run_tier1a_large_cot.sh` mirror is the natural next script, modeled on `run_tier1a_small_cot.sh`).
-- Run `analyze_logit_lens_by_failure_mode.py` on whatever logit-lens sidecars come out of the small-tier mechanistic add-on (Phase 3b in the script auto-does this; manual aggregation across cells optional).
+- ~~Run `analyze_logit_lens_by_failure_mode.py` on the small-tier logit-lens sidecars.~~ **DONE** — see §13.
+
+---
+
+## 13. Logit-lens mechanistic findings (2026-05-06, full 18-cell run)
+
+`scripts/run_tier1a_small_cot_logitlens.sh` was run with `SEEDS="42 123 456" TEMPS="0.0 0.2"` on a Blackwell GPU box. Wall-clock ~26 h, all 18 cells produced raw logs, enriched logs, logit-lens sidecars, and (bonus, not requested) per-decision hidden-state files. Pulled clean to local: 54 logit-lens log files (18 raw + 18 enriched + 18 sidecars), 18 entropy PNGs, 18 by-failure-mode JSONs, plus aggregate `SUMMARY.md` and `BY_FAILURE_MODE.md`.
+
+### 13a. Bug fix in the failure-mode analyzer (caught while reading the first aggregate)
+
+The first aggregation pass produced 100% "OTHER" at every layer for every bucket. Diagnosis: the sidecar stores per-layer top-1 tokens for **every generated token** (~80–130 positions per response), not just the action-verb position. My initial script naively read position `-1` (the EOS marker `'<|eot_id|>'`) instead of finding the actual action-verb token inside the JSON payload.
+
+Fix in `analysis/analyze_logit_lens_by_failure_mode.py::_find_action_position`:
+1. Find the LAST `'"}'` close-brace token in the final layer (search the last 10 positions).
+2. Walk back from it looking for the value-opening `' "'` quote (skipping `'":' ` action-key separators).
+3. The action verb is at `open_pos + 1` — works for full-word verbs (`'CHECK'`, `'FOLD'`) and subword splits (`'F'+'OLD'`, `'B'+'ET'+'_OR'+'_RA'+'ISE'`) alike.
+
+Subword matching was added to the per-layer scan (e.g. `'F'` and `'fol'` count as FOLD when checking layer projections at the verb position) so that mid-layer subword fragments don't get classified as "OTHER".
+
+Verified by inspection of 12 records across CHECK_OR_CALL / BET_OR_RAISE / FOLD / json-failure cases — anchor lands on the correct verb 100% of the time, including for json-failures (correctly returns None → contributes no layer trajectory).
+
+### 13b. Headline mechanistic finding
+
+For each cell, the **crystallization layer** (action-group axis) of the action prediction at the action-verb position:
+
+| Model | Δ (illegal_fold − clean), range across 6 cells | Direction |
+|---|---|---|
+| **Llama 8B**     | **−2.5 to −4.0** | illegal-FOLD crystallizes EARLIER |
+| **Ministral 8B** | **−1.2 to −2.7** | illegal-FOLD crystallizes EARLIER |
+| **Qwen 8B**      | −0.6 to +0.5     | no significant difference |
+
+For Llama and Ministral, **illegal-FOLD decisions become FOLD-committed in the residual stream 2–4 layers earlier than clean decisions.** Consistent across all 12 (Llama+Ministral) cells.
+
+### 13c. The deeper story — split clean by emitted action
+
+The "clean" bucket pools legal FOLD, CHECK_OR_CALL, and BET_OR_RAISE. Splitting it on Ministral 8B t=0 s=42 (n=313 joined records) shows **the actual mechanism**:
+
+| Bucket | n | Crystallization layer |
+|---|---:|---:|
+| `clean_CHECK_OR_CALL` |  29 | **28.8** |
+| `clean_BET_OR_RAISE`  |   7 | 25.7 |
+| `clean_LEGAL_FOLD`    |  98 | 23.7 |
+| `illegal_FOLD`        | 179 | **22.7** |
+
+Per-layer action-group mix at the action-verb position (Ministral, layers 22–35):
+
+```
+  L | clean_CHECK_OR_CALL          | clean_LEGAL_FOLD        | illegal_FOLD
+----+------------------------------+-------------------------+-------------------
+ 22 | OTHER 1.00                   | FOLD 0.02  OTHER 0.98   | FOLD 0.33  OTHER 0.67
+ 23 | OTHER 1.00                   | FOLD 0.26  OTHER 0.74   | FOLD 1.00
+ 24 | OTHER 1.00                   | FOLD 1.00               | FOLD 1.00
+ 25 | FOLD  0.86  OTHER 0.14       | FOLD 1.00               | FOLD 1.00
+ 27 | FOLD  0.76  CHECK 0.21       | FOLD 1.00               | FOLD 1.00
+ 28 | FOLD  0.48  CHECK 0.48       | FOLD 1.00               | FOLD 1.00
+ 29 | FOLD  0.00  CHECK 0.90       | FOLD 1.00               | FOLD 1.00
+ 35 | FOLD  0.00  CHECK 1.00       | FOLD 1.00               | FOLD 1.00
+```
+
+What this shows:
+
+1. **All decisions start neutral** (layers 0–21: 100% OTHER — residual stream not yet vocab-aligned).
+2. **By layer 22–23, a FOLD-leaning signal emerges in the residual stream for every bucket** — including decisions that will eventually emit CHECK_OR_CALL.
+3. **Legal-FOLD decisions** lock in at FOLD by layer 24 and never revise.
+4. **Illegal-FOLD decisions** lock in **one layer earlier** (layer 23) and are MORE confidently FOLD (100% at layer 23 vs 26% for legal FOLDs at the same layer). The model is *more certain* of the wrong FOLD than of correct FOLDs.
+5. **CHECK_OR_CALL decisions are the only bucket that late-layer-revises** — they start FOLD (86% at layer 25), then CHECK climbs from 0% → 21% → 48% → 90% across layers 27–29, fully overtaking by layer 35.
+
+### 13d. The mechanistic claim (the writeup line)
+
+This is the **opposite** of the verbalization-failure hypothesis that motivated the run. The data does NOT show "early/mid layers say CHECK, last layer flips to FOLD". It shows:
+
+> **Small-model CoT in this poker setting has a baseline FOLD pull in the mid-to-late residual stream (~layer 22+ for Llama and Ministral). What distinguishes outcomes is whether the late-layer deliberation circuit overrides that pull. CHECK_OR_CALL emerges only via late-layer revision; legal FOLDs lock in early; illegal FOLDs lock in even earlier and more confidently. The illegal-FOLD pathology is a failure of late-layer deliberation, not a verbalization-stage glitch.**
+
+This is the **mechanistic explanation** for the §12c full-grid pot-odds finding ("CoT's apparent EV improvement on Ministral is a rescue artifact"). When the deliberation circuit doesn't fire, the model commits to FOLD in the residual stream from layer 23–24 onwards; the env's `_fallback_action` catches those FOLDs in free-check spots and converts them to the EV-optimal CHECK_OR_CALL.
+
+### 13e. Why Qwen is different
+
+Qwen's illegal-FOLD count is 4–11 per cell (vs Llama's 16–34, Ministral's 1–179). At those n, Δ ≈ 0 is consistent with both "Qwen's deliberation circuit is more uniform" and "underpowered to detect the effect". Combined with the §12c finding that Qwen *doesn't* get an aggregate EV win from CoT — slightly worse, in fact — a more uniform layer structure (less reliance on a brittle late-layer override) is the most consistent interpretation.
+
+### 13f. Files & follow-ups
+
+- Full per-cell × per-bucket × per-layer table: `results/tier1a_small_cot_logitlens/BY_FAILURE_MODE.md` (18 cells × 5 buckets × 32–36 layers, 2437 lines).
+- Distilled findings doc: `results/tier1a_small_cot_logitlens/MECHANISTIC_FINDINGS.md`.
+- Per-cell JSON: `results/tier1a_small_cot_logitlens/by_failure_mode_<cell>.json`.
+- Hidden-state sidecars (`_hiddens.jsonl`) are present in `logs/` but not yet consumed — they enable causal layer-patching experiments as a follow-up.
+- Open follow-ups (lower priority but publishable):
+  - **Causal patching**: take a CHECK_OR_CALL decision's layer-25–29 hidden state and patch it into an illegal-FOLD decision; does the model emit CHECK?
+  - **Attention-pattern study at layers 25–29 of Ministral on s42** — what attends to what to flip the residual from FOLD-leaning to CHECK-leaning?
+  - 70B-tier logit-lens (already wired into `run_tier1a_large.sh`) — does the same baseline-FOLD-pull / late-layer-revision dynamic appear at scale?

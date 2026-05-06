@@ -1,7 +1,7 @@
 {
   "label": "llama8b_t0_s42_informative_v2_logitlens",
-  "enriched_log": "logs/cot_llama8b_t0_s42_informative_v2_logitlens_enriched.jsonl",
-  "logit_lens_sidecar": "logs/cot_llama8b_t0_s42_informative_v2_logitlens_logit_lens.jsonl",
+  "enriched_log": "logs/cot_llama8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz",
+  "logit_lens_sidecar": "logs/cot_llama8b_t0_s42_informative_v2_logitlens_logit_lens.jsonl.gz",
   "stats": {
     "enriched_decisions_seen": 610,
     "enriched_decisions_with_action_metadata": 350,
@@ -70,46 +70,81 @@
           "OTHER": 1.0
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.9701,
+          "FOLD": 0.0299
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.976,
+          "FOLD": 0.024
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.988,
+          "FOLD": 0.012
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.6946,
+          "FOLD": 0.3054
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.4701,
+          "FOLD": 0.3174,
+          "RAISE": 0.1557,
+          "BET": 0.0269,
+          "OTHER": 0.0299
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.5509,
+          "FOLD": 0.3174,
+          "RAISE": 0.0719,
+          "BET": 0.0569,
+          "CALL": 0.003
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.4611,
+          "FOLD": 0.3623,
+          "BET": 0.1647,
+          "CALL": 0.012
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.488,
+          "FOLD": 0.3114,
+          "BET": 0.1886,
+          "CALL": 0.012
         },
         {
-          "OTHER": 1.0
+          "CALL": 0.2814,
+          "CHECK": 0.2216,
+          "FOLD": 0.3084,
+          "BET": 0.1886
         },
         {
-          "OTHER": 1.0
+          "CALL": 0.2186,
+          "CHECK": 0.2844,
+          "FOLD": 0.3084,
+          "BET": 0.1886
         },
         {
-          "OTHER": 1.0
+          "CALL": 0.2515,
+          "CHECK": 0.2515,
+          "FOLD": 0.3084,
+          "BET": 0.1886
         },
         {
-          "OTHER": 1.0
+          "CALL": 0.1886,
+          "CHECK": 0.2994,
+          "FOLD": 0.3114,
+          "BET": 0.2006
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.509,
+          "FOLD": 0.2844,
+          "BET": 0.1976,
+          "CALL": 0.009
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.518,
+          "FOLD": 0.2844,
+          "BET": 0.1976
         }
       ],
       "per_layer_mean_entropy": [
@@ -146,7 +181,13 @@
         1.5349,
         1.0694
       ],
-      "crystallization_layer": null
+      "crystallization_layer": {
+        "n": 334,
+        "mean": 24.44,
+        "median": 22.0,
+        "min": 18,
+        "max": 31
+      }
     },
     "illegal_fold": {
       "n_decisions": 16,
@@ -208,46 +249,49 @@
           "OTHER": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.3125,
+          "OTHER": 0.6875
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.6875,
+          "FOLD": 0.3125
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.8125,
+          "FOLD": 0.1875
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         }
       ],
       "per_layer_mean_entropy": [
@@ -284,7 +328,13 @@
         1.5139,
         1.0629
       ],
-      "crystallization_layer": null
+      "crystallization_layer": {
+        "n": 16,
+        "mean": 20.44,
+        "median": 21.0,
+        "min": 18,
+        "max": 21
+      }
     },
     "illegal_other": {
       "n_decisions": 0,

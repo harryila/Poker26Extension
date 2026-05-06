@@ -1,7 +1,7 @@
 {
   "label": "ministral8b_t02_s123_informative_v2_logitlens",
-  "enriched_log": "logs/cot_ministral8b_t02_s123_informative_v2_logitlens_enriched.jsonl",
-  "logit_lens_sidecar": "logs/cot_ministral8b_t02_s123_informative_v2_logitlens_logit_lens.jsonl",
+  "enriched_log": "logs/cot_ministral8b_t02_s123_informative_v2_logitlens_enriched.jsonl.gz",
+  "logit_lens_sidecar": "logs/cot_ministral8b_t02_s123_informative_v2_logitlens_logit_lens.jsonl.gz",
   "stats": {
     "enriched_decisions_seen": 209,
     "enriched_decisions_with_action_metadata": 106,
@@ -82,46 +82,62 @@
           "OTHER": 1.0
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.9712,
+          "FOLD": 0.0288
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.9423,
+          "FOLD": 0.0577
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "OTHER": 0.0385
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9904,
+          "CHECK": 0.0096
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "CALL": 0.0288,
+          "CHECK": 0.0096
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "CALL": 0.0288,
+          "CHECK": 0.0096
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "CALL": 0.0096,
+          "CHECK": 0.0288
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "CALL": 0.0096,
+          "CHECK": 0.0288
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "CALL": 0.0192,
+          "CHECK": 0.0192
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "CHECK": 0.0385
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "CHECK": 0.0385
         }
       ],
       "per_layer_mean_entropy": [
@@ -162,7 +178,13 @@
         1.2141,
         0.9631
       ],
-      "crystallization_layer": null
+      "crystallization_layer": {
+        "n": 104,
+        "mean": 24.21,
+        "median": 24.0,
+        "min": 22,
+        "max": 34
+      }
     },
     "illegal_fold": {
       "n_decisions": 2,
@@ -239,43 +261,43 @@
           "OTHER": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         }
       ],
       "per_layer_mean_entropy": [
@@ -316,7 +338,13 @@
         1.4685,
         1.188
       ],
-      "crystallization_layer": null
+      "crystallization_layer": {
+        "n": 2,
+        "mean": 23.0,
+        "median": 23.0,
+        "min": 23,
+        "max": 23
+      }
     },
     "illegal_other": {
       "n_decisions": 0,

@@ -1,7 +1,7 @@
 {
   "label": "ministral8b_t02_s456_informative_v2_logitlens",
-  "enriched_log": "logs/cot_ministral8b_t02_s456_informative_v2_logitlens_enriched.jsonl",
-  "logit_lens_sidecar": "logs/cot_ministral8b_t02_s456_informative_v2_logitlens_logit_lens.jsonl",
+  "enriched_log": "logs/cot_ministral8b_t02_s456_informative_v2_logitlens_enriched.jsonl.gz",
+  "logit_lens_sidecar": "logs/cot_ministral8b_t02_s456_informative_v2_logitlens_logit_lens.jsonl.gz",
   "stats": {
     "enriched_decisions_seen": 212,
     "enriched_decisions_with_action_metadata": 108,
@@ -82,46 +82,56 @@
           "OTHER": 1.0
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.9808,
+          "FOLD": 0.0192
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.0962,
+          "OTHER": 0.9038
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9712,
+          "OTHER": 0.0288
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "CALL": 0.0385
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "CALL": 0.0385
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "CALL": 0.0385
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "CALL": 0.0385
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "CALL": 0.0385
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "CHECK": 0.0385
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9615,
+          "CHECK": 0.0385
         }
       ],
       "per_layer_mean_entropy": [
@@ -162,7 +172,13 @@
         1.2059,
         0.9578
       ],
-      "crystallization_layer": null
+      "crystallization_layer": {
+        "n": 104,
+        "mean": 24.27,
+        "median": 24.0,
+        "min": 22,
+        "max": 34
+      }
     },
     "illegal_fold": {
       "n_decisions": 4,
@@ -236,46 +252,48 @@
           "OTHER": 1.0
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.5,
+          "FOLD": 0.5
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.75,
+          "OTHER": 0.25
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         }
       ],
       "per_layer_mean_entropy": [
@@ -316,7 +334,13 @@
         1.5584,
         1.2533
       ],
-      "crystallization_layer": null
+      "crystallization_layer": {
+        "n": 4,
+        "mean": 23.0,
+        "median": 23.0,
+        "min": 22,
+        "max": 24
+      }
     },
     "illegal_other": {
       "n_decisions": 0,

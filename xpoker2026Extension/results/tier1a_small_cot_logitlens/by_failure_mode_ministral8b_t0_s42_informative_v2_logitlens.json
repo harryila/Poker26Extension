@@ -1,7 +1,7 @@
 {
   "label": "ministral8b_t0_s42_informative_v2_logitlens",
-  "enriched_log": "logs/cot_ministral8b_t0_s42_informative_v2_logitlens_enriched.jsonl",
-  "logit_lens_sidecar": "logs/cot_ministral8b_t0_s42_informative_v2_logitlens_logit_lens.jsonl",
+  "enriched_log": "logs/cot_ministral8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz",
+  "logit_lens_sidecar": "logs/cot_ministral8b_t0_s42_informative_v2_logitlens_logit_lens.jsonl.gz",
   "stats": {
     "enriched_decisions_seen": 525,
     "enriched_decisions_with_action_metadata": 313,
@@ -82,46 +82,77 @@
           "OTHER": 1.0
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.9851,
+          "FOLD": 0.0149
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.8134,
+          "FOLD": 0.1866
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.7313,
+          "OTHER": 0.2687
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9179,
+          "BET": 0.0522,
+          "OTHER": 0.0299
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.9403,
+          "BET": 0.0597
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.8955,
+          "BET": 0.0522,
+          "CHECK": 0.0448,
+          "OTHER": 0.0075
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.8358,
+          "CHECK": 0.1045,
+          "BET": 0.0522,
+          "CALL": 0.0075
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.7313,
+          "CHECK": 0.194,
+          "BET": 0.0448,
+          "CALL": 0.0299
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.7313,
+          "CHECK": 0.194,
+          "BET": 0.0522,
+          "CALL": 0.0224
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.7313,
+          "CHECK": 0.194,
+          "BET": 0.0522,
+          "CALL": 0.0224
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.7313,
+          "CHECK": 0.194,
+          "BET": 0.0522,
+          "CALL": 0.0224
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.7313,
+          "CHECK": 0.194,
+          "BET": 0.0522,
+          "CALL": 0.0224
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.7313,
+          "CHECK": 0.2164,
+          "BET": 0.0522
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.7313,
+          "CHECK": 0.2164,
+          "BET": 0.0522
         }
       ],
       "per_layer_mean_entropy": [
@@ -162,7 +193,13 @@
         1.4648,
         1.2
       ],
-      "crystallization_layer": null
+      "crystallization_layer": {
+        "n": 134,
+        "mean": 24.93,
+        "median": 24.0,
+        "min": 22,
+        "max": 34
+      }
     },
     "illegal_fold": {
       "n_decisions": 179,
@@ -203,7 +240,8 @@
           "OTHER": 1.0
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.9888,
+          "BET": 0.0112
         },
         {
           "OTHER": 1.0
@@ -236,46 +274,47 @@
           "OTHER": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 0.3296,
+          "OTHER": 0.6704
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         }
       ],
       "per_layer_mean_entropy": [
@@ -316,7 +355,13 @@
         1.4005,
         1.1756
       ],
-      "crystallization_layer": null
+      "crystallization_layer": {
+        "n": 179,
+        "mean": 22.67,
+        "median": 23,
+        "min": 22,
+        "max": 23
+      }
     },
     "illegal_other": {
       "n_decisions": 0,

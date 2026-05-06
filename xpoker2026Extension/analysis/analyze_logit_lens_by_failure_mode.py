@@ -157,15 +157,27 @@ def _normalize_token(tok: str) -> str:
     return (tok or "").strip().lower()
 
 
-def _match_action_group(tok: str) -> str | None:
-    """Map a tokenizer-decoded string to one of ACTION_TOKEN_GROUPS keys, or
-    None if no match.
+# Subword fragments that the tokenizer emits when an action verb gets split.
+# Built from inspection of real Llama / Qwen / Ministral logit-lens sidecars.
+# E.g. Llama splits FOLD into "F" + "OLD" / "old" depending on context.
+ACTION_SUBWORD_PREFIXES: dict[str, tuple[str, ...]] = {
+    "FOLD":  ("f", "fol"),     # 'F' + 'OLD', 'Fol' + 'd', etc.
+    "CHECK": ("ch", "che"),    # rarely split but cheap to guard
+    "CALL":  ("ca",),
+    "BET":   ("b", "be"),
+    "RAISE": ("r", "ra"),
+}
 
-    Substring match — "FOLD." / "FOLD," / "FOLD\"" all map to FOLD. We do
-    NOT match shorter substrings of unrelated words because the input space
-    is constrained to per-layer top-1 tokens at the LAST generated position,
-    which empirically is one of these action verbs or punctuation in the
-    JSON action field."""
+
+def _match_action_group(tok: str, *, allow_subword: bool = False) -> str | None:
+    """Map a tokenizer-decoded string to one of ACTION_TOKEN_GROUPS keys.
+
+    `allow_subword`: if True, also match short prefixes that would only
+    appear when an action verb has been split into pieces by the tokenizer
+    (e.g. 'F' / 'OLD' for FOLD). Disabled by default because short prefixes
+    are too generic to use for finding the action POSITION on their own; we
+    only enable them once the position is anchored by a full-word match in
+    the final layer."""
     n = _normalize_token(tok)
     if not n:
         return None
@@ -173,26 +185,88 @@ def _match_action_group(tok: str) -> str | None:
         for v in variants:
             if v in n:
                 return group
+    if allow_subword:
+        for group, prefixes in ACTION_SUBWORD_PREFIXES.items():
+            if n in prefixes:
+                return group
     return None
 
 
-def _per_layer_action_at_last_position(rec: dict) -> list[str | None]:
-    """For a single logit-lens record, return per_layer mapped action group
-    AT THE FINAL GENERATED POSITION (i.e. the position the action token was
-    actually emitted from).
+def _find_action_position(per_layer_top_tokens: list[list[str]]) -> int | None:
+    """Find the generated-token position that emitted the canonical action
+    verb (e.g. 'CHECK' for CHECK_OR_CALL, 'FOLD' for FOLD, 'B' for BET_OR_RAISE
+    when the tokenizer subword-splits BET as 'B' + 'ET').
 
-    Why last position: the JSON `"action": "FOLD"` payload is the very last
-    generated token before EOS in our prompt template. The model commits to
-    the action *at that position* — which is what we want to interrogate
-    layer-by-layer.
+    Strategy: anchor on the FINAL layer, find the JSON close brace token
+    `'"}'` near the end, walk back to the JSON open quote `' "'` (the one
+    that opens the action VALUE, not the one after the action KEY), and
+    return open_pos + 1. That position is always the first token of the
+    action verb — works for full-word verbs ('FOLD', 'CHECK') and for
+    subword-split verbs ('F'+'OLD', 'B'+'ET'+'_OR'+'_RA'+'ISE') alike.
+
+    Why this beats substring matching: tokens like ' folding' (in reasoning),
+    ' better' (contains 'bet'), or ' or' / ' raise' (in CoT exposition)
+    would otherwise spuriously match the action-verb groups; this anchor-
+    based search is bounded by the JSON quotes so it can only land inside
+    the action value.
+
+    Returns None if the response had no parseable JSON close (json-failure
+    bucket). Those records correctly contribute 0 layer trajectories.
+    """
+    if not per_layer_top_tokens:
+        return None
+    final_layer = per_layer_top_tokens[-1]
+    if not final_layer:
+        return None
+    n = len(final_layer)
+
+    # 1. Find LAST '"}' close-brace (search only the last 10 tokens — JSON
+    #    is always at the very end of the response).
+    close_pos = None
+    for pos in range(n - 1, max(-1, n - 11), -1):
+        tok = (final_layer[pos] or "").strip()
+        if "\"}" in tok:
+            close_pos = pos
+            break
+    if close_pos is None:
+        return None
+
+    # 2. Walk back from close_pos looking for the value-opening quote token
+    #    (looks like ' "' or '"' — whitespace + quote, NO colon, NO close).
+    #    Cap the lookback at 10 tokens (BET_OR_RAISE is the longest verb at
+    #    5 subword tokens; 10 is comfortable margin).
+    for pos in range(close_pos - 1, max(-1, close_pos - 11), -1):
+        tok = (final_layer[pos] or "").strip()
+        if tok in ('"', '\\"'):
+            return pos + 1
+        # Some tokenizers emit the open-quote bundled with leading space, e.g. ' "'
+        # (raw token starts with whitespace and ends in '"'). Detect that without
+        # also matching '":' (action-key separator) or '"}' (close brace).
+        raw = final_layer[pos] or ""
+        if raw.endswith('"') and ':' not in raw and '}' not in raw and len(raw.strip()) <= 2:
+            return pos + 1
+
+    return None
+
+
+def _per_layer_action_at_action_position(rec: dict) -> list[str | None]:
+    """For one logit-lens record, return per-layer mapped action group AT THE
+    ACTION-VERB POSITION (not the EOS position).
+
+    Position is anchored by the final layer's action-verb token; subword
+    matching is enabled for the per-layer scan because mid-layers often emit
+    'F' / 'fol' / 'OLD' fragments that we want to count as FOLD.
     """
     per_layer = rec.get("per_layer_top_tokens", [])
+    pos = _find_action_position(per_layer)
+    if pos is None:
+        return []
     out: list[str | None] = []
     for layer_tokens in per_layer:
-        if not layer_tokens:
+        if pos >= len(layer_tokens):
             out.append(None)
             continue
-        out.append(_match_action_group(layer_tokens[-1]))
+        out.append(_match_action_group(layer_tokens[pos], allow_subword=True))
     return out
 
 
@@ -238,7 +312,7 @@ def _crystallization_layer(per_layer_actions: list[str | None]) -> int | None:
 
 
 def _add_record_to_bucket(bucket: dict, lens_rec: dict) -> None:
-    per_layer_actions = _per_layer_action_at_last_position(lens_rec)
+    per_layer_actions = _per_layer_action_at_action_position(lens_rec)
     num_layers = len(per_layer_actions)
     if num_layers == 0:
         return

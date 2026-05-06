@@ -1,7 +1,7 @@
 {
   "label": "llama8b_t0_s456_informative_v2_logitlens",
-  "enriched_log": "logs/cot_llama8b_t0_s456_informative_v2_logitlens_enriched.jsonl",
-  "logit_lens_sidecar": "logs/cot_llama8b_t0_s456_informative_v2_logitlens_logit_lens.jsonl",
+  "enriched_log": "logs/cot_llama8b_t0_s456_informative_v2_logitlens_enriched.jsonl.gz",
+  "logit_lens_sidecar": "logs/cot_llama8b_t0_s456_informative_v2_logitlens_logit_lens.jsonl.gz",
   "stats": {
     "enriched_decisions_seen": 524,
     "enriched_decisions_with_action_metadata": 316,
@@ -70,46 +70,76 @@
           "OTHER": 1.0
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.9497,
+          "FOLD": 0.0503
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.9631,
+          "FOLD": 0.0369
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.9832,
+          "FOLD": 0.0168
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.6577,
+          "FOLD": 0.3423
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.5604,
+          "RAISE": 0.0436,
+          "FOLD": 0.3926,
+          "OTHER": 0.0034
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.6141,
+          "RAISE": 0.0235,
+          "FOLD": 0.3591,
+          "BET": 0.0034
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.5403,
+          "BET": 0.0369,
+          "FOLD": 0.4228
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.6007,
+          "BET": 0.0403,
+          "FOLD": 0.3591
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.396,
+          "CALL": 0.1812,
+          "BET": 0.0403,
+          "FOLD": 0.3826
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.5,
+          "CALL": 0.0738,
+          "BET": 0.0403,
+          "FOLD": 0.3859
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.4396,
+          "CALL": 0.1376,
+          "BET": 0.0403,
+          "FOLD": 0.3826
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.5537,
+          "BET": 0.0403,
+          "FOLD": 0.3792,
+          "CALL": 0.0268
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.6141,
+          "BET": 0.047,
+          "FOLD": 0.3389
         },
         {
-          "OTHER": 1.0
+          "CHECK": 0.6242,
+          "BET": 0.0403,
+          "FOLD": 0.3356
         }
       ],
       "per_layer_mean_entropy": [
@@ -146,7 +176,13 @@
         1.499,
         1.0511
       ],
-      "crystallization_layer": null
+      "crystallization_layer": {
+        "n": 298,
+        "mean": 23.37,
+        "median": 22.0,
+        "min": 18,
+        "max": 31
+      }
     },
     "illegal_fold": {
       "n_decisions": 18,
@@ -208,46 +244,49 @@
           "OTHER": 1.0
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.8889,
+          "FOLD": 0.1111
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.8889,
+          "FOLD": 0.1111
         },
         {
-          "OTHER": 1.0
+          "OTHER": 0.9444,
+          "FOLD": 0.0556
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         },
         {
-          "OTHER": 1.0
+          "FOLD": 1.0
         }
       ],
       "per_layer_mean_entropy": [
@@ -284,7 +323,13 @@
         1.5416,
         1.0531
       ],
-      "crystallization_layer": null
+      "crystallization_layer": {
+        "n": 18,
+        "mean": 20.89,
+        "median": 21.0,
+        "min": 19,
+        "max": 21
+      }
     },
     "illegal_other": {
       "n_decisions": 0,

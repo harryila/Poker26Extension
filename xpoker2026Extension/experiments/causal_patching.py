@@ -586,8 +586,17 @@ def main():
         "n_pairs_total": len(sources_prep) * len(targets_prep) * len(args.layers),
         "controls": controls,
     }
-    # Per-layer aggregate
-    per_layer = {L: {"n": 0, "delta_sum": 0.0, "flipped_check_n": 0}
+    # Per-layer aggregate. We track the top-1 destination across all 4
+    # families (CHECK_CALL / FOLD / BET_RAISE / OTHER) so that reverse-
+    # direction runs (e.g. clean_legal_fold source -> clean_check_or_call
+    # target) can read `frac_top1_fold` as their natural headline metric
+    # without re-deriving it from by_pair.csv. Forward-direction runs are
+    # backward compatible: `frac_top1_check_call` still means the same.
+    per_layer = {L: {"n": 0, "delta_sum": 0.0,
+                     "flipped_check_n": 0,
+                     "flipped_fold_n": 0,
+                     "flipped_betraise_n": 0,
+                     "flipped_other_n": 0}
                  for L in args.layers}
     with open(by_pair_path) as f:
         reader = csv.DictReader(f)
@@ -595,8 +604,15 @@ def main():
             L = int(row["layer"])
             per_layer[L]["n"] += 1
             per_layer[L]["delta_sum"] += float(row["delta_check_minus_fold"])
-            if row["patched_top1_group"] == "CHECK_CALL":
+            grp = row["patched_top1_group"]
+            if grp == "CHECK_CALL":
                 per_layer[L]["flipped_check_n"] += 1
+            elif grp == "FOLD":
+                per_layer[L]["flipped_fold_n"] += 1
+            elif grp == "BET_RAISE":
+                per_layer[L]["flipped_betraise_n"] += 1
+            else:
+                per_layer[L]["flipped_other_n"] += 1
     rnd_per_layer = (controls.get("random_source_per_layer") or {})
     summary["per_layer"] = {}
     for L, d in per_layer.items():
@@ -608,6 +624,9 @@ def main():
             "n": d["n"],
             "mean_delta_check_minus_fold": mean_d,
             "frac_top1_check_call": d["flipped_check_n"] / d["n"] if d["n"] else None,
+            "frac_top1_fold": d["flipped_fold_n"] / d["n"] if d["n"] else None,
+            "frac_top1_bet_raise": d["flipped_betraise_n"] / d["n"] if d["n"] else None,
+            "frac_top1_other": d["flipped_other_n"] / d["n"] if d["n"] else None,
             "random_null_delta": rnd_d,
             "specificity_adjusted_delta": adj,
         }
@@ -636,23 +655,28 @@ def main():
         lines.append("(skipped)")
     lines.append("")
     lines.append("## Per-layer effect")
-    lines.append("| Layer | n | mean Δlogit(CHECK − FOLD) | random null Δ | specificity-adjusted | top-1 → CHECK-family |")
-    lines.append("|---:|---:|---:|---:|---:|---:|")
+    lines.append("| Layer | n | mean Δlogit(CHECK − FOLD) | random null Δ | specificity-adjusted | top-1 → CHECK-family | top-1 → FOLD-family |")
+    lines.append("|---:|---:|---:|---:|---:|---:|---:|")
     for L in sorted(per_layer.keys()):
         d = summary["per_layer"][str(L)]
         rnd = d.get("random_null_delta")
         adj = d.get("specificity_adjusted_delta")
         rnd_s = f"{rnd:+.3f}" if rnd is not None else "—"
         adj_s = f"{adj:+.3f}" if adj is not None else "—"
+        f_check = d.get("frac_top1_check_call")
+        f_fold = d.get("frac_top1_fold")
+        f_check_s = f"{f_check*100:.1f}%" if f_check is not None else "—"
+        f_fold_s = f"{f_fold*100:.1f}%" if f_fold is not None else "—"
         lines.append(
             f"| {L} | {d['n']} "
             f"| {d['mean_delta_check_minus_fold']:+.3f} "
             f"| {rnd_s} "
             f"| **{adj_s}** "
-            f"| {d['frac_top1_check_call']*100:.1f}% |"
+            f"| {f_check_s} "
+            f"| {f_fold_s} |"
         )
     lines.append("")
-    lines.append("**Specificity-adjusted Δ** = (CHECK source effect) − (random non-CHECK source effect at the same layer). This is the writeup-ready signal: it isolates the contribution of the source's CHECK content from any generic 'patching at layer L breaks the model' effect.")
+    lines.append("**Specificity-adjusted Δ** = (source effect) − (random alt-bucket source effect at the same layer). This is the writeup-ready signal: it isolates the contribution of the source's content from any generic 'patching at layer L breaks the model' effect. Sign convention: positive Δ = patched residual pushes the model toward CHECK_CALL, negative Δ = pushes toward FOLD. For FORWARD runs (CHECK source → FOLD-committed target) read the `top-1 → CHECK-family` column. For REVERSE runs (FOLD source → CHECK-committed target) read the `top-1 → FOLD-family` column AND expect specificity-adjusted Δ to go NEGATIVE at saturation.")
     with open(out_dir / "SUMMARY.md", "w") as f:
         f.write("\n".join(lines) + "\n")
 

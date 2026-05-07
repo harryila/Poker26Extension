@@ -1,0 +1,432 @@
+[
+  {
+    "cell": "llama8b_t02_s123",
+    "sidecar": "logs/cot_llama8b_t02_s123_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 317,
+    "n_with_verb_position": 317,
+    "covered_counts": [
+      {
+        "token": "CHECK",
+        "mapped_to": "CHECK",
+        "count": 167
+      },
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 125
+      },
+      {
+        "token": "B",
+        "mapped_to": "BET",
+        "count": 25
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "llama8b_t02_s42",
+    "sidecar": "logs/cot_llama8b_t02_s42_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 355,
+    "n_with_verb_position": 355,
+    "covered_counts": [
+      {
+        "token": "CHECK",
+        "mapped_to": "CHECK",
+        "count": 175
+      },
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 121
+      },
+      {
+        "token": "B",
+        "mapped_to": "BET",
+        "count": 59
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "llama8b_t02_s456",
+    "sidecar": "logs/cot_llama8b_t02_s456_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 311,
+    "n_with_verb_position": 311,
+    "covered_counts": [
+      {
+        "token": "CHECK",
+        "mapped_to": "CHECK",
+        "count": 180
+      },
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 118
+      },
+      {
+        "token": "B",
+        "mapped_to": "BET",
+        "count": 13
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "llama8b_t0_s123",
+    "sidecar": "logs/cot_llama8b_t0_s123_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 351,
+    "n_with_verb_position": 351,
+    "covered_counts": [
+      {
+        "token": "CHECK",
+        "mapped_to": "CHECK",
+        "count": 198
+      },
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 128
+      },
+      {
+        "token": "B",
+        "mapped_to": "BET",
+        "count": 25
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "llama8b_t0_s42",
+    "sidecar": "logs/cot_llama8b_t0_s42_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 350,
+    "n_with_verb_position": 350,
+    "covered_counts": [
+      {
+        "token": "CHECK",
+        "mapped_to": "CHECK",
+        "count": 173
+      },
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 111
+      },
+      {
+        "token": "B",
+        "mapped_to": "BET",
+        "count": 66
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "llama8b_t0_s456",
+    "sidecar": "logs/cot_llama8b_t0_s456_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 316,
+    "n_with_verb_position": 316,
+    "covered_counts": [
+      {
+        "token": "CHECK",
+        "mapped_to": "CHECK",
+        "count": 186
+      },
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 118
+      },
+      {
+        "token": "B",
+        "mapped_to": "BET",
+        "count": 12
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "ministral8b_t02_s123",
+    "sidecar": "logs/cot_ministral8b_t02_s123_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 106,
+    "n_with_verb_position": 106,
+    "covered_counts": [
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 102
+      },
+      {
+        "token": "CH",
+        "mapped_to": "CHECK",
+        "count": 4
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "ministral8b_t02_s42",
+    "sidecar": "logs/cot_ministral8b_t02_s42_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 309,
+    "n_with_verb_position": 308,
+    "covered_counts": [
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 260
+      },
+      {
+        "token": "CH",
+        "mapped_to": "CHECK",
+        "count": 41
+      },
+      {
+        "token": "B",
+        "mapped_to": "BET",
+        "count": 7
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "ministral8b_t02_s456",
+    "sidecar": "logs/cot_ministral8b_t02_s456_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 108,
+    "n_with_verb_position": 108,
+    "covered_counts": [
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 104
+      },
+      {
+        "token": "CH",
+        "mapped_to": "CHECK",
+        "count": 4
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "ministral8b_t0_s123",
+    "sidecar": "logs/cot_ministral8b_t0_s123_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 102,
+    "n_with_verb_position": 102,
+    "covered_counts": [
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 101
+      },
+      {
+        "token": "CH",
+        "mapped_to": "CHECK",
+        "count": 1
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "ministral8b_t0_s42",
+    "sidecar": "logs/cot_ministral8b_t0_s42_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 313,
+    "n_with_verb_position": 313,
+    "covered_counts": [
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 277
+      },
+      {
+        "token": "CH",
+        "mapped_to": "CHECK",
+        "count": 29
+      },
+      {
+        "token": "B",
+        "mapped_to": "BET",
+        "count": 7
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "ministral8b_t0_s456",
+    "sidecar": "logs/cot_ministral8b_t0_s456_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 106,
+    "n_with_verb_position": 106,
+    "covered_counts": [
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 103
+      },
+      {
+        "token": "CH",
+        "mapped_to": "CHECK",
+        "count": 3
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "qwen8b_t02_s123",
+    "sidecar": "logs/cot_qwen8b_t02_s123_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 394,
+    "n_with_verb_position": 394,
+    "covered_counts": [
+      {
+        "token": "CHECK",
+        "mapped_to": "CHECK",
+        "count": 210
+      },
+      {
+        "token": "B",
+        "mapped_to": "BET",
+        "count": 93
+      },
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 91
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "qwen8b_t02_s42",
+    "sidecar": "logs/cot_qwen8b_t02_s42_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 460,
+    "n_with_verb_position": 460,
+    "covered_counts": [
+      {
+        "token": "CHECK",
+        "mapped_to": "CHECK",
+        "count": 229
+      },
+      {
+        "token": "B",
+        "mapped_to": "BET",
+        "count": 143
+      },
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 88
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "qwen8b_t02_s456",
+    "sidecar": "logs/cot_qwen8b_t02_s456_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 330,
+    "n_with_verb_position": 330,
+    "covered_counts": [
+      {
+        "token": "CHECK",
+        "mapped_to": "CHECK",
+        "count": 150
+      },
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 100
+      },
+      {
+        "token": "B",
+        "mapped_to": "BET",
+        "count": 80
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "qwen8b_t0_s123",
+    "sidecar": "logs/cot_qwen8b_t0_s123_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 350,
+    "n_with_verb_position": 350,
+    "covered_counts": [
+      {
+        "token": "CHECK",
+        "mapped_to": "CHECK",
+        "count": 180
+      },
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 93
+      },
+      {
+        "token": "B",
+        "mapped_to": "BET",
+        "count": 77
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "qwen8b_t0_s42",
+    "sidecar": "logs/cot_qwen8b_t0_s42_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 455,
+    "n_with_verb_position": 455,
+    "covered_counts": [
+      {
+        "token": "CHECK",
+        "mapped_to": "CHECK",
+        "count": 215
+      },
+      {
+        "token": "B",
+        "mapped_to": "BET",
+        "count": 149
+      },
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 91
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  },
+  {
+    "cell": "qwen8b_t0_s456",
+    "sidecar": "logs/cot_qwen8b_t0_s456_informative_v2_logitlens_logit_lens.jsonl.gz",
+    "n_records": 357,
+    "n_with_verb_position": 357,
+    "covered_counts": [
+      {
+        "token": "CHECK",
+        "mapped_to": "CHECK",
+        "count": 165
+      },
+      {
+        "token": "F",
+        "mapped_to": "FOLD",
+        "count": 101
+      },
+      {
+        "token": "B",
+        "mapped_to": "BET",
+        "count": 91
+      }
+    ],
+    "uncovered_counts": [],
+    "uncovered_examples": []
+  }
+]

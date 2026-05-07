@@ -217,7 +217,13 @@ def main():
     parser = argparse.ArgumentParser(
         description="Causal-patching CLI (Phase 2 / Phase 3 driver)."
     )
-    parser.add_argument("--enriched-log", required=True)
+    parser.add_argument("--enriched-log", required=True, nargs="+",
+                        help="One or more enriched JSONL[.gz] logs. When "
+                             "multiple are passed, decisions from all logs are "
+                             "pooled into the same bucket distribution. "
+                             "agent_config + model_id are read from the FIRST "
+                             "log (others must use the same model). Useful for "
+                             "pooling seeds (e.g. s42 + s123 + s456 t=0).")
     parser.add_argument("--source-bucket", default="clean_check_or_call",
                         choices=BUCKET_NAMES)
     parser.add_argument("--target-bucket", default="illegal_fold",
@@ -249,8 +255,24 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # ---- Load agent config + model + tokenizer -----------------------------
-    agent_config = _load_agent_config(args.enriched_log)
+    enriched_logs: list[str] = list(args.enriched_log)
+    agent_config = _load_agent_config(enriched_logs[0])
     model_id = args.model_id or agent_config["model_id"]
+    if len(enriched_logs) > 1:
+        # Sanity: every log must reference the same model_id.
+        for extra in enriched_logs[1:]:
+            other_cfg = _load_agent_config(extra)
+            if other_cfg.get("model_id") != agent_config.get("model_id"):
+                print(
+                    f"[abort] enriched logs reference different models: "
+                    f"{agent_config.get('model_id')} vs "
+                    f"{other_cfg.get('model_id')} ({extra})",
+                    file=sys.stderr,
+                )
+                sys.exit(2)
+        print(f"[init] pooling {len(enriched_logs)} enriched logs:")
+        for p in enriched_logs:
+            print(f"  - {p}")
     print(f"[init] model_id={model_id}")
 
     from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -275,15 +297,19 @@ def main():
     print(f"[init] action-family token ids: "
           f"{ {k: len(v) for k, v in family_ids.items()} }")
 
-    # ---- Bucket decisions --------------------------------------------------
-    print(f"[bucket] scanning {args.enriched_log} ...")
+    # ---- Bucket decisions (pooled across all enriched logs) ----------------
+    print(f"[bucket] scanning {len(enriched_logs)} enriched log(s) ...")
     by_bucket: dict[str, list[dict]] = {b: [] for b in BUCKET_NAMES}
-    for rec in _iter_decisions(args.enriched_log):
-        am = rec.get("action_metadata")
-        if am is None or not am.get("raw_response"):
-            continue
-        b = classify_decision(rec)
-        by_bucket[b].append(rec)
+    for log_path in enriched_logs:
+        for rec in _iter_decisions(log_path):
+            am = rec.get("action_metadata")
+            if am is None or not am.get("raw_response"):
+                continue
+            # Tag each decision with its source log so analysis can split by
+            # seed if desired (e.g., grep by_pair.csv on source_hand).
+            rec.setdefault("_source_log", log_path)
+            b = classify_decision(rec)
+            by_bucket[b].append(rec)
     for b in BUCKET_NAMES:
         print(f"  {b:<22}: {len(by_bucket[b])}")
 
@@ -549,7 +575,8 @@ def main():
 
     # ---- Summary -----------------------------------------------------------
     summary = {
-        "enriched_log": args.enriched_log,
+        "enriched_log": enriched_logs if len(enriched_logs) > 1 else enriched_logs[0],
+        "n_enriched_logs": len(enriched_logs),
         "model_id": model_id,
         "source_bucket": args.source_bucket,
         "target_bucket": args.target_bucket,
@@ -591,7 +618,12 @@ def main():
     # Markdown
     lines = ["# Causal patching results", ""]
     lines.append(f"- Model: `{model_id}`")
-    lines.append(f"- Enriched log: `{args.enriched_log}`")
+    if len(enriched_logs) == 1:
+        lines.append(f"- Enriched log: `{enriched_logs[0]}`")
+    else:
+        lines.append(f"- Enriched logs (pooled, n={len(enriched_logs)}):")
+        for p in enriched_logs:
+            lines.append(f"  - `{p}`")
     lines.append(f"- Source bucket: `{args.source_bucket}` (n={len(sources_prep)})")
     lines.append(f"- Target bucket: `{args.target_bucket}` (n={len(targets_prep)})")
     lines.append(f"- Layers: {args.layers}")

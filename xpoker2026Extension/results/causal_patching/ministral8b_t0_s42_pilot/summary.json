@@ -1,0 +1,50 @@
+{
+  "enriched_log": "logs/cot_ministral8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz",
+  "model_id": "mistralai/Ministral-8B-Instruct-2410",
+  "source_bucket": "clean_check_or_call",
+  "target_bucket": "illegal_fold",
+  "n_source": 10,
+  "n_target": 30,
+  "layers": [
+    22,
+    24,
+    26,
+    28,
+    30
+  ],
+  "n_pairs_total": 1500,
+  "controls": {
+    "baseline_top1_match_rate": 1.0,
+    "self_patch_max_logit_drift": 0.0,
+    "random_source_mean_delta": -0.702655143447339,
+    "random_source_n": 5,
+    "random_source_test_layer": 26
+  },
+  "per_layer": {
+    "22": {
+      "n": 300,
+      "mean_delta_check_minus_fold": 10.318262333333315,
+      "frac_top1_check_call": 1.0
+    },
+    "24": {
+      "n": 300,
+      "mean_delta_check_minus_fold": 10.605658666666654,
+      "frac_top1_check_call": 1.0
+    },
+    "26": {
+      "n": 300,
+      "mean_delta_check_minus_fold": 11.322659333333322,
+      "frac_top1_check_call": 1.0
+    },
+    "28": {
+      "n": 300,
+      "mean_delta_check_minus_fold": 11.344665666666653,
+      "frac_top1_check_call": 1.0
+    },
+    "30": {
+      "n": 300,
+      "mean_delta_check_minus_fold": 11.42591433333332,
+      "frac_top1_check_call": 1.0
+    }
+  }
+}

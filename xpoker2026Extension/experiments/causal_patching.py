@@ -238,6 +238,10 @@ def main():
                         help="Fraction of baseline targets whose top-1 must "
                              "match the recorded verb. <1.0 because of rare "
                              "tokenizer edge-cases.")
+    parser.add_argument("--n-random-control", type=int, default=5,
+                        help="Number of random alt-bucket sources to use as "
+                             "the per-layer null baseline. 5 is a tight pilot, "
+                             "10-15 gives a cleaner null at <1 min per layer.")
     args = parser.parse_args()
 
     rng = random.Random(args.seed)
@@ -400,21 +404,22 @@ def main():
         if max_drift > 1e-2:
             print(f"  [WARN] self-patch drift > 0.01; check for nondeterminism.")
 
-        # Control 3: random-source patch.
-        print(f"\n[control 3/3] random-source patch (subset of layers) ...")
+        # Control 3: random-source patch — now PER-LAYER so we get a null
+        # baseline at each test layer (not just one), needed for the
+        # specificity-vs-depth plot.
+        print(f"\n[control 3/3] random-source patch (per-layer null baseline) ...")
         random_sources = []
-        # Pull random decisions from a different bucket
         alt_pool = []
         for b, recs in by_bucket.items():
             if b == args.source_bucket:
                 continue
             alt_pool.extend(recs)
-        rs = [p for p in (_prepare(r) for r in rng.sample(alt_pool,
-                                                          min(5, len(alt_pool))))
+        n_random = min(args.n_random_control, len(alt_pool))
+        rs = [p for p in (_prepare(r) for r in rng.sample(alt_pool, n_random))
               if p is not None]
         if not rs:
             print("  [skip] no alt-bucket records available")
-            controls["random_source_mean_delta"] = None
+            controls["random_source_per_layer"] = None
         else:
             for r in rs:
                 cap.attach_hooks()
@@ -428,30 +433,44 @@ def main():
                     states = cap.collect()
                     cap.detach_hooks()
                 random_sources.append(states["per_layer_last_pos"])
-            # Pick one mid layer and patch each random source into one target
-            test_layer = args.layers[len(args.layers) // 2]
-            deltas = []
-            for r_residuals in random_sources:
-                patch = HiddenStatePatch(model, test_layer,
-                                          r_residuals[test_layer])
-                with patch:
-                    res = run_forward_at_last_position(
-                        model, tokenizer, targets_prep[0]["input_text"],
-                        device=args.device,
-                    )
-                scored = score_logits(res["logits_last_pos"], family_ids)
-                d = scored["delta_check_minus_fold"] - \
-                    baseline_cache[0]["scored"]["delta_check_minus_fold"]
-                deltas.append(d)
-            mean_delta = sum(deltas) / len(deltas)
-            controls["random_source_mean_delta"] = mean_delta
-            controls["random_source_n"] = len(deltas)
-            controls["random_source_test_layer"] = test_layer
-            print(f"  layer {test_layer}: mean delta_check_minus_fold = "
-                  f"{mean_delta:+.4f} (n={len(deltas)})")
-            if abs(mean_delta) > 0.5:
-                print(f"  [WARN] random-source mean |delta| > 0.5 nat; "
-                      f"results may be sensitive to ANY patch.")
+            # Run random control at EVERY test layer, against target_idx 0.
+            # n_random_sources × n_layers extra forwards (small).
+            random_per_layer: dict[int, dict] = {}
+            ctl_t0 = time.time()
+            for test_layer in args.layers:
+                deltas = []
+                for r_residuals in random_sources:
+                    patch = HiddenStatePatch(model, test_layer,
+                                              r_residuals[test_layer])
+                    with patch:
+                        res = run_forward_at_last_position(
+                            model, tokenizer, targets_prep[0]["input_text"],
+                            device=args.device,
+                        )
+                    scored = score_logits(res["logits_last_pos"], family_ids)
+                    d = scored["delta_check_minus_fold"] - \
+                        baseline_cache[0]["scored"]["delta_check_minus_fold"]
+                    deltas.append(d)
+                mean_d = sum(deltas) / len(deltas) if deltas else None
+                random_per_layer[test_layer] = {
+                    "mean_delta": mean_d,
+                    "n": len(deltas),
+                }
+                print(f"  layer {test_layer:>3}: random mean delta = "
+                      f"{mean_d:+.4f} (n={len(deltas)})")
+            ctl_elapsed = time.time() - ctl_t0
+            print(f"  [random control done in {ctl_elapsed:.0f}s]")
+            controls["random_source_per_layer"] = {
+                str(k): v for k, v in random_per_layer.items()
+            }
+            controls["random_source_n"] = n_random
+            # Aggregate signal for the old top-level field, kept for
+            # backward-compatibility with the prior pilot's summary.
+            mid = args.layers[len(args.layers) // 2]
+            controls["random_source_mean_delta"] = (
+                random_per_layer[mid]["mean_delta"]
+            )
+            controls["random_source_test_layer"] = mid
 
         print(f"\n[controls] all passed (or warned). Proceeding.")
 
@@ -551,14 +570,20 @@ def main():
             per_layer[L]["delta_sum"] += float(row["delta_check_minus_fold"])
             if row["patched_top1_group"] == "CHECK_CALL":
                 per_layer[L]["flipped_check_n"] += 1
-    summary["per_layer"] = {
-        str(L): {
+    rnd_per_layer = (controls.get("random_source_per_layer") or {})
+    summary["per_layer"] = {}
+    for L, d in per_layer.items():
+        mean_d = d["delta_sum"] / d["n"] if d["n"] else None
+        rnd_entry = rnd_per_layer.get(str(L)) or {}
+        rnd_d = rnd_entry.get("mean_delta")
+        adj = (mean_d - rnd_d) if (mean_d is not None and rnd_d is not None) else None
+        summary["per_layer"][str(L)] = {
             "n": d["n"],
-            "mean_delta_check_minus_fold": d["delta_sum"] / d["n"] if d["n"] else None,
+            "mean_delta_check_minus_fold": mean_d,
             "frac_top1_check_call": d["flipped_check_n"] / d["n"] if d["n"] else None,
+            "random_null_delta": rnd_d,
+            "specificity_adjusted_delta": adj,
         }
-        for L, d in per_layer.items()
-    }
 
     with open(out_dir / "summary.json", "w") as f:
         json.dump(summary, f, indent=2, default=str)
@@ -579,15 +604,23 @@ def main():
         lines.append("(skipped)")
     lines.append("")
     lines.append("## Per-layer effect")
-    lines.append("| Layer | n | mean Δlogit(CHECK − FOLD) | top-1 flipped to CHECK-family |")
-    lines.append("|---:|---:|---:|---:|")
+    lines.append("| Layer | n | mean Δlogit(CHECK − FOLD) | random null Δ | specificity-adjusted | top-1 → CHECK-family |")
+    lines.append("|---:|---:|---:|---:|---:|---:|")
     for L in sorted(per_layer.keys()):
         d = summary["per_layer"][str(L)]
+        rnd = d.get("random_null_delta")
+        adj = d.get("specificity_adjusted_delta")
+        rnd_s = f"{rnd:+.3f}" if rnd is not None else "—"
+        adj_s = f"{adj:+.3f}" if adj is not None else "—"
         lines.append(
             f"| {L} | {d['n']} "
-            f"| {d['mean_delta_check_minus_fold']:.3f} "
+            f"| {d['mean_delta_check_minus_fold']:+.3f} "
+            f"| {rnd_s} "
+            f"| **{adj_s}** "
             f"| {d['frac_top1_check_call']*100:.1f}% |"
         )
+    lines.append("")
+    lines.append("**Specificity-adjusted Δ** = (CHECK source effect) − (random non-CHECK source effect at the same layer). This is the writeup-ready signal: it isolates the contribution of the source's CHECK content from any generic 'patching at layer L breaks the model' effect.")
     with open(out_dir / "SUMMARY.md", "w") as f:
         f.write("\n".join(lines) + "\n")
 

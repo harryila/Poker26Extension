@@ -31,7 +31,8 @@ correlational finding.
 
 | File | Phase | Wall-clock |
 |---|---|---|
-| [`scripts/run_causal_patching_pilot.sh`](scripts/run_causal_patching_pilot.sh) | Phase 2 pilot | ~50 min H100 |
+| [`scripts/run_causal_patching_pilot.sh`](scripts/run_causal_patching_pilot.sh) | Phase 2 pilot (sparse layers 22-30) | ~50 min H100 |
+| [`scripts/run_causal_patching_layer_sweep.sh`](scripts/run_causal_patching_layer_sweep.sh) | Phase 2.5 — fine-grained layer sweep | ~3 h H100 |
 | [`scripts/run_causal_patching_full.sh`](scripts/run_causal_patching_full.sh) | Phase 3/4 | 30 min - 10 h depending on `SCOPE` env var |
 
 ## Local CPU validation (already done by me)
@@ -133,6 +134,58 @@ Also check:
 - `controls.self_patch_max_logit_drift` should be < 1e-2 (sanity for hooks).
 - `controls.random_source_mean_delta` should be |x| < 0.5 nat (sanity for
   source-content specificity).
+
+### Step 4b (added 2026-05-XX after first pilot saturated): layer sweep
+
+The first pilot tested layers 22 24 26 28 30 and found 100% flip + ~+11 nat
+shift AT EVERY LAYER (saturated). The verb-prediction info is already
+encoded in the residual by L=22, so the sparse-late sweep can't pin the
+deliberation depth.
+
+To find where the patching effect EMERGES (= the deliberation circuit's
+upper boundary), run a fine-grained sweep over every layer:
+
+```bash
+bash scripts/run_causal_patching_layer_sweep.sh
+```
+
+Defaults: every layer 0..35 of Ministral 8B, 10 sources × 15 targets, 5
+random-source-per-layer null. ~5,400 main forwards + ~280 control = ~3 h on
+H100. Output:
+
+```
+results/causal_patching/ministral8b_t0_s42_layer_sweep/
+    SUMMARY.md       # per-layer table with main effect, random null,
+                     # AND specificity-adjusted Δ (writeup-ready signal)
+    summary.json     # controls.random_source_per_layer is the per-layer null
+    by_pair.csv      # 5400 rows for plotting effect-vs-layer
+```
+
+What to look for in `SUMMARY.md` (read top-to-bottom):
+
+| Layer | mean Δ | random null Δ | specificity-adjusted Δ | top-1 → CHECK |
+|---:|---:|---:|---:|---:|
+| 0   | _expect ~0_ | _~0_       | **~0**       | _low_ |
+| 5   | _expect ~0_ | _~0_       | **~0**       | _low_ |
+| ... | ...         | ...        | ...          | ... |
+| L*  | rises       | ~0         | **rises**    | rises |
+| ... | saturated   | ~0         | **~+11**     | 100% |
+
+The layer L* where the **specificity-adjusted Δ** first crosses ~+1 nat is
+the deliberation-circuit boundary. That's the BlackboxNLP plot.
+
+If L* is, say, 18, then: "the model's verb decision crystallizes at layer
+~18 in the residual stream; layers 18-22 host the deliberation circuit;
+layers 22-35 are causally read-out." That's a publishable mechanistic claim.
+
+Decision after the sweep:
+- **L* well-defined (clean transition over 2-4 layers)**: Phase 3 with
+  layers concentrated around L*, ~30 min on H100. Tight stats for paper.
+- **L* unclear (gradual rise from L=0)**: indicates verb info is encoded
+  very early (i.e., in the prompt processing itself, before CoT generation
+  even begins). Different but still publishable claim.
+- **No layer specificity even now**: hypothesis falsified at the residual-
+  stream level; pivot to attention-pattern analysis.
 
 ### Step 5: Phase 3 (if pilot success gate passes)
 

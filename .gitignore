@@ -8,6 +8,10 @@ venv/
 env/
 .venv/
 .env/
+# Guard against accidentally tracking a venv symlink (commit 28bd2b6
+# pushed xpoker2026Extension/venv as a symlink to /workspace/venv).
+xpoker2026Extension/venv
+xpoker2026Extension/venv/
 
 # Testing
 .pytest_cache/

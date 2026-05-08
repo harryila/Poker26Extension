@@ -1,0 +1,102 @@
+{
+  "enriched_log": [
+    "logs/cot_ministral8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz",
+    "logs/cot_ministral8b_t0_s123_informative_v2_logitlens_enriched.jsonl.gz",
+    "logs/cot_ministral8b_t0_s456_informative_v2_logitlens_enriched.jsonl.gz"
+  ],
+  "n_enriched_logs": 3,
+  "model_id": "mistralai/Ministral-8B-Instruct-2410",
+  "source_bucket": "clean_legal_fold",
+  "target_bucket": "clean_check_or_call",
+  "n_source": 10,
+  "n_target": 30,
+  "layers": [
+    12,
+    16,
+    20,
+    26,
+    30
+  ],
+  "n_pairs_total": 1500,
+  "controls": {
+    "baseline_top1_match_rate": 1.0,
+    "self_patch_max_logit_drift": 0.0,
+    "random_source_per_layer": {
+      "12": {
+        "mean_delta": -0.3499847352456641,
+        "n": 5
+      },
+      "16": {
+        "mean_delta": -7.672679618866678,
+        "n": 5
+      },
+      "20": {
+        "mean_delta": -8.421047727685226,
+        "n": 5
+      },
+      "26": {
+        "mean_delta": -9.29162042576273,
+        "n": 5
+      },
+      "30": {
+        "mean_delta": -9.464922138157288,
+        "n": 5
+      }
+    },
+    "random_source_n": 5,
+    "random_source_mean_delta": -8.421047727685226,
+    "random_source_test_layer": 20
+  },
+  "per_layer": {
+    "12": {
+      "n": 300,
+      "mean_delta_check_minus_fold": -0.2333483333333334,
+      "frac_top1_check_call": 1.0,
+      "frac_top1_fold": 0.0,
+      "frac_top1_bet_raise": 0.0,
+      "frac_top1_other": 0.0,
+      "random_null_delta": -0.3499847352456641,
+      "specificity_adjusted_delta": 0.11663640191233068
+    },
+    "16": {
+      "n": 300,
+      "mean_delta_check_minus_fold": -10.003783000000004,
+      "frac_top1_check_call": 0.0,
+      "frac_top1_fold": 1.0,
+      "frac_top1_bet_raise": 0.0,
+      "frac_top1_other": 0.0,
+      "random_null_delta": -7.672679618866678,
+      "specificity_adjusted_delta": -2.3311033811333255
+    },
+    "20": {
+      "n": 300,
+      "mean_delta_check_minus_fold": -12.020921333333336,
+      "frac_top1_check_call": 0.0,
+      "frac_top1_fold": 1.0,
+      "frac_top1_bet_raise": 0.0,
+      "frac_top1_other": 0.0,
+      "random_null_delta": -8.421047727685226,
+      "specificity_adjusted_delta": -3.59987360564811
+    },
+    "26": {
+      "n": 300,
+      "mean_delta_check_minus_fold": -14.720408333333337,
+      "frac_top1_check_call": 0.0,
+      "frac_top1_fold": 1.0,
+      "frac_top1_bet_raise": 0.0,
+      "frac_top1_other": 0.0,
+      "random_null_delta": -9.29162042576273,
+      "specificity_adjusted_delta": -5.428787907570607
+    },
+    "30": {
+      "n": 300,
+      "mean_delta_check_minus_fold": -15.394700666666665,
+      "frac_top1_check_call": 0.0,
+      "frac_top1_fold": 1.0,
+      "frac_top1_bet_raise": 0.0,
+      "frac_top1_other": 0.0,
+      "random_null_delta": -9.464922138157288,
+      "specificity_adjusted_delta": -5.929778528509377
+    }
+  }
+}

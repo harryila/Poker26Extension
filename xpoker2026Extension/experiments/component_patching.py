@@ -23,6 +23,12 @@ Component modes (each row in the output table corresponds to one):
   - ``head_<i>``: replaces ONLY the i-th attention head's pre-o_proj output.
     Other heads pass through unchanged. One row per head index in
     ``--head-indices`` (use ``--head-indices all`` for all heads).
+  - ``head_subset`` (B1.5): replaces ALL heads listed in ``--head-indices``
+    SIMULTANEOUSLY, in a single patched forward — exactly one output row,
+    label ``heads_<i>_<j>_<k>...``. Tests whether a candidate sparse head
+    set jointly clears the verb-flip threshold. Pair this with the per-head
+    sweep (``--components head head_subset``) to measure linearity of the
+    per-head contributions in one invocation.
 
 Usage on a GPU box::
 
@@ -117,8 +123,14 @@ def enumerate_component_modes(
     components: list[str],
     head_indices: list[int],
     num_heads: int,
-) -> list[tuple[str, int | None]]:
-    modes: list[tuple[str, int | None]] = []
+) -> list[tuple[str, object]]:
+    """Build the ordered (mode_name, head_spec) list. ``head_spec`` is:
+        - ``None`` for non-head modes
+        - an ``int`` for ``head`` mode (one row per head)
+        - a ``tuple[int, ...]`` for ``head_subset`` mode (one row covering
+          all listed heads simultaneously)
+    """
+    modes: list[tuple[str, object]] = []
     for c in components:
         if c == "residual":
             modes.append(("residual", None))
@@ -131,14 +143,24 @@ def enumerate_component_modes(
                 if not (0 <= h < num_heads):
                     raise ValueError(f"head index {h} out of range [0, {num_heads})")
                 modes.append(("head", h))
+        elif c == "head_subset":
+            if not head_indices:
+                raise ValueError("head_subset requires --head-indices to be non-empty")
+            for h in head_indices:
+                if not (0 <= h < num_heads):
+                    raise ValueError(f"head_subset index {h} out of range [0, {num_heads})")
+            # Sort + deduplicate so the label is canonical regardless of CLI order.
+            modes.append(("head_subset", tuple(sorted(set(head_indices)))))
         else:
             raise ValueError(f"unknown component '{c}'")
     return modes
 
 
-def mode_label(mode_name: str, head_idx: int | None) -> str:
+def mode_label(mode_name: str, head_spec) -> str:
     if mode_name == "head":
-        return f"head_{head_idx:02d}"
+        return f"head_{head_spec:02d}"
+    if mode_name == "head_subset":
+        return "heads_" + "_".join(f"{h:02d}" for h in head_spec)
     return mode_name
 
 
@@ -151,11 +173,13 @@ def make_patcher(
     model,
     layer_idx: int,
     mode_name: str,
-    head_idx: int | None,
+    head_spec,
     captured: dict,
 ):
     """Return a context-manager-compatible patcher for the given mode using
-    the source's ``HiddenStateCaptureMulti.collect()`` payload."""
+    the source's ``HiddenStateCaptureMulti.collect()`` payload. ``head_spec``
+    is ``None`` for non-head modes, an int for single-head mode, or a tuple
+    of int for head_subset."""
     if mode_name == "residual":
         src = captured["per_layer_residual"][layer_idx]
         return HiddenStatePatch(model, layer_idx, src)
@@ -166,11 +190,18 @@ def make_patcher(
         src = captured["per_layer_mlp_out"][layer_idx]
         return HiddenStatePatchMLPOnly(model, layer_idx, src)
     if mode_name == "head":
-        if head_idx is None:
-            raise ValueError("head mode requires head_idx")
+        if head_spec is None:
+            raise ValueError("head mode requires head index")
         src_per_head = captured["per_layer_attn_per_head"][layer_idx]
         return HiddenStatePatchAttnHeadSubset(
-            model, layer_idx, src_per_head, [head_idx]
+            model, layer_idx, src_per_head, [head_spec]
+        )
+    if mode_name == "head_subset":
+        if not head_spec:
+            raise ValueError("head_subset mode requires non-empty head tuple")
+        src_per_head = captured["per_layer_attn_per_head"][layer_idx]
+        return HiddenStatePatchAttnHeadSubset(
+            model, layer_idx, src_per_head, list(head_spec)
         )
     raise ValueError(f"unknown mode {mode_name!r}")
 
@@ -194,10 +225,12 @@ def main():
                         help="Single layer at which to do the component sweep.")
     parser.add_argument("--components", nargs="+",
                         default=["residual", "attn", "mlp", "head"],
-                        choices=["residual", "attn", "mlp", "head"])
+                        choices=["residual", "attn", "mlp", "head", "head_subset"])
     parser.add_argument("--head-indices", nargs="+", default=["all"],
                         help="Head indices to test (e.g. '0 7 12 19'). Use "
-                             "'all' to test every head individually.")
+                             "'all' to test every head individually. For "
+                             "`head_subset` mode, ALL listed indices are "
+                             "patched together as a single combined patch.")
     parser.add_argument("--n-source", type=int, default=10)
     parser.add_argument("--n-target", type=int, default=30)
     parser.add_argument("--seed", type=int, default=42)
@@ -252,6 +285,14 @@ def main():
         head_indices = list(range(num_heads))
     else:
         head_indices = [int(h) for h in args.head_indices]
+    if "head_subset" in args.components and args.head_indices == ["all"]:
+        # 'all' for head_subset would patch every head, which is identical to
+        # attn-mode (modulo numerical noise) and not informative. Reject early.
+        raise SystemExit(
+            "[abort] --components head_subset with --head-indices all is "
+            "equivalent to attn-only and not informative. Pass an explicit "
+            "non-empty subset of head indices (e.g. '5 23 24')."
+        )
     component_modes = enumerate_component_modes(
         args.components, head_indices, num_heads
     )
@@ -402,10 +443,19 @@ def main():
     n_done = 0
     for ti, tgt in enumerate(targets_prep):
         baseline_score = baseline_cache[ti]["scored"]
-        for mode_name, head_idx in component_modes:
+        for mode_name, head_spec in component_modes:
+            # Encode head_spec into the CSV's head_idx column. Single ints
+            # stay as ints; tuples (head_subset) are dot-separated for
+            # downstream CSV parsing without quoting.
+            if isinstance(head_spec, int):
+                head_idx_csv = str(head_spec)
+            elif isinstance(head_spec, tuple):
+                head_idx_csv = "+".join(str(h) for h in head_spec)
+            else:
+                head_idx_csv = ""
             for si, src in enumerate(sources_prep):
                 patcher = make_patcher(
-                    model, args.layer, mode_name, head_idx,
+                    model, args.layer, mode_name, head_spec,
                     source_captures[si],
                 )
                 with patcher:
@@ -432,7 +482,7 @@ def main():
 
                 writer.writerow([
                     si, ti, args.layer, mode_name,
-                    head_idx if head_idx is not None else "",
+                    head_idx_csv,
                     src["rec"]["hand_id"], src["rec"]["decision_idx"],
                     tgt["rec"]["hand_id"], tgt["rec"]["decision_idx"],
                     tgt["expected_verb_tok_id"],
@@ -448,17 +498,19 @@ def main():
             rate = n_done / elapsed if elapsed > 0 else 0
             eta = (n_pairs_total - n_done) / rate if rate > 0 else float("nan")
             print(f"  [main] target {ti+1}/{len(targets_prep)} "
-                  f"mode={mode_label(mode_name, head_idx)}: "
+                  f"mode={mode_label(mode_name, head_spec)}: "
                   f"{n_done}/{n_pairs_total} ({elapsed:.0f}s, "
                   f"{rate:.2f}/s, ETA {eta:.0f}s)")
     by_pair_f.close()
 
     # ---- Aggregate per-component summary ----------------------------------
     per_mode: dict[str, dict] = {}
-    for mode_name, head_idx in component_modes:
-        per_mode[mode_label(mode_name, head_idx)] = {
+    for mode_name, head_spec in component_modes:
+        per_mode[mode_label(mode_name, head_spec)] = {
             "mode": mode_name,
-            "head_idx": head_idx,
+            "head_spec": (
+                head_spec if not isinstance(head_spec, tuple) else list(head_spec)
+            ),
             "n": 0,
             "delta_sum": 0.0,
             "flipped_check_n": 0,
@@ -468,9 +520,15 @@ def main():
         }
     with open(by_pair_path) as f:
         for row in csv.DictReader(f):
-            label = row["component_mode"]
-            if row["component_mode"] == "head" and row["head_idx"] != "":
-                label = f"head_{int(row['head_idx']):02d}"
+            mode_field = row["component_mode"]
+            head_field = row["head_idx"]
+            if mode_field == "head" and head_field != "":
+                label = f"head_{int(head_field):02d}"
+            elif mode_field == "head_subset" and head_field != "":
+                hs = sorted(int(x) for x in head_field.split("+"))
+                label = "heads_" + "_".join(f"{h:02d}" for h in hs)
+            else:
+                label = mode_field
             d = per_mode[label]
             d["n"] += 1
             d["delta_sum"] += float(row["delta_check_minus_fold"])
@@ -517,7 +575,7 @@ def main():
         )
         summary["per_mode"][label] = {
             "mode": d["mode"],
-            "head_idx": d["head_idx"],
+            "head_spec": d["head_spec"],
             "n": d["n"],
             "mean_delta_check_minus_fold": mean_d,
             "ratio_to_residual": ratio_to_residual,
@@ -551,12 +609,18 @@ def main():
     lines.append("## Per-component / per-head effect at L=" + str(args.layer))
     lines.append("| Mode | n | mean Δ(CHECK − FOLD) | ratio to residual | top-1 → CHECK | top-1 → FOLD | top-1 → BET_RAISE |")
     lines.append("|---|---:|---:|---:|---:|---:|---:|")
-    # Sort: residual / attn / mlp first, then heads in numeric order.
+    # Sort: residual / attn / mlp first, then head_subset (next to attn for
+    # readability), then individual heads in numeric order.
     def _sort_key(label):
         if label == "residual": return (0, 0)
         if label == "attn":     return (1, 0)
-        if label == "mlp":      return (2, 0)
-        if label.startswith("head_"): return (3, int(label.split("_")[1]))
+        if label.startswith("heads_"):
+            # Sort by smallest head index in the subset, breaking ties by length
+            # so a small triplet is grouped near its single-head rows.
+            heads = [int(x) for x in label[len("heads_"):].split("_")]
+            return (2, min(heads), len(heads))
+        if label == "mlp":      return (3, 0)
+        if label.startswith("head_"): return (4, int(label.split("_")[1]))
         return (9, 0)
     for label in sorted(per_mode.keys(), key=_sort_key):
         d = summary["per_mode"][label]
@@ -584,6 +648,12 @@ def main():
         "- A small set of `head_NN` rows each contributing >10% of the "
         "residual effect: SPARSE HEAD STORY — the strongest possible version "
         "of the result. Cite those head indices.\n"
+        "- A `heads_NN_MM_KK` row near `attn`'s ratio: the listed sparse "
+        "subset jointly captures the attention contribution. If its top-1 "
+        "flip rate also matches `residual`, the triplet is the circuit.\n"
+        "- A `heads_NN_MM_KK` row well below the linear sum of its members' "
+        "individual ratios: per-head contributions are NON-additive (the "
+        "heads interact through downstream MLP recomputation).\n"
         "- All `head_NN` rows roughly equal and individually small: dense "
         "attention story — the effect spreads across many heads and no "
         "single head dominates.\n"

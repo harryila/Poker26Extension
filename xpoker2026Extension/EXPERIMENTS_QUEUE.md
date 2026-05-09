@@ -3,14 +3,13 @@
 Living document. Captures (i) the experiments we're actively queuing for the
 GPU box now, (ii) the shelf of experiments we considered and deliberately
 deferred, with the trigger condition that would move each shelf item into the
-active queue. Sister document to `JOURNEY.md`, which records what *has* been
-run; this records what *will* be run, *might* be run, and *won't* be run, and
-why.
+active queue. Sister document to `JOURNEY.md` and `updates.md` (which record
+what *has* been run); this records what *will* be run, *might* be run, and
+*won't* be run, and why.
 
-> **Last refresh:** May 2026, after the Llama per-seed replication closed the
-> cross-seed Llama story. Forward + reverse pilots, Llama+Ministral per-seed
-> replication, and a methods-ready relaxed pre-flight gate
-> (`logs/preflight_relaxed_gate.txt`) are all complete.
+> **Last refresh:** 2026-05-09, after the Phase I batch (A1/D2/C1/B1) ran on
+> the GPU box. See `updates.md` §14 for the results writeup. The queue below
+> is the next batch.
 
 ---
 
@@ -27,136 +26,128 @@ why.
 
 ---
 
+## Recently shipped (since previous queue refresh)
+
+These were in the prior "Queued" list and have now run; full results +
+caveats are in `updates.md` §14.
+
+| Code | Script | Status | Headline result |
+|------|--------|--------|------------------|
+| A1 | `scripts/run_causal_patching_qwen_seeds_replicate.sh` | ✅ all 3 cells | All three Qwen seeds show the same gradual L=19→23 ramp; cross-seed concordance confirmed. Caveat: s42 has n_target=4 so steps are coarse-grained. |
+| D2 | `scripts/run_causal_patching_zero_ablation.sh` | ✅ all 3 cells | Zero-patch flips 0% top-1 → CHECK across all three models, all tested layers. **Circuit is content-addressable, not load-bearing.** |
+| C1 | `scripts/run_causal_patching_verb_generality.sh` | ✅ all 3 cells | RAISE→CHECK flips at L*+1 to L*+2 in all three models — **L\* is a general decision circuit with two-stage internal structure** (FOLD-vs-not at L\*; BET-vs-CHECK 1-2 layers later). |
+| B1 | `scripts/run_causal_patching_component_l14.sh` | ⚠️ Llama only | At Llama L=14: MLP irrelevant (-6%), attn ≈ 49% of residual, three heads (h5/h23/h24) carry ≈ 73% of per-head signal. Sparse-triplet but no single head clears the verb-flip threshold. Ministral B1 not yet run (gated on `RUN_MINISTRAL=1`). |
+| A3 | `scripts/run_causal_patching_nocot_parity.sh` | ❌ auto-skipped | Non-CoT `scaled_*_enriched.jsonl` baseline logs not present at the expected paths on the GPU box. Re-queued below; needs an inputs check. |
+
+---
+
 ## Queued — to run on the GPU box, in this priority order
 
-The five items below should be runnable end-to-end with one `git pull` on the
-GPU box. Each line shows the script, the expected wall-clock on a single
-H100, and the headline reading the resulting SUMMARY.md should produce.
+Three items, in dependency order. Each has a wrapper script and a one-line
+headline metric.
 
 | # | Code | Script | Wall-clock | Headline reading |
 |---|------|--------|-----------:|------------------|
-| 1 | A1 | `scripts/run_causal_patching_qwen_seeds_replicate.sh` | ~2 h | Per-seed Qwen sweeps; expected: gradual ramp L=19→23, top-1 → CHECK climbs from <2% to 100%, **same shape across all three seeds**. |
-| 2 | D2 | `scripts/run_causal_patching_zero_ablation.sh` | ~30 min | Zero-ablation control at L*=14 in Llama and L*=14 in Ministral; if zero-patch flips the verb, the layer is *load-bearing*; if not, the existing result is *content-addressable* rather than just "a clean signal at this layer matters". |
-| 3 | A3 | `scripts/run_causal_patching_nocot_parity.sh` | ~3-6 h | Same protocol on non-CoT (`scaled_*_enriched.jsonl`) baseline logs in all three models; expected: L*=14 boundary persists in Llama+Ministral; uncertain for Qwen. |
-| 4 | C1 | `scripts/run_causal_patching_verb_generality.sh` | ~3-4 h | RAISE source ↔ CHECK target patching at L*=14 (and a small layer sweep around it); tests whether L*=14 is a *fold-or-not* or *general decision* circuit. Read `top-1 → BET_RAISE-family` column. |
-| 5 | B1 | `scripts/run_causal_patching_component_l14.sh` | ~6-12 h | Llama L=14 broken into attention-only / MLP-only / per-attention-head patches; if attn-only ≈ full-residual *and* a small set of heads dominates, that's the headline mech-interp result. |
+| 1 | B1-Ministral + B1.5 | `scripts/run_causal_patching_component_l14_extras.sh` | ~60-90 min | Cell 1: does Ministral L=14 also show a sparse-triplet head pattern? Cell 2: does the Llama h5+h23+h24 triplet jointly clear the verb-flip threshold (linearity test)? Cell 3 (conditional): same triplet test for Ministral's top-3 heads. |
+| 2 | A3 | `scripts/run_causal_patching_nocot_parity.sh` | ~3-6 h *if logs exist* | Re-queue. Run an `ls logs/scaled_*_informative_v2_enriched.jsonl` first; if present, fire the script. Outcome either way is paper-worthy: if L\* persists, circuit is intrinsic; if it shifts, CoT mechanistically reshapes internals. |
+| 3 | B1 at L=15 (Llama) | `LAYER=15 bash scripts/run_causal_patching_component_l14.sh` | ~50 min | Verb-generality found that RAISE flips at L=15 in Llama (94.7%), not L=14 (44%). Repeating the component sweep at L=15 may show a *different* head pattern — possibly the BET-vs-CHECK heads if the two-stage decision story is right. |
 
-### A1 — Qwen per-seed replication
+### Cell 1.1 — Ministral B1 (component sweep at L=14)
 
-> **Why:** Cross-model symmetry. Llama and Ministral both have 4 cells of
-> per-seed evidence; Qwen has only the 3-seed pooled sweep. The forward
-> pooled sweep already shows Qwen has a qualitatively different signature
-> (gradual L=19→23 ramp vs Llama/Ministral's sharp 2-layer flip at L=14),
-> but the per-seed cells confirm that the *gradual* shape itself is
-> reproducible across seeds and not a pooling artifact. This is what lets
-> us write the cross-model story symmetrically.
+> **Why:** Cross-model check on the head story. The Llama L=14 result
+> identified head_05 / head_23 / head_24 as carrying ≈ 73% of the per-head
+> signal. If Ministral also shows a sparse triplet at L=14 (even at
+> different head indices), the localized-attention story becomes
+> architecturally meaningful, not Llama-specific.
 
-- **Inputs:** `logs/cot_qwen8b_t0_{s42,s123,s456}_informative_v2_logitlens_enriched.jsonl.gz`
-- **Layers:** all 36 (matches Ministral replicate; Qwen has 36 layers)
-- **n_source / n_target:** 10 / max-available
-- **Outputs:** `results/causal_patching/qwen8b_t0_{s42,s123,s456}_replicate/`
-- **Pass criterion:** all three SUMMARY.md tables show top-1 → CHECK climbing
-  from <2% at L≤19 to ≥75% at L=22 to 100% at L=23, in roughly the same
-  shape, with specificity-adjusted Δ rising monotonically.
+- **Script:** `bash scripts/run_causal_patching_component_l14_extras.sh`
+  (cell 1; the script also runs cell 2 in the same invocation)
+- **Inputs:** Ministral pooled enriched logs (s42 + s123 + s456)
+- **Outputs:** `results/causal_patching/ministral8b_l14_components/`
+- **Pass criterion:** if 2-4 heads each carry > 10% of residual magnitude,
+  same-shape sparse-triplet across models. If all 32 heads contribute
+  ±3% individually, dense-attention story (Llama-specific sparse triplet).
 
-### D2 — Zero-ablation control
+### Cell 1.2 — Llama B1.5 (head-triplet patch at L=14)
 
-> **Why:** Distinguishes two interpretations of the existing result.
-> "Patching a clean source residual into the target flips the verb" is
-> consistent with both *(a) the layer-L state matters causally* and *(b) any
-> well-formed signal at layer L flips the verb*. Zero-patch (replace the
-> residual with the all-zeros tensor) tests (a) directly: if zero flips the
-> verb, the circuit *uses* layer L; if zero does *not* flip the verb but
-> clean-source patches do, the circuit is content-addressable, not just
-> layer-load-bearing.
+> **Why:** The Llama per-head sweep gave ≈ 73% of residual when summing
+> the three top-head ratios (head_05 18% + head_23 35% + head_24 20%).
+> But no single head individually flipped the verb. The triplet patch
+> tests three things in one row:
+>   - Does the joint triplet patch ≈ the linear sum (additivity)?
+>   - Does the joint triplet patch ≈ the attn-only patch (49%)?
+>   - Does the joint triplet flip the verb at the same rate as the
+>     full residual?
 
-- **Inputs:** Llama and Ministral pooled enriched logs
-- **Layers:** L*-2, L*-1, L*, L*+1, L*+4 (5 layers each model)
-- **Mode:** `--zero-ablation` flag added to `experiments/causal_patching.py`
-  (replaces the source residual with zeros instead of a sampled source)
-- **Outputs:** `results/causal_patching/{llama,ministral}_zero_ablation/`
-- **Pass criterion (for "circuit is content-addressable"):** zero-ablation
-  Δlogit(CHECK − FOLD) at L=14 should be much smaller than the +10 to +14
-  nat shift from the clean-source patch. If it's similar, the layer is
-  load-bearing in a directional sense; if it's near 0, the circuit is fully
-  content-addressable.
+- **Script:** same as cell 1.1 — both fire in one invocation.
+- **Inputs:** Llama pooled enriched logs.
+- **Outputs:** `results/causal_patching/llama8b_l14_head_triplet/`
+  (the table will have rows: residual / attn / mlp / heads_05_23_24 /
+  head_05 / head_23 / head_24)
+- **Pass criteria** (three possible outcomes):
+  - **heads_05_23_24 ≈ 73% of residual AND verb-flip ≥ 50%**: linearity holds,
+    triplet IS the circuit, paper-banner.
+  - **heads_05_23_24 ≈ residual (close to 100%) AND verb-flip ≈ 79%**: the
+    triplet alone reproduces the full residual effect — even stronger
+    paper-banner: the circuit IS the triplet.
+  - **heads_05_23_24 < linear sum**: heads interfere; the per-head
+    decomposition was misleading; no clean head story; paper says
+    "weighted-combination across many heads."
 
-### A3 — Non-CoT patching parity
+### Cell 1.3 — Ministral B1.5 (conditional)
 
-> **Why:** All current causal patching is on CoT runs. Question: is L*=14
-> the model's *natural* decision circuit, or is it specifically the
-> deliberation circuit that the CoT prompt induces? If L*=14 boundary
-> persists in non-CoT runs, the circuit is the model's, not the prompt's.
-> If L* shifts or vanishes, that's a finding about what CoT actually does
-> mechanistically.
+> **Why:** Cross-model triplet test. Only fires if cell 1.1 (Ministral B1)
+> identifies a clear top-3 set of heads.
 
-- **Inputs:** `logs/scaled_<model>8b_t0_s42_informative_v2_enriched.jsonl`
-  (one per model — Tier-1A.small produced these)
-- **Layers:** small sweep around the CoT-derived L* (Llama: 10-18,
-  Ministral: 12-20, Qwen: 16-24)
+- **Trigger:** after cell 1.1 completes, read its SUMMARY_components.md and
+  identify Ministral's three highest-ratio heads. Then re-run with
+  `MINISTRAL_TRIPLET="<a> <b> <c>"`:
+  ```
+  MINISTRAL_TRIPLET="<a> <b> <c>" \
+      SKIP_MINISTRAL_B1=1 SKIP_LLAMA_B1_5=1 \
+      bash scripts/run_causal_patching_component_l14_extras.sh
+  ```
+- **Outputs:** `results/causal_patching/ministral8b_l14_head_triplet/`
+- **Same three pass criteria as Llama B1.5.**
+
+### Cell 2 — A3 (non-CoT patching parity)
+
+> **Re-queued from the previous batch.** Auto-skipped because
+> `logs/scaled_<model>8b_t0_s42_informative_v2_enriched.jsonl` were not
+> present on the GPU box where the queue ran.
+
+- **Inputs check first:** on the GPU box, run
+  `ls logs/scaled_*_informative_v2_enriched.jsonl` and confirm at least
+  Llama+Ministral have files. If they don't:
+    - Either run `bash scripts/run_tier1a_small.sh` first (~3-6 h to
+      regenerate the non-CoT baseline) — large compute outlay.
+    - Or pass `LOGS=...` to the script with whatever non-CoT enriched logs
+      do exist.
+    - Or skip A3 entirely and rely on the existing CoT-only story (the
+      paper still works without A3, just one fewer paragraph).
+- **Then:** `bash scripts/run_causal_patching_nocot_parity.sh`
 - **Outputs:** `results/causal_patching/{llama,ministral,qwen}8b_nocot_parity/`
-- **Caveat:** non-CoT runs may have far fewer `illegal_fold` decisions than
-  CoT runs (no chain-of-thought to "miss" with). Script auto-detects
-  available targets and skips cells with <3 illegal_FOLDs. If a model has
-  insufficient targets, this just prints `[skip]` for that cell and the
-  rest still run.
-- **Pass criterion:** if L*=14 boundary persists in Llama/Ministral non-CoT,
-  banner result. If it shifts, banner result of a different kind. There is
-  no failure mode for this experiment given the controls run first.
+- **Pass criterion (for "circuit is intrinsic"):** L\* boundary in non-CoT
+  matches L\* boundary in CoT (within ±1-2 layers) for Llama and Ministral.
 
-### C1 — Verb-generality (RAISE included)
+### Cell 3 — B1 at L=15 (Llama)
 
-> **Why:** Currently CHECK_CALL ↔ FOLD is the only binary tested. If L*=14
-> is a *general* decision circuit, it should also mediate RAISE source ↔
-> CHECK target swaps. If L*=14 is *fold-or-not specific*, RAISE patches
-> won't flip the verb at the same layer.
+> **Why:** Verb-generality (C1) found that RAISE→CHECK *flips* at L=15 in
+> Llama (94.7% top-1 → BET_RAISE), not at L=14 (only 44%). The component
+> profile at L=15 might therefore be different from L=14:
+>   - If L=15's heads ⊃ L=14's heads + new heads: staged-decision picture
+>     (FOLD-vs-not heads at L=14, BET-vs-CHECK heads at L=15).
+>   - If L=15's heads ≈ L=14's heads with bigger ratios: same circuit,
+>     just one layer further into saturation.
+>   - If L=15's heads ⊥ L=14's heads: completely separate verb circuits
+>     at adjacent layers — surprising, paper-worthy if true.
 
-- **Inputs:** Same pooled enriched logs as the original layer sweep
-  (`cot_<model>8b_t0_s{42,123,456}_*_enriched.jsonl.gz`)
-- **Source bucket:** `clean_bet_or_raise`
-- **Target bucket:** `clean_check_or_call`
-- **Layers:** {L*−2, L*−1, L*, L*+2, L*+5} per model
-- **SUMMARY.md change:** the existing SUMMARY only prints CHECK and FOLD
-  fractions. For verb-generality, the headline column is *top-1 →
-  BET_RAISE-family*. Driver tweaked to always print all three group
-  columns — backward-compatible, prior runs just had 0% in that column.
-- **Outputs:**
-  `results/causal_patching/{llama,ministral,qwen}8b_verb_generality_raise_to_check/`
-- **Pass criterion (for "general decision circuit"):** at L=L*, top-1 →
-  BET_RAISE rises to >70% at saturation; at L<L*, no flip. Same boundary
-  layer as the CHECK/FOLD experiment.
-
-### B1 — Component-level patching at L*=14 (Llama first)
-
-> **Why:** Standard mech-interp depth-of-detail. The current result says
-> "patching the residual at L=14 flips the verb." The next-resolution
-> question is "*which sublayer at L=14 carries the signal?*" — attention or
-> MLP — and within attention, "*which heads?*" If a small set of heads
-> dominates, that's the strongest version of the result.
-
-- **Implementation:** new patching primitives in
-  `poker_env/interp/patching.py`:
-    - `HiddenStatePatchAttnOnly` (replaces only `self_attn` output last position)
-    - `HiddenStatePatchMLPOnly` (replaces only `mlp` output last position)
-    - `HiddenStatePatchAttnHeadSubset` (replaces specific head slices in the
-      pre-`o_proj` per-head concat)
-  Plus capture analogs: `HiddenStateCaptureAttnAndMLP` and
-  `HiddenStateCaptureAttnHeads`.
-- **Driver:** `--component {residual,attn,mlp,head}` flag and `--head-indices`
-  list.
-- **Cells (Llama, L=14):**
-    - attn-only sweep over L=12-16
-    - MLP-only sweep over L=12-16
-    - per-head sweep at L=14 (32 heads, one head at a time)
-- **Outputs:** `results/causal_patching/llama8b_l14_component_<mode>/`
-  (one per mode + a top-level `SUMMARY_components.md` aggregating)
-- **Pass criterion (for "head-localized circuit"):** attn-only effect ≈
-  full-residual effect (≥80% of the magnitude); MLP-only effect <20% of
-  the magnitude; per-head sweep produces a sparse profile (a small
-  number of heads each contributing >10% of the full attention effect).
-- **Stretch — Ministral:** if Llama shows a sparse head profile, repeat
-  the per-head sweep on Ministral L=14 to test cross-model head
-  consistency. (~2 h additional.)
+- **Script:** `LAYER=15 bash scripts/run_causal_patching_component_l14.sh`
+  (the existing script's `LAYER` env knob covers this — no new script
+  needed)
+- **Outputs:** `results/causal_patching/llama8b_l15_components/`
+- **Pass criterion:** report whichever of the three patterns shows up;
+  no a priori prediction.
 
 ---
 

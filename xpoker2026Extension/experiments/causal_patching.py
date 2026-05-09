@@ -248,6 +248,16 @@ def main():
                         help="Number of random alt-bucket sources to use as "
                              "the per-layer null baseline. 5 is a tight pilot, "
                              "10-15 gives a cleaner null at <1 min per layer.")
+    parser.add_argument("--zero-ablation", action="store_true",
+                        help="Replace the source residual with the all-zeros "
+                             "tensor (same shape) instead of a sampled clean "
+                             "source. Distinguishes 'circuit USES this layer' "
+                             "(zero-patch flips the verb) from 'circuit is "
+                             "content-addressable' (zero-patch leaves the "
+                             "verb alone, only clean-source patches flip it). "
+                             "When set, --n-source is ignored and the script "
+                             "uses a SINGLE zeroed pseudo-source so per-layer "
+                             "output rows have source_idx=-1.")
     args = parser.parse_args()
 
     rng = random.Random(args.seed)
@@ -315,14 +325,25 @@ def main():
 
     sources_pool = by_bucket[args.source_bucket]
     targets_pool = by_bucket[args.target_bucket]
-    if len(sources_pool) < 1 or len(targets_pool) < 1:
-        print(f"[abort] not enough decisions in source ({len(sources_pool)}) "
-              f"or target ({len(targets_pool)}) buckets.")
-        sys.exit(2)
-
-    sources = rng.sample(sources_pool, min(args.n_source, len(sources_pool)))
-    targets = rng.sample(targets_pool, min(args.n_target, len(targets_pool)))
-    print(f"[sample] {len(sources)} sources, {len(targets)} targets")
+    # In zero-ablation mode the source bucket is only used for the random-null
+    # exclusion (control 3); we don't actually need any real source records.
+    if args.zero_ablation:
+        if len(targets_pool) < 1:
+            print(f"[abort] zero-ablation needs targets but found "
+                  f"{len(targets_pool)} in target bucket.")
+            sys.exit(2)
+        sources = []
+        targets = rng.sample(targets_pool, min(args.n_target, len(targets_pool)))
+        print(f"[sample] zero-ablation mode: 0 real sources, "
+              f"{len(targets)} targets")
+    else:
+        if len(sources_pool) < 1 or len(targets_pool) < 1:
+            print(f"[abort] not enough decisions in source ({len(sources_pool)}) "
+                  f"or target ({len(targets_pool)}) buckets.")
+            sys.exit(2)
+        sources = rng.sample(sources_pool, min(args.n_source, len(sources_pool)))
+        targets = rng.sample(targets_pool, min(args.n_target, len(targets_pool)))
+        print(f"[sample] {len(sources)} sources, {len(targets)} targets")
 
     # ---- Build input texts (CPU) ------------------------------------------
     def _prepare(rec: dict) -> dict | None:
@@ -345,33 +366,56 @@ def main():
             "expected_verb_tok_id": int(resp_tok_ids[verb_resp_idx]),
         }
 
-    sources_prep = [p for p in (_prepare(r) for r in sources) if p is not None]
     targets_prep = [p for p in (_prepare(r) for r in targets) if p is not None]
-    print(f"[prepare] sources_with_input={len(sources_prep)} "
-          f"targets_with_input={len(targets_prep)}")
 
-    # ---- Capture source residuals ----------------------------------------
-    print(f"[capture] {len(sources_prep)} source forwards ...")
+    # `cap` is needed by control 2 (self-patch identity) and control 3
+    # (random-source null) regardless of zero-ablation mode, so we always
+    # construct it here.
     cap = HiddenStateCapture(model)
-    source_residuals: list[dict[int, torch.Tensor]] = []
-    cap_t0 = time.time()
-    for i, src in enumerate(sources_prep):
-        cap.attach_hooks()
-        try:
-            with torch.no_grad():
-                model(input_ids=tokenizer(src["input_text"],
-                                          return_tensors="pt",
-                                          add_special_tokens=False
-                                          )["input_ids"].to(args.device))
-        finally:
-            states = cap.collect()
-            cap.detach_hooks()
-        source_residuals.append(states["per_layer_last_pos"])
-        if (i + 1) % 5 == 0 or i + 1 == len(sources_prep):
-            elapsed = time.time() - cap_t0
-            rate = (i + 1) / elapsed
-            print(f"  [capture] {i + 1}/{len(sources_prep)} "
-                  f"({elapsed:.0f}s, {rate:.2f} src/s)")
+
+    if args.zero_ablation:
+        # Synthetic single source: a zero tensor at every test layer. We don't
+        # need any real prep — the main loop only reads `source_residuals[si][L]`
+        # and the per-pair CSV's source_hand/source_dec columns (set to "zero"
+        # / 0 to make zero-ablation rows trivially identifiable downstream).
+        sources_prep = [{
+            "rec": {"hand_id": "zero", "decision_idx": 0},
+            "input_text": "",            # never tokenized — capture is skipped
+            "expected_verb_tok_id": -1,  # never used (zero-source has no verb)
+        }]
+        hidden_size = int(model.config.hidden_size)
+        zero_residual = torch.zeros(hidden_size, dtype=torch.float32)
+        source_residuals: list[dict[int, torch.Tensor]] = [
+            {L: zero_residual.clone() for L in args.layers}
+        ]
+        print(f"[capture] zero-ablation mode: synthesized 1 zero-source "
+              f"(hidden_size={hidden_size}); skipping real-source capture pass.")
+    else:
+        sources_prep = [p for p in (_prepare(r) for r in sources) if p is not None]
+        print(f"[prepare] sources_with_input={len(sources_prep)} "
+              f"targets_with_input={len(targets_prep)}")
+
+        # ---- Capture source residuals ----------------------------------------
+        print(f"[capture] {len(sources_prep)} source forwards ...")
+        source_residuals = []
+        cap_t0 = time.time()
+        for i, src in enumerate(sources_prep):
+            cap.attach_hooks()
+            try:
+                with torch.no_grad():
+                    model(input_ids=tokenizer(src["input_text"],
+                                              return_tensors="pt",
+                                              add_special_tokens=False
+                                              )["input_ids"].to(args.device))
+            finally:
+                states = cap.collect()
+                cap.detach_hooks()
+            source_residuals.append(states["per_layer_last_pos"])
+            if (i + 1) % 5 == 0 or i + 1 == len(sources_prep):
+                elapsed = time.time() - cap_t0
+                rate = (i + 1) / elapsed
+                print(f"  [capture] {i + 1}/{len(sources_prep)} "
+                      f"({elapsed:.0f}s, {rate:.2f} src/s)")
 
     # ---- Controls --------------------------------------------------------
     controls = {}
@@ -585,6 +629,7 @@ def main():
         "layers": list(args.layers),
         "n_pairs_total": len(sources_prep) * len(targets_prep) * len(args.layers),
         "controls": controls,
+        "zero_ablation": bool(args.zero_ablation),
     }
     # Per-layer aggregate. We track the top-1 destination across all 4
     # families (CHECK_CALL / FOLD / BET_RAISE / OTHER) so that reverse-
@@ -643,6 +688,10 @@ def main():
         lines.append(f"- Enriched logs (pooled, n={len(enriched_logs)}):")
         for p in enriched_logs:
             lines.append(f"  - `{p}`")
+    if args.zero_ablation:
+        lines.append("- **Zero-ablation mode**: source residual is the all-zeros tensor "
+                     "(no real source sampled). The `--source-bucket` value below is used "
+                     "only to exclude that bucket from the random-null pool in control 3.")
     lines.append(f"- Source bucket: `{args.source_bucket}` (n={len(sources_prep)})")
     lines.append(f"- Target bucket: `{args.target_bucket}` (n={len(targets_prep)})")
     lines.append(f"- Layers: {args.layers}")
@@ -655,8 +704,13 @@ def main():
         lines.append("(skipped)")
     lines.append("")
     lines.append("## Per-layer effect")
-    lines.append("| Layer | n | mean Δlogit(CHECK − FOLD) | random null Δ | specificity-adjusted | top-1 → CHECK-family | top-1 → FOLD-family |")
-    lines.append("|---:|---:|---:|---:|---:|---:|---:|")
+    # All three group fractions are always printed — `top-1 → BET_RAISE-family`
+    # was 0% across all earlier-direction (CHECK/FOLD) experiments, so
+    # including it is backward-compatible. For verb-generality runs (e.g.
+    # source=clean_bet_or_raise → target=clean_check_or_call), this is the
+    # headline column.
+    lines.append("| Layer | n | mean Δlogit(CHECK − FOLD) | random null Δ | specificity-adjusted | top-1 → CHECK-family | top-1 → FOLD-family | top-1 → BET_RAISE-family |")
+    lines.append("|---:|---:|---:|---:|---:|---:|---:|---:|")
     for L in sorted(per_layer.keys()):
         d = summary["per_layer"][str(L)]
         rnd = d.get("random_null_delta")
@@ -665,18 +719,21 @@ def main():
         adj_s = f"{adj:+.3f}" if adj is not None else "—"
         f_check = d.get("frac_top1_check_call")
         f_fold = d.get("frac_top1_fold")
+        f_betraise = d.get("frac_top1_bet_raise")
         f_check_s = f"{f_check*100:.1f}%" if f_check is not None else "—"
         f_fold_s = f"{f_fold*100:.1f}%" if f_fold is not None else "—"
+        f_betraise_s = f"{f_betraise*100:.1f}%" if f_betraise is not None else "—"
         lines.append(
             f"| {L} | {d['n']} "
             f"| {d['mean_delta_check_minus_fold']:+.3f} "
             f"| {rnd_s} "
             f"| **{adj_s}** "
             f"| {f_check_s} "
-            f"| {f_fold_s} |"
+            f"| {f_fold_s} "
+            f"| {f_betraise_s} |"
         )
     lines.append("")
-    lines.append("**Specificity-adjusted Δ** = (source effect) − (random alt-bucket source effect at the same layer). This is the writeup-ready signal: it isolates the contribution of the source's content from any generic 'patching at layer L breaks the model' effect. Sign convention: positive Δ = patched residual pushes the model toward CHECK_CALL, negative Δ = pushes toward FOLD. For FORWARD runs (CHECK source → FOLD-committed target) read the `top-1 → CHECK-family` column. For REVERSE runs (FOLD source → CHECK-committed target) read the `top-1 → FOLD-family` column AND expect specificity-adjusted Δ to go NEGATIVE at saturation.")
+    lines.append("**Specificity-adjusted Δ** = (source effect) − (random alt-bucket source effect at the same layer). This is the writeup-ready signal: it isolates the contribution of the source's content from any generic 'patching at layer L breaks the model' effect. Sign convention: positive Δ = patched residual pushes the model toward CHECK_CALL, negative Δ = pushes toward FOLD. For FORWARD runs (CHECK source → FOLD-committed target) read the `top-1 → CHECK-family` column. For REVERSE runs (FOLD source → CHECK-committed target) read the `top-1 → FOLD-family` column AND expect specificity-adjusted Δ to go NEGATIVE at saturation. For VERB-GENERALITY runs (BET_RAISE source → CHECK target) read the `top-1 → BET_RAISE-family` column AND note that the headline Δ here is BET_RAISE-vs-CHECK, NOT CHECK-vs-FOLD — the printed `mean Δlogit(CHECK − FOLD)` column is then a sanity check (close to zero means the patch is verb-specific rather than verb-generic).")
     with open(out_dir / "SUMMARY.md", "w") as f:
         f.write("\n".join(lines) + "\n")
 

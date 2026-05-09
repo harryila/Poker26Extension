@@ -241,8 +241,348 @@ class HiddenStateMultiPatch:
         self.detach()
 
 
+# ---------------------------------------------------------------------------
+# Component-level capture / patch (B1: per-sublayer + per-head)
+# ---------------------------------------------------------------------------
+#
+# These primitives let us answer "WHICH sublayer (attention vs MLP) and WHICH
+# attention heads at layer L mediate the verb-decision effect?" rather than
+# the layer-as-a-whole question that HiddenStatePatch (above) addresses.
+#
+# Llama / Mistral / Qwen all use the standard transformer block layout:
+#     def forward(x):
+#         h   = x + self_attn(norm1(x))     # attention sublayer contribution
+#         out = h + mlp(norm2(h))           # MLP sublayer contribution
+#         return out
+#
+# So the layer's output residual = x + attn_contribution + mlp_contribution.
+# We capture / patch the two contributions separately by hooking on the
+# `self_attn` and `mlp` submodules.
+#
+# For per-head, we hook on `self_attn.o_proj` — a Linear whose INPUT is the
+# pre-projection per-head concatenation of shape [batch, seq, num_heads *
+# head_dim]. We can capture that input (reshaped per-head) and patch
+# specific head slices via a forward_pre_hook that returns a modified input
+# tuple. After o_proj projects the modified input, the rest of the layer
+# (residual addition + MLP) sees the modified attention output.
+#
+# Two architectural assumptions, both verified on Llama-3.1-8B-Instruct,
+# Ministral-8B-Instruct-2410, and Qwen3-8B:
+#   - layer.self_attn exists and its forward returns the projected attention
+#     output (shape [batch, seq, hidden_dim])
+#   - layer.self_attn.o_proj exists, takes [batch, seq, num_heads * head_dim]
+#     input, returns [batch, seq, hidden_dim]
+# These are stable across the GQA / MHA distinction because o_proj's input
+# is always the "Q-aligned" per-head representation regardless of how many
+# KV heads are used.
+
+
+def _attn_module(model: nn.Module, layer_idx: int):
+    return _get_layers(model)[layer_idx].self_attn
+
+
+def _mlp_module(model: nn.Module, layer_idx: int):
+    return _get_layers(model)[layer_idx].mlp
+
+
+def _o_proj_module(model: nn.Module, layer_idx: int):
+    return _get_layers(model)[layer_idx].self_attn.o_proj
+
+
+def get_head_geometry(model) -> tuple[int, int]:
+    """Return ``(num_heads, head_dim)`` for the QUERY heads. Uses
+    ``model.config.num_attention_heads`` and ``head_dim`` (or derives the
+    latter from ``hidden_size // num_attention_heads`` for older configs)."""
+    num_heads = int(model.config.num_attention_heads)
+    head_dim = getattr(model.config, "head_dim", None)
+    if head_dim is None:
+        head_dim = int(model.config.hidden_size) // num_heads
+    return num_heads, int(head_dim)
+
+
+class HiddenStateCaptureMulti:
+    """One-pass capture of (residual, attn_contribution, mlp_contribution,
+    per_head_pre_oproj) at the last input position for every layer.
+
+    Use this in component-level experiments: a single source forward
+    populates everything you need to patch any sublayer or any head at any
+    layer downstream.
+
+    Attributes after ``collect()`` (all values are 1-D or 2-D CPU tensors):
+      - per_layer_residual[L]:        shape [hidden_dim]
+      - per_layer_attn_out[L]:        shape [hidden_dim]
+      - per_layer_mlp_out[L]:         shape [hidden_dim]
+      - per_layer_attn_per_head[L]:   shape [num_heads, head_dim]
+                                       (the o_proj input, reshaped)
+    """
+
+    def __init__(self, model: nn.Module):
+        self.model = model
+        self._layers = _get_layers(model)
+        self._num_layers = len(self._layers)
+        self._num_heads, self._head_dim = get_head_geometry(model)
+        self._hooks: list = []
+        self._residual: dict[int, torch.Tensor] = {}
+        self._attn_out: dict[int, torch.Tensor] = {}
+        self._mlp_out: dict[int, torch.Tensor] = {}
+        self._attn_per_head: dict[int, torch.Tensor] = {}
+
+    def attach_hooks(self) -> None:
+        self._residual.clear()
+        self._attn_out.clear()
+        self._mlp_out.clear()
+        self._attn_per_head.clear()
+        for idx, layer in enumerate(self._layers):
+            self._hooks.append(
+                layer.register_forward_hook(self._make_residual_hook(idx))
+            )
+            self._hooks.append(
+                layer.self_attn.register_forward_hook(self._make_attn_hook(idx))
+            )
+            self._hooks.append(
+                layer.mlp.register_forward_hook(self._make_mlp_hook(idx))
+            )
+            self._hooks.append(
+                layer.self_attn.o_proj.register_forward_pre_hook(
+                    self._make_oproj_pre_hook(idx)
+                )
+            )
+
+    def detach_hooks(self) -> None:
+        for h in self._hooks:
+            h.remove()
+        self._hooks.clear()
+
+    def collect(self) -> dict:
+        return {
+            "num_layers": self._num_layers,
+            "num_heads": self._num_heads,
+            "head_dim": self._head_dim,
+            "per_layer_residual": dict(self._residual),
+            "per_layer_attn_out": dict(self._attn_out),
+            "per_layer_mlp_out": dict(self._mlp_out),
+            "per_layer_attn_per_head": dict(self._attn_per_head),
+        }
+
+    def _make_residual_hook(self, layer_idx: int):
+        def hook(module, input, output):
+            res = _layer_output_residual(output)
+            self._residual[layer_idx] = res[0, -1, :].detach().to("cpu")
+        return hook
+
+    def _make_attn_hook(self, layer_idx: int):
+        def hook(module, input, output):
+            # self_attn output: usually a Tensor [batch, seq, hidden]; some
+            # HF versions return a tuple (output, attn_weights, ...).
+            out = output[0] if isinstance(output, tuple) else output
+            self._attn_out[layer_idx] = out[0, -1, :].detach().to("cpu")
+        return hook
+
+    def _make_mlp_hook(self, layer_idx: int):
+        def hook(module, input, output):
+            out = output[0] if isinstance(output, tuple) else output
+            self._mlp_out[layer_idx] = out[0, -1, :].detach().to("cpu")
+        return hook
+
+    def _make_oproj_pre_hook(self, layer_idx: int):
+        # forward_pre_hook signature: (module, args) where args is a tuple.
+        # First positional arg is the input tensor.
+        nh, hd = self._num_heads, self._head_dim
+        def hook(module, args):
+            x = args[0]                                # [batch, seq, nh*hd]
+            last_pos = x[0, -1, :].detach().to("cpu")  # [nh*hd]
+            self._attn_per_head[layer_idx] = last_pos.view(nh, hd)
+            return None  # don't modify
+        return hook
+
+
+class HiddenStatePatchAttnOnly:
+    """Replace ONLY the attention sublayer's output at the last position at
+    one layer. The MLP downstream (and the layer's residual addition) sees
+    the modified attention contribution; everything else is unchanged.
+
+    Usage::
+
+        patch = HiddenStatePatchAttnOnly(model, layer_idx=14,
+                                         source_attn_out=src_attn_state)
+        with patch:
+            out = model(input_ids=tgt_ids)
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        layer_idx: int,
+        source_attn_out: torch.Tensor,
+    ):
+        self.model = model
+        self.layer_idx = layer_idx
+        self.attn_module = _attn_module(model, layer_idx)
+        self.source_attn_out = source_attn_out
+        self._hook = None
+
+    def attach(self) -> None:
+        self._hook = self.attn_module.register_forward_hook(self._hook_fn)
+
+    def detach(self) -> None:
+        if self._hook is not None:
+            self._hook.remove()
+            self._hook = None
+
+    def __enter__(self):
+        self.attach()
+        return self
+
+    def __exit__(self, *exc):
+        self.detach()
+
+    def _hook_fn(self, module, input, output):
+        res = _layer_output_residual(output)
+        target_device = res.device
+        target_dtype = res.dtype
+        src = self.source_attn_out.to(device=target_device, dtype=target_dtype)
+        new_res = res.clone()
+        new_res[0, -1, :] = src
+        return _replace_layer_output_residual(output, new_res)
+
+
+class HiddenStatePatchMLPOnly:
+    """Replace ONLY the MLP sublayer's output at the last position at one
+    layer. The layer's residual addition sees the modified MLP contribution;
+    the attention contribution is untouched.
+
+    Usage::
+
+        patch = HiddenStatePatchMLPOnly(model, layer_idx=14,
+                                        source_mlp_out=src_mlp_state)
+        with patch:
+            out = model(input_ids=tgt_ids)
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        layer_idx: int,
+        source_mlp_out: torch.Tensor,
+    ):
+        self.model = model
+        self.layer_idx = layer_idx
+        self.mlp_module = _mlp_module(model, layer_idx)
+        self.source_mlp_out = source_mlp_out
+        self._hook = None
+
+    def attach(self) -> None:
+        self._hook = self.mlp_module.register_forward_hook(self._hook_fn)
+
+    def detach(self) -> None:
+        if self._hook is not None:
+            self._hook.remove()
+            self._hook = None
+
+    def __enter__(self):
+        self.attach()
+        return self
+
+    def __exit__(self, *exc):
+        self.detach()
+
+    def _hook_fn(self, module, input, output):
+        # MLP output is a tensor [batch, seq, hidden].
+        out = output[0] if isinstance(output, tuple) else output
+        target_device = out.device
+        target_dtype = out.dtype
+        src = self.source_mlp_out.to(device=target_device, dtype=target_dtype)
+        new_out = out.clone()
+        new_out[0, -1, :] = src
+        if isinstance(output, tuple):
+            return (new_out,) + output[1:]
+        return new_out
+
+
+class HiddenStatePatchAttnHeadSubset:
+    """Replace a SUBSET of attention heads at the last position at one layer
+    by modifying the o_proj input. Heads not in ``head_indices`` pass through
+    unchanged.
+
+    ``source_per_head_residual`` is shape ``[num_heads, head_dim]`` (matches
+    ``HiddenStateCaptureMulti``'s ``per_layer_attn_per_head[layer_idx]``).
+    ``head_indices`` is the list of head indices to replace.
+
+    Usage::
+
+        # Replace heads 7, 12, 19 only:
+        patch = HiddenStatePatchAttnHeadSubset(
+            model, layer_idx=14,
+            source_per_head_residual=src["per_layer_attn_per_head"][14],
+            head_indices=[7, 12, 19],
+        )
+        with patch:
+            out = model(input_ids=tgt_ids)
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        layer_idx: int,
+        source_per_head_residual: torch.Tensor,
+        head_indices: Iterable[int],
+    ):
+        num_heads, head_dim = get_head_geometry(model)
+        if source_per_head_residual.shape != (num_heads, head_dim):
+            raise ValueError(
+                f"source_per_head_residual shape {tuple(source_per_head_residual.shape)} "
+                f"!= expected ({num_heads}, {head_dim})"
+            )
+        self.model = model
+        self.layer_idx = layer_idx
+        self.o_proj = _o_proj_module(model, layer_idx)
+        self.source_per_head = source_per_head_residual
+        self.head_indices = list(head_indices)
+        self._num_heads = num_heads
+        self._head_dim = head_dim
+        self._hook = None
+
+    def attach(self) -> None:
+        self._hook = self.o_proj.register_forward_pre_hook(self._hook_fn)
+
+    def detach(self) -> None:
+        if self._hook is not None:
+            self._hook.remove()
+            self._hook = None
+
+    def __enter__(self):
+        self.attach()
+        return self
+
+    def __exit__(self, *exc):
+        self.detach()
+
+    def _hook_fn(self, module, args):
+        x = args[0]                            # [batch, seq, nh*hd]
+        target_device = x.device
+        target_dtype = x.dtype
+        src = self.source_per_head.to(device=target_device, dtype=target_dtype)
+        # Per-head view into x, last position.
+        new_x = x.clone()
+        # Reshape last position only: [nh*hd] -> [nh, hd], replace, flatten.
+        last = new_x[0, -1, :].view(self._num_heads, self._head_dim).clone()
+        for h_idx in self.head_indices:
+            if not (0 <= h_idx < self._num_heads):
+                raise ValueError(
+                    f"head_idx={h_idx} out of range [0, {self._num_heads})"
+                )
+            last[h_idx, :] = src[h_idx, :]
+        new_x[0, -1, :] = last.view(-1)
+        return (new_x,) + args[1:]
+
+
 __all__ = [
     "HiddenStateCapture",
     "HiddenStatePatch",
     "HiddenStateMultiPatch",
+    "HiddenStateCaptureMulti",
+    "HiddenStatePatchAttnOnly",
+    "HiddenStatePatchMLPOnly",
+    "HiddenStatePatchAttnHeadSubset",
+    "get_head_geometry",
 ]

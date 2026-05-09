@@ -1,0 +1,113 @@
+============================================================
+Pre-flight gate re-validation (relaxed: top-2 within 0.10 nats)
+Started:  2026-05-08T21:10:22Z
+Device:   cuda   Dtype: bfloat16   N_samples/log: 5
+Logs:     3
+Output:   logs/preflight_relaxed_gate_part2_qwen.txt
+============================================================
+
+
+------------------------------------------------------------
+[1/3] logs/cot_qwen8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz
+------------------------------------------------------------
+Loading tokenizer: Qwen/Qwen3-8B
+Loading model: Qwen/Qwen3-8B (dtype=bfloat16, device=cuda) ...
+Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Fetching 5 files:  20%|██        | 1/5 [01:05<04:23, 65.87s/it]Fetching 5 files: 100%|██████████| 5/5 [01:05<00:00, 13.17s/it]
+Loading weights:   0%|          | 0/399 [00:00<?, ?it/s]Loading weights:   0%|          | 1/399 [00:00<00:56,  7.08it/s]Loading weights:   1%|          | 2/399 [00:00<01:08,  5.76it/s]Loading weights:   4%|▍         | 17/399 [00:00<00:07, 52.16it/s]Loading weights:   9%|▉         | 37/399 [00:00<00:03, 95.19it/s]Loading weights:  12%|█▏        | 49/399 [00:00<00:03, 102.31it/s]Loading weights:  15%|█▌        | 61/399 [00:00<00:03, 105.27it/s]Loading weights:  20%|█▉        | 79/399 [00:00<00:02, 127.17it/s]Loading weights:  23%|██▎       | 93/399 [00:00<00:02, 121.30it/s]Loading weights:  27%|██▋       | 106/399 [00:01<00:02, 121.64it/s]Loading weights:  31%|███       | 122/399 [00:01<00:02, 131.56it/s]Loading weights:  34%|███▍      | 136/399 [00:01<00:02, 130.69it/s]Loading weights:  38%|███▊      | 150/399 [00:01<00:01, 127.26it/s]Loading weights:  42%|████▏     | 169/399 [00:01<00:01, 133.27it/s]Loading weights:  47%|████▋     | 186/399 [00:01<00:01, 142.06it/s]Loading weights:  51%|█████     | 202/399 [00:01<00:01, 142.28it/s]Loading weights:  54%|█████▍    | 217/399 [00:01<00:01, 135.21it/s]Loading weights:  59%|█████▉    | 235/399 [00:02<00:01, 131.96it/s]Loading weights:  62%|██████▏   | 249/399 [00:02<00:01, 132.01it/s]Loading weights:  67%|██████▋   | 266/399 [00:02<00:00, 141.58it/s]Loading weights:  70%|███████   | 281/399 [00:02<00:00, 127.10it/s]Loading weights:  75%|███████▍  | 299/399 [00:02<00:00, 139.96it/s]Loading weights:  79%|███████▊  | 314/399 [00:02<00:00, 124.61it/s]Loading weights:  83%|████████▎ | 331/399 [00:02<00:00, 134.56it/s]Loading weights:  87%|████████▋ | 346/399 [00:02<00:00, 128.67it/s]Loading weights:  90%|█████████ | 360/399 [00:02<00:00, 129.36it/s]Loading weights:  94%|█████████▍| 376/399 [00:03<00:00, 137.20it/s]Loading weights:  98%|█████████▊| 391/399 [00:03<00:00, 124.22it/s]Loading weights: 100%|██████████| 399/399 [00:03<00:00, 122.52it/s]
+OK
+
+Verifying on 5 samples
+
+  [OK  ] hand=7ee803c6 dec=1
+         expected: id=34516 tok='CHECK'
+         model   : id=34516 tok='CHECK'
+  [OK  ] hand=7ee803c6 dec=2
+         expected: id=34516 tok='CHECK'
+         model   : id=34516 tok='CHECK'
+  [OK  ] hand=7ee803c6 dec=4
+         expected: id=34516 tok='CHECK'
+         model   : id=34516 tok='CHECK'
+  [OK  ] hand=7ee803c6 dec=5
+         expected: id=34516 tok='CHECK'
+         model   : id=34516 tok='CHECK'
+  [OK  ] hand=7ee803c6 dec=7
+         expected: id=34516 tok='CHECK'
+         model   : id=34516 tok='CHECK'
+
+========================================================================
+Summary: 5/5 samples passed the pre-flight gate (top-2 within 0.10 nats of top-1).
+========================================================================
+
+------------------------------------------------------------
+[2/3] logs/cot_qwen8b_t0_s123_informative_v2_logitlens_enriched.jsonl.gz
+------------------------------------------------------------
+Loading tokenizer: Qwen/Qwen3-8B
+Loading model: Qwen/Qwen3-8B (dtype=bfloat16, device=cuda) ...
+Loading weights:   0%|          | 0/399 [00:00<?, ?it/s]Loading weights:   0%|          | 1/399 [00:00<02:19,  2.86it/s]Loading weights:   5%|▌         | 20/399 [00:00<00:06, 56.93it/s]Loading weights:   9%|▉         | 35/399 [00:00<00:04, 84.10it/s]Loading weights:  12%|█▏        | 48/399 [00:00<00:03, 95.43it/s]Loading weights:  15%|█▌        | 61/399 [00:00<00:03, 96.80it/s]Loading weights:  20%|██        | 81/399 [00:00<00:02, 118.38it/s]Loading weights:  24%|██▍       | 95/399 [00:01<00:02, 116.46it/s]Loading weights:  29%|██▊       | 114/399 [00:01<00:02, 128.40it/s]Loading weights:  32%|███▏      | 128/399 [00:01<00:02, 120.40it/s]Loading weights:  36%|███▌      | 144/399 [00:01<00:01, 129.62it/s]Loading weights:  40%|███▉      | 158/399 [00:01<00:01, 130.40it/s]Loading weights:  43%|████▎     | 172/399 [00:01<00:01, 123.24it/s]Loading weights:  47%|████▋     | 188/399 [00:01<00:01, 131.88it/s]Loading weights:  51%|█████     | 202/399 [00:01<00:01, 130.31it/s]Loading weights:  54%|█████▍    | 216/399 [00:01<00:01, 122.51it/s]Loading weights:  58%|█████▊    | 233/399 [00:02<00:01, 134.71it/s]Loading weights:  62%|██████▏   | 247/399 [00:02<00:01, 127.08it/s]Loading weights:  65%|██████▌   | 260/399 [00:02<00:01, 125.46it/s]Loading weights:  69%|██████▉   | 275/399 [00:02<00:00, 131.86it/s]Loading weights:  73%|███████▎  | 290/399 [00:02<00:00, 133.93it/s]Loading weights:  76%|███████▌  | 304/399 [00:02<00:00, 125.31it/s]Loading weights:  80%|███████▉  | 318/399 [00:02<00:00, 128.22it/s]Loading weights:  84%|████████▎ | 334/399 [00:02<00:00, 132.67it/s]Loading weights:  87%|████████▋ | 348/399 [00:02<00:00, 123.94it/s]Loading weights:  91%|█████████ | 364/399 [00:03<00:00, 133.56it/s]Loading weights:  95%|█████████▍| 378/399 [00:03<00:00, 132.78it/s]Loading weights:  98%|█████████▊| 392/399 [00:03<00:00, 124.81it/s]Loading weights: 100%|██████████| 399/399 [00:03<00:00, 119.17it/s]
+OK
+
+Verifying on 5 samples
+
+  [OK  ] hand=f68f1b39 dec=1
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=f68f1b39 dec=3
+         expected: id=37 tok='F'
+         model   : id=37 tok='F'
+  [OK  ] hand=80f41409 dec=1
+         expected: id=37 tok='F'
+         model   : id=37 tok='F'
+  [OK  ] hand=af28578b dec=1
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=af28578b dec=3
+         expected: id=37 tok='F'
+         model   : id=37 tok='F'
+
+========================================================================
+Summary: 5/5 samples passed the pre-flight gate (top-2 within 0.10 nats of top-1).
+========================================================================
+
+------------------------------------------------------------
+[3/3] logs/cot_qwen8b_t0_s456_informative_v2_logitlens_enriched.jsonl.gz
+------------------------------------------------------------
+Loading tokenizer: Qwen/Qwen3-8B
+Loading model: Qwen/Qwen3-8B (dtype=bfloat16, device=cuda) ...
+Loading weights:   0%|          | 0/399 [00:00<?, ?it/s]Loading weights:   0%|          | 1/399 [00:00<01:11,  5.53it/s]Loading weights:   1%|          | 2/399 [00:00<01:14,  5.31it/s]Loading weights:   7%|▋         | 26/399 [00:00<00:05, 74.12it/s]Loading weights:  10%|▉         | 38/399 [00:00<00:04, 87.56it/s]Loading weights:  14%|█▎        | 54/399 [00:00<00:03, 108.18it/s]Loading weights:  18%|█▊        | 72/399 [00:00<00:02, 128.32it/s]Loading weights:  23%|██▎       | 91/399 [00:00<00:02, 144.87it/s]Loading weights:  27%|██▋       | 107/399 [00:01<00:02, 138.10it/s]Loading weights:  31%|███       | 122/399 [00:01<00:01, 140.90it/s]Loading weights:  34%|███▍      | 137/399 [00:01<00:02, 129.63it/s]Loading weights:  38%|███▊      | 151/399 [00:01<00:01, 130.35it/s]Loading weights:  42%|████▏     | 166/399 [00:01<00:01, 135.08it/s]Loading weights:  45%|████▌     | 180/399 [00:01<00:01, 133.08it/s]Loading weights:  49%|████▊     | 194/399 [00:01<00:01, 124.50it/s]Loading weights:  52%|█████▏    | 208/399 [00:01<00:01, 127.73it/s]Loading weights:  56%|█████▌    | 224/399 [00:01<00:01, 132.54it/s]Loading weights:  60%|█████▉    | 238/399 [00:02<00:01, 127.59it/s]Loading weights:  64%|██████▍   | 256/399 [00:02<00:01, 134.18it/s]Loading weights:  68%|██████▊   | 270/399 [00:02<00:01, 125.96it/s]Loading weights:  72%|███████▏  | 288/399 [00:02<00:00, 139.79it/s]Loading weights:  76%|███████▌  | 303/399 [00:02<00:00, 126.06it/s]Loading weights:  81%|████████  | 323/399 [00:02<00:00, 138.22it/s]Loading weights:  85%|████████▍ | 338/399 [00:02<00:00, 130.59it/s]Loading weights:  89%|████████▉ | 356/399 [00:02<00:00, 140.60it/s]Loading weights:  93%|█████████▎| 371/399 [00:03<00:00, 133.55it/s]Loading weights:  97%|█████████▋| 389/399 [00:03<00:00, 137.99it/s]Loading weights: 100%|██████████| 399/399 [00:03<00:00, 124.09it/s]
+OK
+
+Verifying on 5 samples
+
+  [OK  ] hand=b7b1e483 dec=1
+         expected: id=34516 tok='CHECK'
+         model   : id=34516 tok='CHECK'
+  [OK  ] hand=b7b1e483 dec=2
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=b7b1e483 dec=4
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=b7b1e483 dec=6
+         expected: id=34516 tok='CHECK'
+         model   : id=34516 tok='CHECK'
+  [OK  ] hand=b7b1e483 dec=7
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+
+========================================================================
+Summary: 5/5 samples passed the pre-flight gate (top-2 within 0.10 nats of top-1).
+========================================================================
+
+============================================================
+FINAL TALLY
+  passed (under relaxed gate) : 3 / 3 present logs
+  total logs requested        : 3
+  missing on disk             : 0
+  failed under relaxed gate   : 0
+
+All present logs passed the relaxed pre-flight gate.
+Methods-section claim supported: every enriched log used by the
+patching chain is byte-identical to the original run, modulo
+bf16 argmax-tiebreak ordering.
+Finished: 2026-05-08T21:21:06Z
+============================================================

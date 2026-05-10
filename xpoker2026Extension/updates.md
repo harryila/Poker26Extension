@@ -1121,3 +1121,95 @@ A3 is now CLOSED with the negative-finding writeup. No re-run needed.
 | B1 (Llama L=15) | [`results/causal_patching/llama8b_l15_components/SUMMARY_components.md`](results/causal_patching/llama8b_l15_components/SUMMARY_components.md) |
 | B1 (Ministral L=14) | [`results/causal_patching/ministral8b_l14_components/SUMMARY_components.md`](results/causal_patching/ministral8b_l14_components/SUMMARY_components.md) |
 | B1.5 (Ministral L=14) | [`results/causal_patching/ministral8b_l14_head_triplet/SUMMARY_components.md`](results/causal_patching/ministral8b_l14_head_triplet/SUMMARY_components.md) |
+
+---
+
+## 16. Phase K — Ministral B1 at the saturated layer (L=16) + cross-model head-circuit comparison
+
+> **Date:** 2026-05-10. Pulled from GPU box in commits `563a0dc` ("pushing"
+> doc-only) and `fcb68ab` ("check3stage"). All four queued cells from the
+> §15 plan ran. Cell 3 (Ministral B1.5 triplet at L=16) and the bonus
+> sextet follow-up are the cross-model closer.
+
+### 16a. Cell 3 — Ministral B1.5 triplet at L=16 (`heads_09_15_22`)
+
+| Mode | Δ(CHECK − FOLD) | ratio to residual | top-1 → CHECK |
+|---|---:|---:|---:|
+| `residual` | +7.81 | 100% | **100.0%** |
+| `attn` | +2.99 | 38% | 5.7% |
+| **`heads_09_15_22`** | **+3.39** | **+43%** | **3.0%** |
+| `mlp` | +1.02 | 13% | 0.0% |
+| `head_22` | +2.39 | 31% | 0.0% |
+| `head_09` | +0.65 | 8% | 0.0% |
+| `head_15` | +0.49 | 6% | 0.0% |
+
+Linear sum 31+8+6 = 45%; observed 43%; **exactly additive** (within sampling noise). The triplet is *just barely above attn-only* (43% vs 38%) — unlike Llama's L=14 triplet which exceeded attn-only's contribution (65% vs 49%). And the triplet does NOT clear the verb-flip threshold: only 3% top-1 → CHECK.
+
+**This is the qualitative cross-model difference.** Ministral's L=16 circuit is dominated by *one* head (h22 alone carries 31% of residual) plus a long tail; the top-3 triplet captures essentially attention's contribution and nothing extra. Llama's L=14 circuit is *three roughly-equal* heads (each 18–35%) whose joint patch is meaningfully above attention's contribution and clears the verb-flip threshold.
+
+### 16b. Bonus — Ministral L=16 sextet (`heads_09_15_22_24_30_31`)
+
+| Mode | Δ | ratio | top-1 → CHECK |
+|---|---:|---:|---:|
+| `residual` | +7.81 | 100% | 100.0% |
+| `attn` | +2.99 | 38% | 5.7% |
+| **`heads_09_15_22_24_30_31`** | **+4.32** | **+55%** | **37.0%** |
+| `mlp` | +1.02 | 13% | 0.0% |
+| (six heads individually: h22=31%, h09=8%, h15=6%, h24/30/31 each ≈3%) | | | |
+
+Linear sum 31+8+6+3+3+3 = 54%; observed 55%; **still essentially additive**. The sextet boosts ratio +12 pp and verb-flip from 3% → 37% — adding three more *individually-small* heads is what pushes Ministral past the verb-flip boundary. None of h24/h30/h31 contributes more than 3% on their own; together they add ~9 pp of cumulative Δ which is enough to start flipping.
+
+### 16c. The cross-model picture, completed
+
+We can now write the full per-head decomposition picture cleanly:
+
+| Model | L\* | Best single head | Top-3 triplet | Quartet/Sextet | Residual |
+|---|---:|---:|---:|---:|---:|
+| **Llama 8B** | 14 | h23 35% / 0.7% | h05+h23+h24 **65% / 49%** | quartet +h02 **77% / 69%** | 100% / **79%** |
+| **Ministral 8B** | 16 | h22 31% / 0% | h09+h15+h22 **43% / 3%** | sextet +h24/30/31 **55% / 37%** | 100% / **100%** |
+
+(Format: ratio-to-residual / top-1 → CHECK percentage)
+
+Three derived facts that make the paper writeup:
+
+1. **Both models have sparse-attention encoding at L\***, but *different geometric shapes*:
+   - **Llama**: "narrow-and-deep" — three roughly-equal heads with non-additive joint interaction (joint 65% > linear sum hint of subadditivity, but the CHECK signal is jointly amplified beyond what linear additivity predicts).
+   - **Ministral**: "wide-and-shallow" — one dominant head + long tail, perfectly additive (joint ≈ linear sum at every test).
+
+2. **The verb-flip threshold sits at ≈ +4–5 nats in absolute Δ in both models**, but with different sharpness:
+   - **Llama**: gradient (49% at Δ=5.17 → 69% at Δ=6.10 → 79% at Δ=7.90). Soft sigmoid.
+   - **Ministral**: sharp (37% at Δ=4.32 → **100%** at Δ=7.81). Steep sigmoid.
+
+   This is independent of head-decomposition; it's a property of the action distribution's softmax shape. In Ministral, once Δ clears threshold, the flip is total. In Llama, even at residual saturation (+7.90), 21% of targets still stay FOLD.
+
+3. **Crossing the verb-flip threshold requires more than the dominant components in Ministral.** h22 alone is 31% / 0% flip; even h22 + the next two largest positive heads (h09, h15) is 43% / 3% flip. Only when six heads accumulate (54% linear sum, 55% joint) does the verb start flipping (37%). The "long tail" matters for Ministral; in Llama, three heads do most of the work.
+
+### 16d. Combined claims, after Phase K
+
+The paper's mech-interp section now has a complete cross-model story:
+
+1. **Three 8B models, three sparse-attention circuits at saturated layers** (Llama L=14, Ministral L=16, Qwen L=22–23 — Qwen component decomposition not run, see shelf).
+2. **Llama's circuit is narrow-and-deep** (3 heads, non-additive, joint > linear sum slightly subadditive, residual flip 79% suggests soft action distribution).
+3. **Ministral's circuit is wide-and-shallow** (≥6 heads, perfectly additive, residual flip 100% — sharp action distribution).
+4. **Both models share the same approximate verb-flip threshold (Δ ≈ +4–5 nats)** but at different sigmoidal sharpnesses.
+5. **The two-stage compute-then-commit story holds for Llama** (L=14 compute, L=15 commit). **Ministral's analog** would be L=15 (transition; residual 36% flip, sparser-ish heads) → L=16 (saturation; long-tail), but the parallel is *qualitative*, not numerically clean — Ministral's attn-ratio-by-layer doesn't track Llama's "drop from 49% at compute to 17% at commit" pattern.
+
+### 16e. Caveats for the writeup (don't lose these)
+
+- **Ministral's L=16 is the saturation layer, not the *only* layer where the circuit lives.** The earlier reverse-pilot and pooled forward sweeps showed Ministral has activity at L=14, 15, 16 — the verb-flip transition is at L=15→L=16 and the saturation continues through L=20+. The component decomposition we did is at L=16 only; head identities at L=14 and L=15 are different (h21+h30+h15+h08 at L=15; h20+h21+h09 at L=14). State the cross-model claim *at the saturated layer*, not "Ministral's whole circuit is six heads at L=16."
+
+- **The "perfect additivity" finding for Ministral has the same cascade caveat as Llama's slightly-subadditive triplet.** Patching `head_subset` modifies o_proj's input, which reshapes attention's output, which the same layer's MLP then re-computes from. So "additive" here means "the within-layer cascade doesn't significantly amplify or dampen the linear sum at Ministral L=16," not "the heads are mechanistically independent." Could still be functional dependence even though the numbers add.
+
+- **The "verb-flip threshold ≈ +4–5 nats" observation is over n=2 models.** It's suggestive, not conclusive. We have no Qwen component data so we can't check Qwen's threshold (and Qwen's residual saturates much later, around +18 nats spec-adj, so its threshold could be very different). Don't generalize beyond Llama+Ministral without Qwen data.
+
+- **Ministral residual at L=16 is +7.81 / 100% flip; Ministral residual at L=14 was +1.77 / 2% flip** (§15d). The residual-flip-vs-magnitude relationship within Ministral itself is *also* sharp — strong evidence that Ministral's action distribution is fundamentally steeper than Llama's, not just at L=16.
+
+### 16f. Files & result documents (this batch)
+
+| Code | Document |
+|---|---|
+| Cell 3 (B1.5 Ministral) | [`results/causal_patching/ministral8b_l16_head_triplet/SUMMARY_components.md`](results/causal_patching/ministral8b_l16_head_triplet/SUMMARY_components.md) |
+| Bonus (Ministral L=16 sextet) | [`results/causal_patching/ministral8b_l16_head_sextet/SUMMARY_components.md`](results/causal_patching/ministral8b_l16_head_sextet/SUMMARY_components.md) |
+| Cell 1 (B1 Ministral L=15) | [`results/causal_patching/ministral8b_l15_components/SUMMARY_components.md`](results/causal_patching/ministral8b_l15_components/SUMMARY_components.md) |
+| Cell 2 (B1 Ministral L=16) | [`results/causal_patching/ministral8b_l16_components/SUMMARY_components.md`](results/causal_patching/ministral8b_l16_components/SUMMARY_components.md) |
+| Cell 4 (B1.5+ Llama quartet) | [`results/causal_patching/llama8b_l14_head_quartet/SUMMARY_components.md`](results/causal_patching/llama8b_l14_head_quartet/SUMMARY_components.md) |

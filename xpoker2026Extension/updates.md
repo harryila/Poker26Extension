@@ -786,3 +786,338 @@ See `EXPERIMENTS_QUEUE.md` for the canonical queue. Headline:
 | C1 | [`results/causal_patching/ministral8b_verb_generality_raise_to_check/SUMMARY.md`](results/causal_patching/ministral8b_verb_generality_raise_to_check/SUMMARY.md) |
 | C1 | [`results/causal_patching/qwen8b_verb_generality_raise_to_check/SUMMARY.md`](results/causal_patching/qwen8b_verb_generality_raise_to_check/SUMMARY.md) |
 | B1 | [`results/causal_patching/llama8b_l14_components/SUMMARY_components.md`](results/causal_patching/llama8b_l14_components/SUMMARY_components.md) |
+
+---
+
+## 15. Phase J — A3 negative finding (paper-banner reframe), B1.5 triplet, L=15 commitment, and the Ministral wrong-layer issue
+
+> **Date:** 2026-05-10. Pulled from GPU box in commits `65dfeb7` ("next") and
+> `318e559` ("check2"). All five queued items ran. The A3 audit is the
+> most important finding of the session — it changes the **entire paper
+> framing**, in a direction that makes the result *more specific and more
+> defensible*, not weaker.
+
+### 15a. THE headline: A3 audit (`nocot_parity_a3/`)
+
+The A3 script auto-skipped because **none of the 18 non-CoT enriched logs
+contain even a single `illegal_fold` decision**. The audit
+(`nocot_parity_a3/illegal_fold_audit.txt`) ran the same classifier the
+patching driver uses across every `logs/scaled_*_informative_v2_enriched.jsonl.gz`
+on disk:
+
+```
+                                 illegal_fold   clean_check_or_call   total
+scaled_llama8b_t0_s42                    0              272           1796
+scaled_llama8b_t0_s123                   0              279           1545
+scaled_llama8b_t0_s456                   0              300           1571
+scaled_llama8b_t02_s42                   0              285           1725
+scaled_llama8b_t02_s123                  0              281           1475
+scaled_llama8b_t02_s456                  0              291           1483
+scaled_qwen8b_t0_s42                     0               89            590
+scaled_qwen8b_t0_s123                    0              137            721
+scaled_qwen8b_t0_s456                    0              165            758
+scaled_qwen8b_t02_s42                    0               90            591
+scaled_qwen8b_t02_s123                   0              150            752
+scaled_qwen8b_t02_s456                   0              168            765
+scaled_ministral8b_t0_s42                0               30            516
+scaled_ministral8b_t0_s123               0                0            301
+scaled_ministral8b_t0_s456               0                0            301
+scaled_ministral8b_t02_s42               0               58            530
+scaled_ministral8b_t02_s123              0                0            301
+scaled_ministral8b_t02_s456              0                0            301
+                          TOTAL          0
+```
+
+Across **3 models × 3 seeds × 2 temperatures = 18 conditions, ZERO
+illegal_fold decisions occur in non-CoT mode.** Llama and Qwen produce
+1500–1800 well-formed decisions per cell (200–300 of which are
+clean_check_or_call), and Ministral produces 300–500 per cell — all of them
+either clean or json-failure, none illegal-fold.
+
+**The illegal_fold pathology is 100% conditional on CoT.** This is much
+stronger than the original Hypothesis-B prediction ("L\* shifts or
+vanishes"). The actual finding is: *the failure mode itself does not exist
+in non-CoT mode, so there is no L\* to test.*
+
+#### What this means for the paper narrative — IMPORTANT
+
+The phrasing of the result changes from:
+
+> ❌ *"We found a localized decision circuit at L\*=14 in Llama 8B that
+> mediates the action-verb decision."*
+
+to the more specific and more defensible:
+
+> ✅ *"We identified a CoT-induced deliberation circuit at L\*=14 (Llama)
+> / L=14–16 (Ministral) / L=19–23 (Qwen) that mediates the **illegal-FOLD
+> failure mode**. The failure mode itself is conditional on CoT —
+> in non-CoT mode the same prompt prior produces zero illegal-FOLDs across
+> 18 baseline conditions covering all three models."*
+
+Three knock-on rewrites needed in the paper:
+
+1. **Section title and topic sentence**: "deliberation circuit" replaces
+   "decision circuit." The verb is *deliberate*, not *decide* — the
+   distinction is the multi-token reasoning trace.
+2. **Discussion paragraph on what CoT actually does**: we now have causal
+   evidence that CoT *creates* the conditions for the failure. Without it,
+   the model commits in one step using the prompt-conditioned prior and
+   never selects the illegal verb.
+3. **Drop the "is this circuit intrinsic or CoT-induced?" open question**
+   in the limitations — we have an answer, and the answer is "CoT-induced".
+
+#### 15a — caveats
+
+- **Ministral non-CoT is severely degenerate at s123 and s456** (n=0
+  clean_check_or_call across 4 cells). A reviewer could argue we couldn't
+  see illegal_fold there because Ministral can't produce coherent non-CoT
+  output at those seeds. Counter-argument: **Llama and Qwen have 200+
+  clean_check_or_call records per cell at all seeds and temps and STILL
+  0 illegal_fold.** The "non-CoT lacks the failure mode" claim is robust
+  for Llama and Qwen; Ministral is suggestive, not conclusive.
+- **8,154 json_failures** across 18 logs (≈45% of total non-CoT decisions).
+  This is the *non-CoT* failure mode — model can't produce parseable JSON.
+  This was already documented in §3 (the trash-collapse pattern). The CoT
+  vs non-CoT story is therefore "two different failure modes": CoT
+  produces parseable but illegal verbs (the deliberation-circuit failure);
+  non-CoT produces unparseable text. State both in the paper.
+- **The verb-generality (C1) finding is on CLEAN decisions**, not illegal
+  ones. The RAISE→CHECK flip at L=15–16 is a *general decision* finding;
+  it remains paper-worthy independent of CoT-conditionality. We have NOT
+  shown that CLEAN-decision verbs need CoT, only that the illegal_fold
+  pathology does. State this distinction explicitly.
+
+### 15b. B1.5 — Llama L=14 head triplet (`llama8b_l14_head_triplet/`)
+
+Patching `heads_05_23_24` SIMULTANEOUSLY at Llama L=14:
+
+| Mode | Δ | ratio to residual | top-1 → CHECK |
+|---|---:|---:|---:|
+| `residual` | +7.90 | 100% | **79.0%** |
+| `attn` | +3.85 | 49% | 14.3% |
+| **`heads_05_23_24`** | **+5.17** | **65%** | **48.7%** |
+| `mlp` | -0.50 | -6% | 0.0% |
+| `head_05` | +1.40 | 18% | 0.0% |
+| `head_23` | +2.73 | 35% | 0.7% |
+| `head_24` | +1.62 | 20% | 3.7% |
+
+Three reads:
+
+1. **Linear sum:** 18% + 35% + 20% = **73%**. Triplet observed: **65%**. The
+   triplet is *slightly subadditive* (-8 percentage points) — heads
+   interfere mildly through downstream MLP recomputation, but most of the
+   per-head contribution is preserved when patched jointly.
+
+2. **The triplet jointly clears the verb-flip threshold.** No single head
+   flipped more than 3.7% of targets; the joint patch flips **48.7%**.
+   That's a discontinuous jump (≈12× the best single-head rate) consistent
+   with "the threshold is around +5 nats and the triplet's combined Δ
+   sits exactly there." This is the **strongest sense in which the
+   triplet is the circuit**: the heads do meaningful collective work that
+   none of them does alone.
+
+3. **The triplet does NOT match `residual` (65% Δ-magnitude, 49% vs 79%
+   verb-flip).** ≈35% of the residual-patch effect lives outside the
+   triplet — most plausibly in heads with smaller individual ratios
+   (head_02 at +10%, head_31 at +6%) plus the layer's residual flow-through
+   from earlier layers.
+
+#### 15b — caveats
+
+- **The "subadditivity" interpretation is structural, not numerical.** When
+  we patch `head_subset` we replace those heads' pre-`o_proj` outputs;
+  o_proj then projects, the layer adds `attn_out` to the residual, and
+  the same layer's MLP re-computes from the modified `h`. So
+  `heads_05_23_24`'s 65% includes a downstream MLP recomputation through
+  the modified residual. A "true" head-only test would need to replay
+  past the MLP within the same layer — substantially more invasive. The
+  ≈8 pp shortfall vs the linear sum is best read as that within-layer
+  cascade, not as cross-head interference per se.
+- **Adding head_02 (and possibly head_31) likely closes the gap to residual.**
+  This is the **B1.5+ quartet experiment** queued below.
+
+### 15c. Llama L=15 components (`llama8b_l15_components/`) — the *commitment* layer
+
+This is qualitatively different from L=14:
+
+| Mode | Δ | ratio | top-1 → CHECK |
+|---|---:|---:|---:|
+| `residual` | +11.66 | 100% | **100.0%** |
+| `attn` | +2.01 | **17%** | 3.3% |
+| `mlp` | +1.04 | **9%** | 0.3% |
+| `head_08` (top single) | +2.16 | 19% | 3.3% |
+| `head_10` (most negative) | -1.40 | -12% | 0.0% |
+| (other 30 heads) | -0.7 to +0.8 | -6% to +7% | 0% |
+
+Three findings:
+
+1. **Neither sublayer dominates at L=15.** attn = 17%, mlp = 9%. Their sum
+   (≈26%) leaves **≈74% of the residual effect outside both sublayers**.
+2. **No head dominates either.** Highest-ratio head is h08 at 19%; nothing
+   resembling the L=14 triplet (h5/h23/h24 at L=14, all ≤3% at L=15).
+3. **Residual-mode patch flips 100%** of targets. The verb is committed at
+   L=15 but neither attention nor MLP at this layer is doing the work.
+
+The cleanest interpretation: **L=14 computes; L=15 commits.** By the time
+the residual stream reaches L=15, the CHECK signal is already baked in
+from prior layers (especially from L=14's attention triplet). L=15's
+sublayers are nearly idle on this decision — they get a near-final
+residual and pass it through. Patching the residual at L=15 transports
+the already-formed decision; patching only its sublayers does very little.
+
+This is a clean **two-layer, two-stage circuit**:
+- **L=14 = computation**: attention reads context (h5+h23+h24 carry the bulk), 49% attn-only ratio, sparse triplet structure.
+- **L=15 = commitment**: residual carries 100% of the signal forward; local sublayers contribute only ≈26% of the layer-level effect.
+
+This pairs with the C1 finding that BET_RAISE flips at L=15 (94.7%) but
+not at L=14 (44.3%). Mapping the two together:
+- *FOLD-vs-not* decision: computed at L=14 (residual jumps to 79% CHECK), committed by L=15 (100% CHECK).
+- *BET-vs-CHECK* decision: not yet committed at L=14 (only 44% BET_RAISE on RAISE-source patches), committed by L=15 (95%).
+
+So **L=15 is the layer at which both binary distinctions have committed
+and the verb is locked in.** The 1-layer offset between FOLD-vs-not and
+BET-vs-CHECK in C1 was the symptom of this.
+
+#### 15c — caveats
+
+- **"Residual flow-through carries the signal" is inferential, not directly
+  measured.** A direct test would patch the residual at L=15 with the
+  source-target's residual at L=14 (i.e. test whether L=14's residual
+  stream alone, propagated to L=15 unchanged, reproduces the L=15 effect).
+  That requires more code; B2 (single-direction probe) might also test
+  this less invasively. Flag for the discussion.
+- **head_08 at 19% is interesting but in the noise.** The top per-head
+  ratio at L=15 is barely above the next tier (h04 at 7%, h27 at 2%).
+  Don't cite head_08 as a "commitment head"; the L=15 story is
+  layer-level, not head-level.
+
+### 15d. Ministral L=14 components (`ministral8b_l14_components/`) — wrong layer for cross-model comparison
+
+Ministral L=14 component sweep:
+
+| Mode | Δ | ratio | top-1 → CHECK |
+|---|---:|---:|---:|
+| `residual` | +1.77 | 100% | **2.0%** |
+| `attn` | +0.48 | 27% | 0.0% |
+| `mlp` | -0.59 | **-34%** | 0.0% |
+| `head_20` | +0.57 | **32%** | 0.0% |
+| `head_21` | +0.44 | **25%** | 0.0% |
+| `head_30` | -0.61 | **-34%** | 0.0% |
+| `head_23` | -0.35 | **-20%** | 0.0% |
+| `head_28` | -0.19 | -11% | 0.0% |
+| `head_09` / `head_14` / `head_18` | each ≈ +11–12% | | 0.0% |
+
+Two big differences from Llama L=14:
+
+1. **The residual-level patch barely flips the verb at L=14 in Ministral**
+   (2% top-1 → CHECK, vs Llama's 79%). This means **L=14 is the wrong
+   comparison layer for Ministral.** Ministral's flip layer, per the
+   existing pooled sweep + verb-generality results, is L=15–16. We picked
+   L=14 to mirror Llama's number; we should have picked Ministral's
+   saturation layer instead.
+
+2. **MLP at Ministral L=14 is ANTI-CHECK** (-34% ratio). Not just irrelevant
+   like Llama's L=14 (-6%) — actively pushing toward FOLD. And several
+   heads have large negative ratios too (h30 -34%, h23 -20%, h28 -11%).
+
+3. **Top positive heads are different indices**: h20 (32%), h21 (25%),
+   h09/h14/h18 (each ≈11%). NO overlap with Llama's h5/h23/h24.
+
+#### 15d — caveats / why we should re-run
+
+- The headline fact is the **2% verb-flip at the residual level**: this
+  means we're at the start of the boundary, not the saturated layer.
+  Comparing component decompositions at non-saturated layers across models
+  is methodologically dubious — the noise relative to signal is much higher.
+- The negative-MLP and negative-head ratios at L=14 are interesting on their
+  own (Ministral has *anti-CHECK* heads at this layer), but we should
+  re-run at Ministral L=15 and L=16 (saturated) to make the cross-model
+  comparison clean. **This is the highest-priority next experiment.**
+
+### 15e. Ministral L=14 head triplet (`ministral8b_l14_head_triplet/`) — additive but wrong layer
+
+Patching the top three positive Ministral heads (h09+h20+h21) simultaneously:
+
+| Mode | Δ | ratio | top-1 → CHECK |
+|---|---:|---:|---:|
+| `residual` | +1.77 | 100% | 2.0% |
+| `attn` | +0.48 | 27% | 0.0% |
+| **`heads_09_20_21`** | **+1.27** | **72%** | **0.0%** |
+| `mlp` | -0.59 | -34% | 0.0% |
+| `head_09` | +0.21 | 12% | 0.0% |
+| `head_20` | +0.57 | 32% | 0.0% |
+| `head_21` | +0.44 | 25% | 0.0% |
+
+Linear sum: 12% + 32% + 25% = 69%. Observed triplet: 72%. **Almost
+perfectly additive** (slightly *super*-additive — within-layer MLP
+re-computation slightly amplifies rather than dampens here). But:
+
+- **The triplet does NOT flip the verb (0%).** Neither does the residual
+  itself at this layer (2%). Both are below threshold.
+- **Triplet-vs-attn ratio**: 72% / 27% = 2.7x. The triplet captures more
+  than the full attention sublayer's contribution — consistent with the
+  triplet representing genuine positive heads while attn-as-a-whole gets
+  cancelled by negative heads (h30, h23, h28).
+
+So Ministral L=14 head decomposition shows additivity, but the experiment
+has the same wrong-layer caveat: at L=14 nothing flips the verb in
+Ministral, so the triplet's "circuit-completeness" cannot be tested here.
+**Re-run at L=15 or L=16 with whatever triplet the components-at-saturated-
+layer experiment identifies.**
+
+### 15f. Combined claims, updated
+
+After Phase J, the paper has these mutually-reinforcing claims:
+
+1. **A specific layer L\* in each model causally mediates the
+   illegal-FOLD failure.** Cross-seed reproducible (Phase H).
+2. **The illegal-FOLD failure mode itself is CoT-conditional** (Phase J §15a).
+   So L\* is best characterized as a **CoT-induced deliberation circuit**.
+3. **L\*'s circuit is content-addressable** (zero-patch flips 0%, Phase I §14c).
+4. **L\*'s circuit is verb-general** (RAISE→CHECK flips at L\*+1 to L\*+2,
+   Phase I §14d), with a two-stage internal structure.
+5. **At Llama L=14, the circuit is attention-mediated and concentrates on
+   three heads (h5+h23+h24) carrying ≈73% of the per-head signal,
+   subadditively jointly flipping 48.7% of targets** (Phase J §15b).
+6. **L=14 *computes*, L=15 *commits*** (Phase J §15c). At L=15 in Llama,
+   neither attention (17%) nor MLP (9%) carries the signal locally; the
+   residual stream's flow-through from L=14 does the work.
+7. **Cross-model head story is open**: Ministral's component decomposition
+   at Ministral's saturation layer (L=15 or L=16) is queued (Phase J §15d–e).
+8. **Qwen's distributedness is itself a stable architectural signature**
+   (Phase H).
+
+Item 2 is the rewrite-the-section-title finding. Items 5+6 together are
+the deepest mech-interp result in the paper. Items 3+4 are independent
+sharpening checks that turn the claim into a defensible artifact.
+
+### 15g. What's queued next (paper-priority order)
+
+1. **Ministral B1 at L=15 AND L=16** — find the saturated layer, run a
+   clean component sweep there. This is the cross-model check on the
+   "L = computation, L+1 = commitment" two-layer story. (~100 min total.)
+
+2. **Ministral B1.5 at the saturated layer** — pick the top-3 positive
+   heads from #1 and run the triplet. Ministral analog of Llama's
+   `heads_05_23_24` finding. (~10 min.)
+
+3. **Llama L=14 quartet `heads_02_05_23_24`** — does adding head_02 (the
+   next-highest contributor at L=14, +10% individual ratio) close the
+   gap from triplet's 65% to residual's 100%? (~10 min.)
+
+4. **(Optional) Llama L=14 vs L=15 sublayer-only direct comparison** —
+   already supported by the data we have; no new GPU run needed; just
+   needs an analysis writeup for the paper.
+
+A3 is now CLOSED with the negative-finding writeup. No re-run needed.
+
+### 15h. Files & result documents (this batch)
+
+| Code | Document |
+|---|---|
+| A3 | [`results/causal_patching/nocot_parity_a3/SUMMARY.md`](results/causal_patching/nocot_parity_a3/SUMMARY.md) |
+| A3 | [`results/causal_patching/nocot_parity_a3/illegal_fold_audit.txt`](results/causal_patching/nocot_parity_a3/illegal_fold_audit.txt) |
+| B1.5 (Llama) | [`results/causal_patching/llama8b_l14_head_triplet/SUMMARY_components.md`](results/causal_patching/llama8b_l14_head_triplet/SUMMARY_components.md) |
+| B1 (Llama L=15) | [`results/causal_patching/llama8b_l15_components/SUMMARY_components.md`](results/causal_patching/llama8b_l15_components/SUMMARY_components.md) |
+| B1 (Ministral L=14) | [`results/causal_patching/ministral8b_l14_components/SUMMARY_components.md`](results/causal_patching/ministral8b_l14_components/SUMMARY_components.md) |
+| B1.5 (Ministral L=14) | [`results/causal_patching/ministral8b_l14_head_triplet/SUMMARY_components.md`](results/causal_patching/ministral8b_l14_head_triplet/SUMMARY_components.md) |

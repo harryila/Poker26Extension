@@ -1,0 +1,26 @@
+Found 18 non-CoT logs
+
+scaled_llama8b_t02_s123                   illegal_fold=   0  clean_check_or_call= 281  total=1475
+scaled_llama8b_t02_s42                    illegal_fold=   0  clean_check_or_call= 285  total=1725
+scaled_llama8b_t02_s456                   illegal_fold=   0  clean_check_or_call= 291  total=1483
+scaled_llama8b_t0_s123                    illegal_fold=   0  clean_check_or_call= 279  total=1545
+scaled_llama8b_t0_s42                     illegal_fold=   0  clean_check_or_call= 272  total=1796
+scaled_llama8b_t0_s456                    illegal_fold=   0  clean_check_or_call= 300  total=1571
+scaled_ministral8b_t02_s123               illegal_fold=   0  clean_check_or_call=   0  total=301
+scaled_ministral8b_t02_s42                illegal_fold=   0  clean_check_or_call=  58  total=530
+scaled_ministral8b_t02_s456               illegal_fold=   0  clean_check_or_call=   0  total=301
+scaled_ministral8b_t0_s123                illegal_fold=   0  clean_check_or_call=   0  total=301
+scaled_ministral8b_t0_s42                 illegal_fold=   0  clean_check_or_call=  30  total=516
+scaled_ministral8b_t0_s456                illegal_fold=   0  clean_check_or_call=   0  total=301
+scaled_qwen8b_t02_s123                    illegal_fold=   0  clean_check_or_call= 150  total=752
+scaled_qwen8b_t02_s42                     illegal_fold=   0  clean_check_or_call=  90  total=591
+scaled_qwen8b_t02_s456                    illegal_fold=   0  clean_check_or_call= 168  total=765
+scaled_qwen8b_t0_s123                     illegal_fold=   0  clean_check_or_call= 137  total=721
+scaled_qwen8b_t0_s42                      illegal_fold=   0  clean_check_or_call=  89  total=590
+scaled_qwen8b_t0_s456                     illegal_fold=   0  clean_check_or_call= 165  total=758
+
+=== TOTAL across all non-CoT logs ===
+  json_failure                   8154
+  clean_bet_or_raise             3770
+  clean_check_or_call            2595
+  clean_legal_fold               1503

@@ -103,6 +103,7 @@ SEED="${SEED:-42}"
 SEED_TAG="${SEED_TAG:-s42}"
 MODELS_ENV="${MODELS:-llama,qwen}"   # ministral excluded by default
 FORCE_MINISTRAL="${FORCE_MINISTRAL:-0}"
+BASELINE_TOLERANCE_FRAC="${BASELINE_TOLERANCE_FRAC:-0.95}"
 
 # Per-model L* (from CoT pooled sweeps).
 LLAMA_LAYER=14
@@ -207,6 +208,7 @@ run_one() {
         --n-target "$n_target_to_use" \
         --n-random-control "$N_RANDOM_CONTROL" \
         --seed "$SEED" \
+        --baseline-tolerance-frac "$BASELINE_TOLERANCE_FRAC" \
         --out-dir "$out_dir" \
         --device "$DEVICE" \
         --dtype "$DTYPE"

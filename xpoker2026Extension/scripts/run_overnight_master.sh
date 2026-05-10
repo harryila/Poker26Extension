@@ -52,10 +52,10 @@ set -uo pipefail
 
 cd "$(dirname "$0")/.."
 
-DEVICE="${DEVICE:-cuda}"
-DTYPE="${DTYPE:-bfloat16}"
-ATTN_PROBE_MAX_DECISIONS="${ATTN_PROBE_MAX_DECISIONS:-50}"
-PROBE_MAX_DECISIONS="${PROBE_MAX_DECISIONS:-300}"
+export DEVICE="${DEVICE:-cuda}"
+export DTYPE="${DTYPE:-bfloat16}"
+export ATTN_PROBE_MAX_DECISIONS="${ATTN_PROBE_MAX_DECISIONS:-50}"
+export PROBE_MAX_DECISIONS="${PROBE_MAX_DECISIONS:-300}"
 
 TS="$(date -u +%Y%m%d_%H%M%SZ)"
 LOG_DIR="logs/overnight_${TS}"

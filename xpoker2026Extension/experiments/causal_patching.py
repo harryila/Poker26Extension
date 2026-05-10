@@ -258,6 +258,24 @@ def main():
                              "When set, --n-source is ignored and the script "
                              "uses a SINGLE zeroed pseudo-source so per-layer "
                              "output rows have source_idx=-1.")
+    parser.add_argument("--target-residual-top1",
+                        choices=["FOLD", "CHECK_CALL", "BET_RAISE"],
+                        default=None,
+                        help="OPTIONAL filter: after sampling targets and "
+                             "running the baseline forward (control 1), drop "
+                             "any target whose residual top-1 family does NOT "
+                             "match this value. Useful for non-CoT runs where "
+                             "the recorded-action label and the residual "
+                             "top-1 family disagree (e.g. Llama non-CoT "
+                             "clean_legal_fold has only 20% residual top-1 = "
+                             "FOLD). With this flag set, the patching is "
+                             "performed only on targets that ACTUALLY have "
+                             "the requested family at the verb-residual "
+                             "level — eliminating the baseline-pathology "
+                             "confound. Counterintuitively, the bucket "
+                             "labels remain the same in summary.json (we "
+                             "filter, not relabel); a `target_residual_top1_"
+                             "filter` field is added to summary.json.")
     args = parser.parse_args()
 
     rng = random.Random(args.seed)
@@ -445,6 +463,43 @@ def main():
             print(f"  [HALT] below tolerance {args.baseline_tolerance_frac}; "
                   f"prompt reconstruction issue. Aborting.")
             sys.exit(3)
+
+        # Optional residual-top-1 filter on targets. Used to handle the
+        # "recorded action vs residual top-1" mismatch in non-CoT logs (e.g.
+        # Llama non-CoT clean_legal_fold has only 20% residual top-1 = FOLD).
+        if args.target_residual_top1 is not None:
+            family = args.target_residual_top1
+            if family == "CHECK_CALL":
+                allowed_ids = set(family_ids["CHECK"]) | set(family_ids["CALL"])
+            elif family == "BET_RAISE":
+                allowed_ids = set(family_ids["BET"]) | set(family_ids["RAISE"])
+            else:
+                allowed_ids = set(family_ids[family])
+            kept_indices = []
+            for ti in range(len(targets_prep)):
+                if baseline_cache[ti]["top1_id"] in allowed_ids:
+                    kept_indices.append(ti)
+            n_before = len(targets_prep)
+            n_after = len(kept_indices)
+            print(f"  [filter] target_residual_top1={family}: "
+                  f"keeping {n_after}/{n_before} targets")
+            controls["target_residual_top1_filter"] = {
+                "family": family,
+                "n_before": n_before,
+                "n_after": n_after,
+                "frac_kept": n_after / max(n_before, 1),
+            }
+            if n_after < 1:
+                print(f"  [HALT] no targets remain after residual-top-1 filter. "
+                      f"Aborting.")
+                sys.exit(3)
+            # Re-index targets_prep and baseline_cache so the main loop sees
+            # contiguous indices [0..n_after).
+            targets_prep = [targets_prep[i] for i in kept_indices]
+            baseline_cache = {
+                new_i: baseline_cache[old_i]
+                for new_i, old_i in enumerate(kept_indices)
+            }
 
         # Control 2: self-patch identity for one target.
         print(f"\n[control 2/3] self-patch identity ...")
@@ -692,6 +747,14 @@ def main():
         lines.append("- **Zero-ablation mode**: source residual is the all-zeros tensor "
                      "(no real source sampled). The `--source-bucket` value below is used "
                      "only to exclude that bucket from the random-null pool in control 3.")
+    if args.target_residual_top1 is not None:
+        f = controls.get("target_residual_top1_filter") or {}
+        lines.append(
+            f"- **Residual-top-1 target filter**: kept only targets whose "
+            f"baseline residual top-1 was in family `{args.target_residual_top1}` "
+            f"({f.get('n_after', '?')}/{f.get('n_before', '?')} = "
+            f"{(f.get('frac_kept', 0)*100):.1f}% retained)."
+        )
     lines.append(f"- Source bucket: `{args.source_bucket}` (n={len(sources_prep)})")
     lines.append(f"- Target bucket: `{args.target_bucket}` (n={len(targets_prep)})")
     lines.append(f"- Layers: {args.layers}")

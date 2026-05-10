@@ -1,0 +1,115 @@
+{
+  "enriched_log": [
+    "logs/cot_ministral8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz",
+    "logs/cot_ministral8b_t0_s123_informative_v2_logitlens_enriched.jsonl.gz",
+    "logs/cot_ministral8b_t0_s456_informative_v2_logitlens_enriched.jsonl.gz"
+  ],
+  "n_enriched_logs": 3,
+  "model_id": "mistralai/Ministral-8B-Instruct-2410",
+  "source_bucket": "clean_check_or_call",
+  "target_bucket": "illegal_fold",
+  "n_source": 10,
+  "n_target": 30,
+  "layer": 16,
+  "num_heads": 32,
+  "head_dim": 128,
+  "components_tested": [
+    "residual",
+    "attn",
+    "mlp",
+    "head_subset",
+    "head"
+  ],
+  "head_indices_tested": [
+    22,
+    9,
+    15
+  ],
+  "controls": {
+    "baseline_top1_match_rate": 1.0,
+    "self_patch_max_logit_drift": 0.0
+  },
+  "per_mode": {
+    "residual": {
+      "mode": "residual",
+      "head_spec": null,
+      "n": 300,
+      "mean_delta_check_minus_fold": 7.808371,
+      "ratio_to_residual": 1.0,
+      "frac_top1_check_call": 1.0,
+      "frac_top1_fold": 0.0,
+      "frac_top1_bet_raise": 0.0,
+      "frac_top1_other": 0.0
+    },
+    "attn": {
+      "mode": "attn",
+      "head_spec": null,
+      "n": 300,
+      "mean_delta_check_minus_fold": 2.985877,
+      "ratio_to_residual": 0.38239435600588134,
+      "frac_top1_check_call": 0.056666666666666664,
+      "frac_top1_fold": 0.9433333333333334,
+      "frac_top1_bet_raise": 0.0,
+      "frac_top1_other": 0.0
+    },
+    "mlp": {
+      "mode": "mlp",
+      "head_spec": null,
+      "n": 300,
+      "mean_delta_check_minus_fold": 1.0216593333333346,
+      "ratio_to_residual": 0.1308415459938231,
+      "frac_top1_check_call": 0.0,
+      "frac_top1_fold": 1.0,
+      "frac_top1_bet_raise": 0.0,
+      "frac_top1_other": 0.0
+    },
+    "heads_09_15_22": {
+      "mode": "head_subset",
+      "head_spec": [
+        9,
+        15,
+        22
+      ],
+      "n": 300,
+      "mean_delta_check_minus_fold": 3.3869596666666673,
+      "ratio_to_residual": 0.43376008474324124,
+      "frac_top1_check_call": 0.03,
+      "frac_top1_fold": 0.97,
+      "frac_top1_bet_raise": 0.0,
+      "frac_top1_other": 0.0
+    },
+    "head_22": {
+      "mode": "head",
+      "head_spec": 22,
+      "n": 300,
+      "mean_delta_check_minus_fold": 2.3899846666666673,
+      "ratio_to_residual": 0.3060798041828017,
+      "frac_top1_check_call": 0.0,
+      "frac_top1_fold": 1.0,
+      "frac_top1_bet_raise": 0.0,
+      "frac_top1_other": 0.0
+    },
+    "head_09": {
+      "mode": "head",
+      "head_spec": 9,
+      "n": 300,
+      "mean_delta_check_minus_fold": 0.6507536666666671,
+      "ratio_to_residual": 0.08334051579601777,
+      "frac_top1_check_call": 0.0,
+      "frac_top1_fold": 1.0,
+      "frac_top1_bet_raise": 0.0,
+      "frac_top1_other": 0.0
+    },
+    "head_15": {
+      "mode": "head",
+      "head_spec": 15,
+      "n": 300,
+      "mean_delta_check_minus_fold": 0.4920966666666665,
+      "ratio_to_residual": 0.06302168104802737,
+      "frac_top1_check_call": 0.0,
+      "frac_top1_fold": 1.0,
+      "frac_top1_bet_raise": 0.0,
+      "frac_top1_other": 0.0
+    }
+  }
+}

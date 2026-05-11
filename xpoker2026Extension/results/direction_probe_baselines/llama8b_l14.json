@@ -1,0 +1,25 @@
+{
+  "probe_npz": "results/direction_probe/llama8b_l14/raw_residuals.npz",
+  "n_samples": 589,
+  "hidden_dim": 4096,
+  "learned_probe_cv_acc": {
+    "mean": 0.9880921338548457,
+    "std": 0.00871075740824086
+  },
+  "permuted_label_cv_acc": {
+    "mean": 0.5227871939736346,
+    "std": 0.040256412315552235
+  },
+  "random_direction_best_threshold_acc": {
+    "mean": 0.7423599320882853,
+    "std": 0.12992927745701402,
+    "n_trials": 20
+  },
+  "cross_task": {
+    "task": "bet_to_call > 0",
+    "n_pos": 396,
+    "n_neg": 193,
+    "cv_acc_mean": 0.9881066203100101,
+    "cv_acc_std": 0.006801602824991157
+  }
+}

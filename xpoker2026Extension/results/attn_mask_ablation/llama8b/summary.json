@@ -1,0 +1,10 @@
+{
+  "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+  "target_bucket": "clean_check_or_call",
+  "n_target_processed": 50,
+  "frac_verb_predicted_baseline": 0.98,
+  "frac_verb_predicted_masked": 0.9,
+  "frac_top1_id_changed": 0.12,
+  "frac_top1_group_changed": 0.02,
+  "mean_delta_check_minus_fold": -1.3634479818691718
+}

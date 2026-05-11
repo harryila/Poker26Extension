@@ -1,0 +1,51 @@
+{
+  "enriched_log": "logs/scaled_qwen8b_t0_s42_informative_v2_enriched.jsonl.gz",
+  "n_enriched_logs": 1,
+  "model_id": "Qwen/Qwen3-8B",
+  "source_bucket": "clean_bet_or_raise",
+  "target_bucket": "clean_legal_fold",
+  "n_source": 10,
+  "n_target": 30,
+  "layers": [
+    23
+  ],
+  "n_pairs_total": 300,
+  "controls": {
+    "source_residual_top1_filter": {
+      "family": "BET_RAISE",
+      "n_before": 10,
+      "n_after": 10,
+      "frac_kept": 1.0
+    },
+    "baseline_top1_match_rate": 1.0,
+    "target_residual_top1_filter": {
+      "family": "FOLD",
+      "n_before": 30,
+      "n_after": 30,
+      "frac_kept": 1.0
+    },
+    "self_patch_max_logit_drift": 0.0,
+    "random_source_per_layer": {
+      "23": {
+        "mean_delta": 14.495241307527824,
+        "n": 5
+      }
+    },
+    "random_source_n": 5,
+    "random_source_mean_delta": 14.495241307527824,
+    "random_source_test_layer": 23
+  },
+  "zero_ablation": false,
+  "per_layer": {
+    "23": {
+      "n": 300,
+      "mean_delta_check_minus_fold": 17.297263333333305,
+      "frac_top1_check_call": 0.006666666666666667,
+      "frac_top1_fold": 0.0,
+      "frac_top1_bet_raise": 0.9933333333333333,
+      "frac_top1_other": 0.0,
+      "random_null_delta": 14.495241307527824,
+      "specificity_adjusted_delta": 2.8020220258054813
+    }
+  }
+}

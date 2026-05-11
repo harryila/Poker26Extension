@@ -1,0 +1,63 @@
+{
+  "model_id": "mistralai/Ministral-8B-Instruct-2410",
+  "layer": 16,
+  "belief_source": "oracle_strategy_aware",
+  "n_decisions": 300,
+  "n_belief_skipped": 0,
+  "ridge_alpha": 1.0,
+  "overall_R2": 0.5500375628471375,
+  "per_bucket_R2": {
+    "premium_pairs": 0.5485371947288513,
+    "strong_pairs": 0.37064772844314575,
+    "medium_pairs": 0.3229357600212097,
+    "small_pairs": 0.8428084850311279,
+    "premium_broadway": 0.565252959728241,
+    "strong_broadway": 0.5759663581848145,
+    "medium_broadway": 0.5833777189254761,
+    "weak_broadway": 0.374880850315094,
+    "suited_connectors": 0.6698505878448486,
+    "suited_aces": 0.473999559879303,
+    "suited_gappers": 0.7201406955718994,
+    "speculative_suited": 0.5351892709732056,
+    "offsuit_connectors": 0.47395962476730347,
+    "trash": 0.6429797410964966
+  },
+  "singular_values_top5": [
+    0.08642223477363586,
+    0.038928721100091934,
+    0.025496510788798332,
+    0.021106064319610596,
+    0.016540033742785454
+  ],
+  "explained_variance_ratios_top5": [
+    0.7093226909637451,
+    0.14392396807670593,
+    0.061738256365060806,
+    0.042306527495384216,
+    0.025981584563851357
+  ],
+  "cos_verb_principal_belief_direction": 0.046573661267757416,
+  "cos_verb_top5_principals": [
+    0.046573661267757416,
+    -0.006522550713270903,
+    -0.056087102741003036,
+    -0.11263597011566162,
+    0.08408895134925842
+  ],
+  "cos_verb_per_bucket": {
+    "premium_pairs": -0.0617985874414444,
+    "strong_pairs": -0.02356790192425251,
+    "medium_pairs": -0.01878754422068596,
+    "small_pairs": 0.12680761516094208,
+    "premium_broadway": -0.06394737958908081,
+    "strong_broadway": -0.05979335308074951,
+    "medium_broadway": -0.04790288954973221,
+    "weak_broadway": -0.012260177172720432,
+    "suited_connectors": -0.05872073397040367,
+    "suited_aces": -0.06909991800785065,
+    "suited_gappers": -0.061815232038497925,
+    "speculative_suited": -0.0339374803006649,
+    "offsuit_connectors": -0.01996639370918274,
+    "trash": 0.045078277587890625
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "enriched_logs": [
+    "logs/cot_ministral8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz",
+    "logs/cot_ministral8b_t0_s123_informative_v2_logitlens_enriched.jsonl.gz",
+    "logs/cot_ministral8b_t0_s456_informative_v2_logitlens_enriched.jsonl.gz"
+  ],
+  "model_id": "mistralai/Ministral-8B-Instruct-2410",
+  "layer": 16,
+  "n_clean_check_or_call": 33,
+  "n_clean_legal_fold": 298,
+  "n_illegal_fold": 183,
+  "hidden_dim": 4096,
+  "probe": {
+    "C": 0.01,
+    "cv_folds": 5,
+    "cv_accuracy_mean": 0.9003165988240616,
+    "cv_accuracy_std": 0.007187474973215198,
+    "cv_accuracy_per_fold": [
+      0.8955223880597015,
+      0.8939393939393939,
+      0.8939393939393939,
+      0.9090909090909091,
+      0.9090909090909091
+    ],
+    "train_accuracy": 0.9003021148036254,
+    "weight_l2_norm": 0.6532222436244642,
+    "cos_centroid_diff_w": 0.9998036692917653
+  },
+  "projection": {
+    "clean_check_or_call": {
+      "mean": 1.138173878983899,
+      "std": 0.3162563029594041
+    },
+    "clean_legal_fold": {
+      "mean": -2.072145540036822,
+      "std": 0.11329225656187021
+    },
+    "illegal_fold": {
+      "mean": -1.4967464588272252,
+      "std": 0.2499002247520643,
+      "frac_on_fold_side_of_midpoint": 1.0
+    }
+  }
+}

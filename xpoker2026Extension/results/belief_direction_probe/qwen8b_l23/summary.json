@@ -1,0 +1,63 @@
+{
+  "model_id": "Qwen/Qwen3-8B",
+  "layer": 23,
+  "belief_source": "oracle_strategy_aware",
+  "n_decisions": 300,
+  "n_belief_skipped": 0,
+  "ridge_alpha": 1.0,
+  "overall_R2": 0.998864471912384,
+  "per_bucket_R2": {
+    "premium_pairs": 0.9991960525512695,
+    "strong_pairs": 0.9985725283622742,
+    "medium_pairs": 0.9970079660415649,
+    "small_pairs": 0.9994020462036133,
+    "premium_broadway": 0.9991270303726196,
+    "strong_broadway": 0.9989126324653625,
+    "medium_broadway": 0.9993306994438171,
+    "weak_broadway": 0.9985937476158142,
+    "suited_connectors": 0.999220073223114,
+    "suited_aces": 0.9983219504356384,
+    "suited_gappers": 0.9995420575141907,
+    "speculative_suited": 0.9992800354957581,
+    "offsuit_connectors": 0.9980242848396301,
+    "trash": 0.9995716214179993
+  },
+  "singular_values_top5": [
+    0.03064602240920067,
+    0.014889292418956757,
+    0.01083751767873764,
+    0.008742342703044415,
+    0.0080335084348917
+  ],
+  "explained_variance_ratios_top5": [
+    0.63730788230896,
+    0.15043509006500244,
+    0.07970043271780014,
+    0.051862891763448715,
+    0.0437936931848526
+  ],
+  "cos_verb_principal_belief_direction": 0.006699049845337868,
+  "cos_verb_top5_principals": [
+    0.006699049845337868,
+    0.0023613846860826015,
+    -0.0037064191419631243,
+    -0.004594114143401384,
+    -0.003083640243858099
+  ],
+  "cos_verb_per_bucket": {
+    "premium_pairs": -0.0014560347190126777,
+    "strong_pairs": 0.004852557089179754,
+    "medium_pairs": -0.0025675734505057335,
+    "small_pairs": 0.006508923135697842,
+    "premium_broadway": 0.0014261433389037848,
+    "strong_broadway": 0.0026092592161148787,
+    "medium_broadway": 0.0029506958089768887,
+    "weak_broadway": -0.004992297384887934,
+    "suited_connectors": -0.010895258747041225,
+    "suited_aces": -0.0006467115599662066,
+    "suited_gappers": -0.010023834183812141,
+    "speculative_suited": -0.004365931730717421,
+    "offsuit_connectors": -0.006407668348401785,
+    "trash": 0.006240100134164095
+  }
+}

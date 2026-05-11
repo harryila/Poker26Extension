@@ -1,0 +1,44 @@
+{
+  "enriched_logs": [
+    "logs/cot_qwen8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz",
+    "logs/cot_qwen8b_t0_s123_informative_v2_logitlens_enriched.jsonl.gz",
+    "logs/cot_qwen8b_t0_s456_informative_v2_logitlens_enriched.jsonl.gz"
+  ],
+  "model_id": "Qwen/Qwen3-8B",
+  "layer": 23,
+  "n_clean_check_or_call": 300,
+  "n_clean_legal_fold": 261,
+  "n_illegal_fold": 24,
+  "hidden_dim": 4096,
+  "probe": {
+    "C": 0.01,
+    "cv_folds": 5,
+    "cv_accuracy_mean": 0.9982142857142857,
+    "cv_accuracy_std": 0.0035714285714285587,
+    "cv_accuracy_per_fold": [
+      1.0,
+      1.0,
+      0.9910714285714286,
+      1.0,
+      1.0
+    ],
+    "train_accuracy": 1.0,
+    "weight_l2_norm": 0.2740028207250168,
+    "cos_centroid_diff_w": 0.9541534710780349
+  },
+  "projection": {
+    "clean_check_or_call": {
+      "mean": 24.713618023508253,
+      "std": 3.804845480052223
+    },
+    "clean_legal_fold": {
+      "mean": -23.15507842719873,
+      "std": 2.7804069247438647
+    },
+    "illegal_fold": {
+      "mean": -12.355982423353623,
+      "std": 3.07130918351623,
+      "frac_on_fold_side_of_midpoint": 1.0
+    }
+  }
+}

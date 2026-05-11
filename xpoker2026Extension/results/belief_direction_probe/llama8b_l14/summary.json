@@ -1,0 +1,63 @@
+{
+  "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+  "layer": 14,
+  "belief_source": "oracle_strategy_aware",
+  "n_decisions": 300,
+  "n_belief_skipped": 0,
+  "ridge_alpha": 1.0,
+  "overall_R2": 0.7564812898635864,
+  "per_bucket_R2": {
+    "premium_pairs": 0.7831615805625916,
+    "strong_pairs": 0.6931734085083008,
+    "medium_pairs": 0.6165176630020142,
+    "small_pairs": 0.8778650760650635,
+    "premium_broadway": 0.7987504005432129,
+    "strong_broadway": 0.7803112864494324,
+    "medium_broadway": 0.7722717523574829,
+    "weak_broadway": 0.6125949621200562,
+    "suited_connectors": 0.8224745988845825,
+    "suited_aces": 0.7537728548049927,
+    "suited_gappers": 0.8721956014633179,
+    "speculative_suited": 0.689939022064209,
+    "offsuit_connectors": 0.6479969024658203,
+    "trash": 0.8697124123573303
+  },
+  "singular_values_top5": [
+    0.10689825564622879,
+    0.04356524720788002,
+    0.033614713698625565,
+    0.032198622822761536,
+    0.021690987050533295
+  ],
+  "explained_variance_ratios_top5": [
+    0.7003689408302307,
+    0.11632311344146729,
+    0.06925394386053085,
+    0.06354190409183502,
+    0.02883661538362503
+  ],
+  "cos_verb_principal_belief_direction": 0.01640274003148079,
+  "cos_verb_top5_principals": [
+    0.01640274003148079,
+    -0.0006806867313571274,
+    -0.005025849211961031,
+    -0.0323839969933033,
+    0.0033157235011458397
+  ],
+  "cos_verb_per_bucket": {
+    "premium_pairs": -0.01718798093497753,
+    "strong_pairs": -0.00519046513363719,
+    "medium_pairs": -0.009634172543883324,
+    "small_pairs": 0.03422883525490761,
+    "premium_broadway": -0.02157578244805336,
+    "strong_broadway": -0.016645727679133415,
+    "medium_broadway": -0.016494348645210266,
+    "weak_broadway": -0.008168166503310204,
+    "suited_connectors": -0.01612444408237934,
+    "suited_aces": -0.018587183207273483,
+    "suited_gappers": -0.01842816174030304,
+    "speculative_suited": -0.0011870061280205846,
+    "offsuit_connectors": -0.012878111563622952,
+    "trash": 0.015359603799879551
+  }
+}

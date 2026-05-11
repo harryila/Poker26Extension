@@ -1,0 +1,88 @@
+{
+  "model_id": "mistralai/Ministral-8B-Instruct-2410",
+  "layer": 16,
+  "target_bucket": "clean_check_or_call",
+  "n_target": 33,
+  "head_sets": [
+    [
+      9,
+      15,
+      22
+    ],
+    [
+      9,
+      15,
+      21,
+      22,
+      24,
+      30,
+      31
+    ],
+    [
+      22
+    ],
+    [
+      0,
+      1,
+      5,
+      13
+    ]
+  ],
+  "per_head_set": {
+    "9+15+22": {
+      "heads": [
+        9,
+        15,
+        22
+      ],
+      "n": 33,
+      "mean_delta_check_minus_fold": -1.0807109873645915,
+      "frac_top1_id_changed": 0.0,
+      "frac_top1_group_changed": 0.0,
+      "frac_verb_predicted_baseline": 1.0,
+      "frac_verb_predicted_ablated": 1.0
+    },
+    "9+15+21+22+24+30+31": {
+      "heads": [
+        9,
+        15,
+        21,
+        22,
+        24,
+        30,
+        31
+      ],
+      "n": 33,
+      "mean_delta_check_minus_fold": -1.3699060890538552,
+      "frac_top1_id_changed": 0.0,
+      "frac_top1_group_changed": 0.0,
+      "frac_verb_predicted_baseline": 1.0,
+      "frac_verb_predicted_ablated": 1.0
+    },
+    "22": {
+      "heads": [
+        22
+      ],
+      "n": 33,
+      "mean_delta_check_minus_fold": -0.5438178685384643,
+      "frac_top1_id_changed": 0.0,
+      "frac_top1_group_changed": 0.0,
+      "frac_verb_predicted_baseline": 1.0,
+      "frac_verb_predicted_ablated": 1.0
+    },
+    "0+1+5+13": {
+      "heads": [
+        0,
+        1,
+        5,
+        13
+      ],
+      "n": 33,
+      "mean_delta_check_minus_fold": -0.32596120550865415,
+      "frac_top1_id_changed": 0.0,
+      "frac_top1_group_changed": 0.0,
+      "frac_verb_predicted_baseline": 1.0,
+      "frac_verb_predicted_ablated": 1.0
+    }
+  }
+}

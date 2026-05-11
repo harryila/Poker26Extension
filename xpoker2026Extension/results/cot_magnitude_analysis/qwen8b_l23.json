@@ -1,0 +1,57 @@
+{
+  "cot_npz": "results/direction_probe/qwen8b_l23/raw_residuals.npz",
+  "nocot_npz": "results/direction_probe_nocot/qwen8b_l23/raw_residuals.npz",
+  "rows": [
+    {
+      "label": "CoT  clean_CC",
+      "name": "cot_cc",
+      "n": 300,
+      "mean_norm": 158.8624725341797,
+      "std_norm": 1.5322974920272827,
+      "median_norm": 159.23959350585938
+    },
+    {
+      "label": "CoT  clean_LF",
+      "name": "cot_lf",
+      "n": 261,
+      "mean_norm": 157.32525634765625,
+      "std_norm": 1.4746828079223633,
+      "median_norm": 157.2401123046875
+    },
+    {
+      "label": "CoT  illegal_F",
+      "name": "cot_if",
+      "n": 24,
+      "mean_norm": 156.7914276123047,
+      "std_norm": 0.7755608558654785,
+      "median_norm": 156.93893432617188
+    },
+    {
+      "label": "nonCoT clean_CC",
+      "name": "noc_cc",
+      "n": 89,
+      "mean_norm": 161.0748291015625,
+      "std_norm": 0.3780994117259979,
+      "median_norm": 161.11874389648438
+    },
+    {
+      "label": "nonCoT clean_LF",
+      "name": "noc_lf",
+      "n": 100,
+      "mean_norm": 164.84278869628906,
+      "std_norm": 0.9694710373878479,
+      "median_norm": 165.15037536621094
+    }
+  ],
+  "centroid_distance": {
+    "cot_check_minus_fold": 50.168758392333984,
+    "nocot_check_minus_fold": 87.2225570678711,
+    "ratio_nocot_over_cot": 1.7385831314732936
+  },
+  "projection_magnitudes": {
+    "cot_cc_mean_abs": 24.713619232177734,
+    "cot_lf_mean_abs": 23.155078887939453,
+    "noc_cc_mean_abs": 43.167057037353516,
+    "noc_lf_mean_abs": 43.960975646972656
+  }
+}

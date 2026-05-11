@@ -1,0 +1,25 @@
+{
+  "probe_npz": "results/direction_probe/ministral8b_l16/raw_residuals.npz",
+  "n_samples": 331,
+  "hidden_dim": 4096,
+  "learned_probe_cv_acc": {
+    "mean": 0.9003165988240616,
+    "std": 0.007187474973215198
+  },
+  "permuted_label_cv_acc": {
+    "mean": 0.9003165988240616,
+    "std": 0.007187474973215198
+  },
+  "random_direction_best_threshold_acc": {
+    "mean": 0.9456193353474319,
+    "std": 0.023979619133515935,
+    "n_trials": 20
+  },
+  "cross_task": {
+    "task": "bet_to_call > 0",
+    "n_pos": 305,
+    "n_neg": 26,
+    "cv_acc_mean": 0.9214834916327452,
+    "cv_acc_std": 0.005517865219357754
+  }
+}

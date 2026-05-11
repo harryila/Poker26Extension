@@ -1,0 +1,51 @@
+{
+  "enriched_log": "logs/scaled_llama8b_t0_s42_informative_v2_enriched.jsonl.gz",
+  "n_enriched_logs": 1,
+  "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+  "source_bucket": "clean_check_or_call",
+  "target_bucket": "clean_bet_or_raise",
+  "n_source": 9,
+  "n_target": 26,
+  "layers": [
+    14
+  ],
+  "n_pairs_total": 234,
+  "controls": {
+    "source_residual_top1_filter": {
+      "family": "CHECK_CALL",
+      "n_before": 10,
+      "n_after": 9,
+      "frac_kept": 0.9
+    },
+    "baseline_top1_match_rate": 0.8666666666666667,
+    "target_residual_top1_filter": {
+      "family": "BET_RAISE",
+      "n_before": 30,
+      "n_after": 26,
+      "frac_kept": 0.8666666666666667
+    },
+    "self_patch_max_logit_drift": 0.0,
+    "random_source_per_layer": {
+      "14": {
+        "mean_delta": 0.5684076453470077,
+        "n": 5
+      }
+    },
+    "random_source_n": 5,
+    "random_source_mean_delta": 0.5684076453470077,
+    "random_source_test_layer": 14
+  },
+  "zero_ablation": false,
+  "per_layer": {
+    "14": {
+      "n": 234,
+      "mean_delta_check_minus_fold": -0.31577905982906,
+      "frac_top1_check_call": 0.8034188034188035,
+      "frac_top1_fold": 0.0,
+      "frac_top1_bet_raise": 0.19658119658119658,
+      "frac_top1_other": 0.0,
+      "random_null_delta": 0.5684076453470077,
+      "specificity_adjusted_delta": -0.8841867051760677
+    }
+  }
+}

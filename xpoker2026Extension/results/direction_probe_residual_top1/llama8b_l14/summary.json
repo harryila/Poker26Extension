@@ -1,0 +1,44 @@
+{
+  "enriched_logs": [
+    "logs/cot_llama8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz",
+    "logs/cot_llama8b_t0_s123_informative_v2_logitlens_enriched.jsonl.gz",
+    "logs/cot_llama8b_t0_s456_informative_v2_logitlens_enriched.jsonl.gz"
+  ],
+  "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+  "layer": 14,
+  "n_clean_check_or_call": 300,
+  "n_clean_legal_fold": 282,
+  "n_illegal_fold": 68,
+  "hidden_dim": 4096,
+  "probe": {
+    "C": 0.01,
+    "cv_folds": 5,
+    "cv_accuracy_mean": 0.9845564397288534,
+    "cv_accuracy_std": 0.009952416875181058,
+    "cv_accuracy_per_fold": [
+      0.9914529914529915,
+      0.9658119658119658,
+      0.9913793103448276,
+      0.9913793103448276,
+      0.9827586206896551
+    ],
+    "train_accuracy": 0.9914089347079038,
+    "weight_l2_norm": 1.1456698487188637,
+    "cos_centroid_diff_w": 0.9938245031930081
+  },
+  "projection": {
+    "clean_check_or_call": {
+      "mean": 1.3976931738452298,
+      "std": 0.5684801789957662
+    },
+    "clean_legal_fold": {
+      "mean": -1.9101241151386208,
+      "std": 0.37720477017801873
+    },
+    "illegal_fold": {
+      "mean": -1.3247209263660555,
+      "std": 0.3873596617809452,
+      "frac_on_fold_side_of_midpoint": 0.9852941176470589
+    }
+  }
+}

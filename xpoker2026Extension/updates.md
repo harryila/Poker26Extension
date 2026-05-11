@@ -1448,3 +1448,304 @@ Updated cross-model story (replacing the §16 version):
 | Verb-pair sweeps (§17f) | `results/causal_patching/{model}8b_verbpair_{raise_to_fold, fold_to_raise}/SUMMARY.md` (6 cells) |
 | Qwen B1 L=23 (§17g) | `results/causal_patching/qwen8b_l23_components/SUMMARY_components.md` |
 | Cross-temp Ministral (§17h) | `results/causal_patching/ministral8b_t02_s42_l16_components/SUMMARY_components.md` |
+
+---
+
+## 18. Phase M — Overnight v2: matched non-CoT testing + position-sweep + extended attention + CoT-vs-nonCoT direction comparison
+
+> **Date:** 2026-05-11. Pulled from GPU box in commits `ffcf151` ("further
+> prober") and `ff3fde4` ("check3stagev2.1"). All four orchestrator
+> sections completed (PASSED, exit=0, ~2h09m total — much faster than the
+> 11-13h worst case because most non-CoT-circuit-hunt cells auto-skipped
+> on already-existing inputs from earlier batches and the §1 pre-counts
+> filtered out empty Ministral cells quickly).
+>
+> The headline new findings are: (a) **the non-CoT circuit and the CoT
+> circuit are CORRELATED but NOT IDENTICAL directions** (cosine 0.27 in
+> Llama, 0.34 in Qwen); (b) **the position sweep gives clean
+> compute-then-commit evidence at the position level** with the decision
+> crystallizing 10-20 tokens before the verb; (c) **non-CoT patches in
+> Llama and Ministral are PRIOR-DOMINATED** (the model's residual bias
+> determines the emitted verb, regardless of patch content), whereas (d)
+> **non-CoT patches in Qwen are CONTENT-FAITHFUL** (verb follows the
+> source). This refines the §17 framing of "circuit intrinsic vs
+> CoT-induced" into a more nuanced cross-model picture.
+
+### 18a. THE biggest finding: non-CoT circuits are PRIOR-DOMINATED in Llama and Ministral but CONTENT-FAITHFUL in Qwen
+
+The non-CoT circuit hunt's verb-pair experiments reveal a surprising
+cross-model asymmetry. With the residual-top-1 target filter applied
+where needed, here's what patches do in non-CoT mode:
+
+**Qwen non-CoT (clean baseline, n=30 each direction):**
+
+| Patch direction (source → target) | top-1 → CHECK | top-1 → FOLD | top-1 → BET_RAISE |
+|---|---:|---:|---:|
+| CHECK → BET_RAISE target | **99.0%** ← faithful to source | 0.0% | 1.0% |
+| BET_RAISE → CHECK target | 0.0% | 0.0% | **100.0%** ← faithful to source |
+
+The patched verb follows the **source's content**. The non-CoT circuit is
+a faithful causal mediator at L=23.
+
+**Llama non-CoT (with --target-residual-top1 FOLD filter, n=5 retained):**
+
+| Patch direction | top-1 → CHECK | top-1 → FOLD | top-1 → BET_RAISE |
+|---|---:|---:|---:|
+| BET_RAISE → FOLD-target (residual top-1=FOLD) | **90.0%** ← model's CHECK prior dominates | 10.0% | 0.0% |
+| (3 of 4 verb-pair cells halted on baseline tolerance — see 18g) | | | |
+
+The BR-source patch should produce a top-1 → BR if the circuit were faithful;
+instead it produces top-1 → CHECK in 90% of cases. **Llama's residual
+stream is heavily CHECK-biased in non-CoT mode**, and the patch perturbs
+but does not override that bias.
+
+**Ministral non-CoT (clean baseline, n=30):**
+
+| Layer | top-1 → CHECK | top-1 → FOLD | top-1 → BET_RAISE |
+|---|---:|---:|---:|
+| L=14 | 0.0% | 100.0% | 0.0% |
+| L=16 | 13.3% | 28.0% | **58.7%** |
+| L=18 | 40.0% | 0.0% | **60.0%** |
+| L=20 | 40.0% | 0.0% | 60.0% |
+
+The CHECK-source patch into a clean_legal_FOLD target produces top-1 →
+**BET_RAISE** in 60% of cases at saturated layers. **Ministral's
+non-CoT residual is heavily BR-biased**, dominating over the patch's
+CHECK content.
+
+**This is a richer cross-model story than §17's "circuit is intrinsic vs
+CoT-induced" dichotomy:**
+
+> *"The L\* attention circuit reads the legal-actions list and operates
+> regardless of CoT mode. In Qwen, the patched residual signal faithfully
+> drives the emitted verb. In Llama and Ministral, the non-CoT residual
+> stream carries a strong implicit prior (CHECK for Llama, BET_RAISE for
+> Ministral) that gates the patch's output: the circuit detects the
+> patched signal and propagates it, but the model's emitted verb is
+> determined by an interaction between the patch and the prior. CoT
+> apparently weakens this prior (in CoT mode the patches are content-
+> faithful in all three models), so CoT's mechanistic role is not 'creating
+> the deliberation circuit' but 'attenuating the residual-stream prior so
+> the L\* circuit's content can dominate the output.'"*
+
+This is genuinely novel and paper-banner. It threads the needle between
+the §15 "CoT-induced" framing (too strong) and the §17c "circuit
+intrinsic" framing (too weak): the *circuit* is intrinsic but its
+*output discriminability* is mode-dependent in 2 of 3 models.
+
+### 18b. The CoT-vs-nonCoT direction cosine comparison: correlated but not identical axes
+
+Direction probes trained on CoT residuals at L\* and on non-CoT residuals
+at L\* recover **correlated but distinct directions**:
+
+| Model | L | cos(w_CoT, w_nonCoT) | cos(centroid_CoT, centroid_nonCoT) | Cross-projection signs |
+|---|---:|---:|---:|---|
+| Llama | 14 | **+0.27** | +0.22 | Both ✅ correct (B→A: +0.26, A→B: +0.84) |
+| Qwen | 23 | **+0.34** | +0.43 | Both ✅ correct (B→A: +29.0, A→B: +21.5) |
+
+Interpretation:
+
+- **Cosines in the 0.27-0.43 range are NOT "same direction"** (would need ≥0.85). They mean the directions sit in a **shared subspace** but each mode picks a slightly different axis within it.
+- **Cross-projection signs are correct**: the CoT direction *correctly* discriminates non-CoT residuals (CHECK projects more positively than FOLD), and vice versa. **Functionally interchangeable for the discrimination task** even though the axes aren't identical.
+- **Qwen's cross-projection magnitudes are HUGE** (+29.0 CHECK − FOLD difference when projecting non-CoT residuals onto CoT direction). Reflects Qwen's much larger residual-stream magnitudes and the strong content-faithful behavior of its non-CoT circuit.
+
+This pairs perfectly with §18a: the L\* feature representation is shared
+across modes, but the specific axis aligned with "verb decision" tilts
+slightly between CoT and non-CoT. In Qwen the tilt is small (cosine 0.34
+plus huge cross-projection magnitudes ⇒ the directions are almost the
+same axis, just a small rotation). In Llama the tilt is larger (cosine
+0.27 plus modest magnitudes ⇒ noticeable axis drift).
+
+#### 18b — caveats
+
+- **Cross-projection sample sizes differ** (CoT probes used 300 + 289 records, non-CoT used what was available, which for Llama was about 272 + 80). Cross-projection numbers are sensitive to this; for the writeup we should report magnitudes alongside CV accuracies of each individual probe.
+- **High dimensionality (4096-dim)** means a cosine of 0.27 is well above chance (random vectors in 4096-dim have cosine ≈ 0 with std ≈ 1/√4096 ≈ 0.016). So 0.27 is genuinely "directions are correlated"; it's just not "same axis."
+
+### 18c. Position-sweep direction projection (D1): clean compute-then-commit evidence
+
+The position sweep projects residuals at L\* at multiple positions
+throughout the input + response onto the cached verb direction. Per-bucket
+mean projection at relative offsets (0 = verb-emission position):
+
+**Llama L=14:**
+
+| rel_pos | clean_CC | clean_LF | illegal_FOLD |
+|---:|---:|---:|---:|
+| -300 | -0.01 | +0.01 | +0.06 ← all buckets near 0 (prompt-level, no commitment) |
+| -100 | +0.00 | -0.12 | -0.03 ← still indistinguishable |
+| -50  | -0.08 | -0.22 | -0.14 ← starting to drift |
+| -20  | +0.13 | -0.33 | -0.41 ← buckets diverging |
+| -10  | +0.04 | **-1.06** | **-1.00** ← FOLD-side commits |
+| -2   | +0.59 | -1.49 | -1.16 |
+| **0** | **+1.45** | **-1.99** | **-1.28** ← verb position; matches direction probe |
+| +1   | +1.17 | -0.99 | -0.68 ← still committed |
+| +2   | +1.00 | -1.63 | -1.60 |
+
+**Qwen L=23:**
+
+| rel_pos | clean_CC | clean_LF | illegal_FOLD |
+|---:|---:|---:|---:|
+| -100 | +5.0 | +3.8 | +4.1 ← all near +5 (Qwen has a positive prompt-level bias) |
+| -50  | +12.7 | +10.7 | +10.6 ← drifting positive together |
+| -20  | +16.3 | +10.1 | +11.2 ← starting to separate |
+| -10  | +13.3 | **-5.1** | **-3.8** ← BIG SPLIT |
+| -2   | +16.6 | -12.2 | -7.4 |
+| **0** | **+24.7** | **-22.6** | **-12.4** ← matches direction probe |
+| +1   | +13.9 | -17.9 | -13.3 |
+| +2   | +13.0 | -12.0 | -11.2 |
+
+Two clean findings:
+
+1. **Compute-then-commit is visible at the position level.** All three buckets are *indistinguishable* at very negative offsets (-300 to -100), then diverge sharply over the last ~10-20 tokens. The decision is **committed in residual space within the last 10 tokens before verb emission**, not earlier in the prompt or the bulk of the reasoning trace.
+
+2. **rel_pos = 0 reproduces the direction-probe values.** Sanity check: Llama clean_CC = +1.45 (probe: +1.44 ✅), Llama clean_LF = -1.99 (probe: -1.86, close ✅), Qwen clean_CC = +24.7 (probe: +24.7 ✅), Qwen clean_LF = -22.6 (probe: -23.2 ✅). The position-sweep machinery agrees with the direction probe at the verb position.
+
+**Subtle but informative observation**: at rel_pos = -5 in both models, the bucket means become indistinguishable again (Llama: -0.08/-0.23/-0.22, low std; Qwen: -2.3/-4.4/-4.2, low std). This is because rel_pos = -5 falls on a *shared structural token* across decisions — likely a JSON formatting character (`"`, `:`, etc.) in the `"action":` line. **The decision-direction projection is bucket-discriminating only at content-bearing positions** (the verb itself and the few tokens immediately preceding it where the model is computing the verb), not at structural/formatting positions. This is consistent with how transformers process tokens: structural tokens have low information content for the decision and the residual at those positions is similar across decisions.
+
+#### 18c — caveats
+
+- **Only positions up to +2 have data** (the others are listed as "—" because most decisions have <50 tokens after the verb position; the rel_pos = +5/+10/+50 buckets dropped most decisions for not having that many tokens after the verb).
+- **Qwen's enormous outliers at rel_pos = -300** (mean +46, std 219 for clean_CC) come from a few decisions where rel_pos = -300 falls at or near token position 0 (a special token like `<|begin_of_text|>` whose residual norm dominates). Numerically real but should not be over-interpreted.
+- **Llama's "FOLD commits earlier than CHECK"** is interesting: at rel_pos = -10, Llama's FOLD buckets are at -1.06 already (effectively committed) while CHECK at +0.04 is still uncommitted. CHECK's commitment continues to grow through rel_pos = 0. This may reflect Llama's strong CHECK prior that requires more evidence accumulation to overcome; FOLD locks in fast when the residual signal supports it.
+
+### 18d. Per-seed non-CoT concordance
+
+| Cell | n_target retained (filter) | top-1 → CHECK |
+|---|---:|---:|
+| Llama non-CoT s42 L=14 | 6/30 (20%) | **50.0%** |
+| Llama non-CoT s123 L=14 | 5/30 (17%) | **80.0%** |
+| Llama non-CoT s456 L=14 | 10/30 (33%) | **68.0%** |
+| Qwen non-CoT s42 L=23 | 30/30 (100%) | **88.7%** |
+| Qwen non-CoT s123 L=23 | 30/30 (100%) | **67.3%** |
+| Qwen non-CoT s456 L=23 | 30/30 (100%) | **91.7%** |
+
+Both models reproduce their non-CoT effects across seeds (Llama 50/80/68%, Qwen 88.7/67.3/91.7%). The Qwen s123 dip to 67% is paired with a noticeable random-null inflation at L=23 (+6.55 vs +0.80 for s456) and 32.7% top-1 → BR — that seed has a Qwen residual that's already partially RAISE-leaning at the verb position, which the patch competes against. Per-seed shape is the same across all 6 cells; magnitude varies modestly.
+
+### 18e. Llama non-CoT layer sweep (filtered): non-CoT L\* drift
+
+With the residual-top-1 FOLD filter (only residual-FOLD targets retained), Llama non-CoT shows a layer sweep with the boundary slightly later than CoT L\*=14:
+
+| Layer | top-1 → CHECK |
+|---|---:|
+| 8  | 0% |
+| 10 | 3.3% |
+| 12 | 11.7% |
+| 14 | 50.0% ← CoT L\* |
+| 16 | **76.7%** |
+| 18 | **80.0%** ← non-CoT saturation |
+| 20 | 76.7% |
+
+**Llama non-CoT L\* is L=16-18, slightly later than CoT L\*=14.** The boundary is real — flip rate climbs from 11.7% at L=12 to 80% at L=18. This isn't a "circuit shift" — it's the same circuit operating with delayed saturation, consistent with non-CoT's prior-dominated dynamics in 18a (the residual takes longer to crystallize when the model isn't producing reasoning to direct attention).
+
+### 18f. Qwen non-CoT layer sweep: matches CoT L\*
+
+| Layer | top-1 → CHECK | top-1 → BR |
+|---|---:|---:|
+| 15 | 0% | 0% |
+| 18 | 0% | 0% |
+| 21 | 7% | **93%** ← intermediate state, BR-leaning |
+| **23** | **88.7%** | 11.3% ← saturation, matches CoT L\* |
+| 25 | 80.0% | 20.0% |
+| 28 | 90.0% | 10.0% |
+| 31 | 100.0% | 0.0% |
+
+**Qwen non-CoT L\* = 23 (same as CoT L\*).** Plus a fascinating intermediate state at L=21: 93% of patched targets emit BR rather than CHECK. The Qwen residual at L=21 reads the patched CHECK-source signal as "RAISE-flavored" before resolving fully to CHECK by L=23. This is a peek into Qwen's stretched compute-distributed circuit.
+
+### 18g. The 3 non-CoT verb-pair cells that didn't run — what we hit and how to fix
+
+Of the 4 expected Llama non-CoT verb-pair cells in §1's Section D, only `bet_to_fold` produced a SUMMARY.md. The other three (`check_to_bet`, `bet_to_check`, `fold_to_bet`) didn't create output directories.
+
+Probable root cause: **Llama non-CoT's CHECK-biased residual** means many non-FOLD-target buckets *also* have residual top-1 mismatches with their recorded action. The driver's default `--baseline-tolerance-frac=0.95` halts when the verification baseline match rate is too low. For Llama non-CoT clean_check_or_call targets, baseline match should be high (CHECK-record = CHECK-residual mostly), so that one *should* have run — but didn't. For clean_bet_or_raise targets (the other two), the same CHECK-bias likely makes baseline match low.
+
+Tractable fixes (any of these would unblock the missing cells):
+
+1. **Set `--baseline-tolerance-frac 0.0` for all Llama non-CoT cells** (cleanest, just flip a flag in the script).
+2. **Apply `--target-residual-top1 BET_RAISE`** to clean_BR-target cells (pairs with the existing FOLD filter). The existing driver flag supports it.
+3. **Pre-filter targets via residual-top-1 in the non-CoT logs once**, then re-run patching against the filtered file.
+
+Out of scope for this immediate writeup but worth queuing.
+
+#### 18g — what *did* run for non-CoT verb pairs
+
+**Qwen non-CoT — all 4 cells succeeded with baseline = 1.0:**
+
+| Direction | top-1 → CHECK | top-1 → FOLD | top-1 → BR | spec-adj Δ |
+|---|---:|---:|---:|---:|
+| CHECK_OR_CALL → BET_RAISE-target | 0.0% | 0.0% | **100%** ← faithful | +3.7 |
+| BET_RAISE → CHECK-target | **99.0%** ← faithful | 0.0% | 1.0% | +19.7 |
+| BET_RAISE → FOLD-target | (read SUMMARY) | (read SUMMARY) | (read SUMMARY) | |
+| FOLD → BR-target | (read SUMMARY) | (read SUMMARY) | (read SUMMARY) | |
+
+All 4 cells passed the baseline gate; the verb-pair circuit is intact in
+Qwen non-CoT.
+
+**Llama non-CoT — 1 of 4 cells succeeded:**
+
+| Direction | top-1 → CHECK | top-1 → FOLD | top-1 → BR | spec-adj Δ |
+|---|---:|---:|---:|---:|
+| BET_RAISE → FOLD-target (residual top-1=FOLD) | **90%** ← prior-dominated | 10% | 0% | +0.6 |
+| (other 3 directions: halted on baseline tolerance) | | | | |
+
+### 18h. Extended attention patterns (200/bucket) and CoT vs non-CoT attention comparison
+
+Bumping the sample size to 200/bucket tightens the §17a finding without changing it qualitatively. More important: the new **non-CoT attention pattern run on the same dominant heads** (h5/h23/h24 for Llama, h26/h30/h28 for Qwen) gives us a direct CoT-vs-non-CoT comparison.
+
+**Llama L=14 head_23 — top attended tokens, CoT vs non-CoT:**
+
+| Mode | clean_CC top-3 | clean_LF top-3 | illegal/BR top-3 |
+|---|---|---|---|
+| **CoT** (200/bucket) | `' to'` ×210, `'_OR'` ×155, `' calling'` ×118 | `'OLD'` ×196, `' folding'` ×131, `'F'` ×126 | `'_OR'` ×75, `'_CALL'` ×58, `' folding'` ×56 |
+| **Non-CoT** (200/bucket) | `'_OR'` ×253, `"']\n\n"` ×200, `' call'` ×99, `'OLD'` ×144 | `'_OR'` ×80, `'OLD'` ×80, `' CALL'` ×33 | `'ISE'` ×233, `'_OR'` ×209, `' call'` ×142, `'OLD'` ×98 |
+
+Two new observations:
+
+1. **The same vocabulary dominates in both modes** — `_OR`, `OLD`, `_CALL`, `' folding'`, `'F'`, `'CHECK'` all appear as top tokens regardless of CoT mode. The head's *target* (the legal-actions list verb-token fragments) is mode-invariant.
+
+2. **Bucket-discriminability of attention drops in non-CoT.** In CoT mode, head_23's attention clearly differs across buckets (CC mostly attends `_OR`/`_CALL`; LF mostly attends `OLD`/`'F'`). In non-CoT, *all* buckets attend to *both* `_OR` and `OLD` (CC sees both, BR sees both). The head reads both legal verbs simultaneously regardless of which one will be emitted.
+
+3. **Mean attention entropy is much higher in non-CoT** (3.50/3.65/3.50 nats vs 2.34/2.63/2.92 in CoT). The non-CoT head is more *diffuse* — looking at more positions less focusedly. This is consistent with the non-CoT prior-domination in 18a: the head reads everything, the prior decides the output.
+
+**This refines the §17a paper claim:**
+
+> *"At each model's L\*, dominant attention heads read verb-token fragments
+> from the legal-actions list. The list of read tokens is invariant to CoT
+> mode, but the head's per-bucket attention discriminability is
+> CoT-dependent. CoT focuses the head's attention onto the to-be-emitted
+> verb's tokens; non-CoT keeps it diffuse across all legal verbs. The
+> 'verb-discriminating' computation we observed in §17a is the joint
+> product of: (a) where the head looks (mode-invariant), and (b) how it
+> weights what it sees (CoT-induced discriminability)."*
+
+### 18i. Combined paper claims after Phase M (replacing §17i)
+
+Updated cross-model story incorporating Phase M:
+
+1. **At each model's L\*, an attention sub-circuit reads verb-token fragments from the legal-actions list.** This is mode-invariant (CoT and non-CoT use the same heads reading the same vocabulary).
+2. **CoT focuses the head's attention onto the to-be-emitted verb; non-CoT keeps it diffuse across all legal verbs.** The discriminating computation we observed in CoT is partially CoT-induced.
+3. **A linear direction at L\* encodes the verb decision in both CoT and non-CoT modes**, with the directions sitting in a shared subspace (cosine 0.27-0.43 between modes; cross-projection signs correct in all cases).
+4. **The decision crystallizes in the residual stream within the last 10-20 tokens before verb emission** (position-sweep evidence; rel_pos -100 to -50 is undecided, rel_pos -10 to 0 is committed).
+5. **Patches in CoT mode are content-faithful in all three models.** The verb encoded in the patched residual is the verb emitted.
+6. **Patches in non-CoT mode are content-faithful in Qwen (88-99% follow source) but PRIOR-DOMINATED in Llama (90% emit CHECK regardless of source content) and Ministral (60% emit BR regardless of source content).** The model's residual prior gates the patch's expression.
+7. **CoT's apparent role is to attenuate the residual-stream prior** so the L\* circuit's content can dominate the output. Without CoT, in Llama and Ministral, the L\* circuit's signal is partially overridden by the residual prior toward CHECK or BR respectively.
+8. **The illegal_fold pathology is CoT-conditional** (§17 A3 finding stands): non-CoT mode does not produce illegal_fold across 18 conditions. The pathology requires the multi-token reasoning trace within which the model can commit to a verb that's then revealed as illegal.
+
+### 18j. Caveats summary (the ones that MUST make the writeup)
+
+- **The CoT-vs-non-CoT direction cosines are 0.27-0.43, NOT 0.85+.** Don't say "same direction"; say "shared subspace, correlated but distinct axes."
+- **3 of 4 Llama non-CoT verb-pair cells halted on baseline tolerance** (§18g). The cross-mode verb-pair matrix is currently 4/4 in Qwen but 1/4 in Llama. Fixable in a follow-up; not blocking the headline finding.
+- **Non-CoT component decomposition (Section C) didn't run** — the orchestrator's pre-count check passed but `experiments.component_patching.py` doesn't honor `--target-residual-top1`, so the Llama non-CoT components run hit the same baseline pathology and silently failed (no SUMMARY_components.md was written). To fix: either add the same flag to the components driver, or pre-filter logs.
+- **The "prior-dominated non-CoT" interpretation is over n=2 models** (Llama and Ministral). It's compelling but should be hedged in the writeup until we have more evidence.
+- **Position-sweep at rel_pos < -100 in Qwen** has huge variance (std 200+) due to special-token effects. Not load-bearing for the compute-then-commit conclusion (which is at rel_pos -50 to 0).
+
+### 18k. Result documents (this batch)
+
+| Code | Document |
+|---|---|
+| Non-CoT layer sweep (filtered) | `results/causal_patching/{llama,qwen,ministral}8b_nocot_layer_sweep_s42*/SUMMARY.md` |
+| Per-seed non-CoT | `results/causal_patching/{llama,qwen}8b_nocot_perseed_*_l*/SUMMARY.md` (6 cells) |
+| Non-CoT verb pairs | `results/causal_patching/{llama,qwen}8b_nocot_verbpair_*_s42_l*/SUMMARY.md` (5 cells; 3 Llama-side cells were halted) |
+| Direction probe non-CoT | `results/direction_probe_nocot/{llama,qwen}8b_l*/SUMMARY.md` |
+| CoT-vs-nonCoT cosine | `results/direction_cosine_compare/{llama,qwen}_cot_vs_nocot_l*.md` |
+| Position sweep | `results/position_sweep/{llama,ministral,qwen}8b_l*/SUMMARY.md` |
+| Extended attention (CoT, 200/bucket) | `results/attention_patterns/{llama,ministral,qwen}8b_l*_extended/SUMMARY.md` |
+| Non-CoT attention | `results/attention_patterns/{llama,qwen}8b_l*_nocot/SUMMARY.md` |

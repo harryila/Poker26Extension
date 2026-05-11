@@ -276,6 +276,21 @@ def main():
                              "labels remain the same in summary.json (we "
                              "filter, not relabel); a `target_residual_top1_"
                              "filter` field is added to summary.json.")
+    parser.add_argument("--source-residual-top1",
+                        choices=["FOLD", "CHECK_CALL", "BET_RAISE"],
+                        default=None,
+                        help="OPTIONAL filter (symmetric to --target-residual"
+                             "-top1): after capturing source residuals, drop "
+                             "any source whose residual top-1 family does NOT "
+                             "match this value. Useful for non-CoT runs where "
+                             "the recorded-action label and the source's "
+                             "residual top-1 disagree (the source-side analog "
+                             "of the Llama non-CoT 20%-baseline pathology). "
+                             "With both filters set, only sources AND targets "
+                             "whose verb-position residual matches the "
+                             "expected family enter the main loop. Adds a "
+                             "`source_residual_top1_filter` field to "
+                             "summary.json.")
     args = parser.parse_args()
 
     rng = random.Random(args.seed)
@@ -391,6 +406,11 @@ def main():
     # construct it here.
     cap = HiddenStateCapture(model)
 
+    # `controls` is initialized here (rather than just before the controls
+    # section) because the optional source-residual-top-1 filter (applied
+    # right after source capture) writes its bookkeeping into `controls`.
+    controls: dict = {}
+
     if args.zero_ablation:
         # Synthetic single source: a zero tensor at every test layer. We don't
         # need any real prep — the main loop only reads `source_residuals[si][L]`
@@ -416,27 +436,61 @@ def main():
         # ---- Capture source residuals ----------------------------------------
         print(f"[capture] {len(sources_prep)} source forwards ...")
         source_residuals = []
+        source_top1_ids: list[int] = []
         cap_t0 = time.time()
         for i, src in enumerate(sources_prep):
             cap.attach_hooks()
             try:
                 with torch.no_grad():
-                    model(input_ids=tokenizer(src["input_text"],
-                                              return_tensors="pt",
-                                              add_special_tokens=False
-                                              )["input_ids"].to(args.device))
+                    src_out = model(
+                        input_ids=tokenizer(src["input_text"],
+                                            return_tensors="pt",
+                                            add_special_tokens=False
+                                            )["input_ids"].to(args.device)
+                    )
             finally:
                 states = cap.collect()
                 cap.detach_hooks()
             source_residuals.append(states["per_layer_last_pos"])
+            # Capture source's lm_head top-1 at the verb-emission position
+            # (last input position) so we can optionally filter sources by
+            # residual-top-1 family.
+            last_logits = src_out.logits[0, -1, :].detach().to("cpu")
+            source_top1_ids.append(int(last_logits.argmax().item()))
             if (i + 1) % 5 == 0 or i + 1 == len(sources_prep):
                 elapsed = time.time() - cap_t0
                 rate = (i + 1) / elapsed
                 print(f"  [capture] {i + 1}/{len(sources_prep)} "
                       f"({elapsed:.0f}s, {rate:.2f} src/s)")
 
+        # Optional source-residual-top-1 filter (symmetric to target filter).
+        if args.source_residual_top1 is not None:
+            family = args.source_residual_top1
+            if family == "CHECK_CALL":
+                allowed_ids = set(family_ids["CHECK"]) | set(family_ids["CALL"])
+            elif family == "BET_RAISE":
+                allowed_ids = set(family_ids["BET"]) | set(family_ids["RAISE"])
+            else:
+                allowed_ids = set(family_ids[family])
+            kept_indices = [
+                i for i, t in enumerate(source_top1_ids) if t in allowed_ids
+            ]
+            n_before = len(sources_prep)
+            n_after = len(kept_indices)
+            print(f"  [filter] source_residual_top1={family}: "
+                  f"keeping {n_after}/{n_before} sources")
+            controls["source_residual_top1_filter"] = {
+                "family": family, "n_before": n_before, "n_after": n_after,
+                "frac_kept": n_after / max(n_before, 1),
+            }
+            if n_after < 1:
+                print(f"  [HALT] no sources remain after residual-top-1 filter.")
+                sys.exit(3)
+            sources_prep = [sources_prep[i] for i in kept_indices]
+            source_residuals = [source_residuals[i] for i in kept_indices]
+            source_top1_ids = [source_top1_ids[i] for i in kept_indices]
+
     # ---- Controls --------------------------------------------------------
-    controls = {}
     if not args.skip_controls:
         # Control 1: baseline (no patch) for each target.
         print(f"\n[control 1/3] baseline (no-patch) for {len(targets_prep)} targets ...")
@@ -535,8 +589,18 @@ def main():
         print(f"\n[control 3/3] random-source patch (per-layer null baseline) ...")
         random_sources = []
         alt_pool = []
+        # METHODOLOGY (Phase N §C1): restrict the random-null pool to CLEAN
+        # buckets only, excluding json_failure / alias_unrecognized /
+        # illegal_other. Earlier runs included the degenerate buckets in the
+        # null, which can inflate the random-null spec-adj because those
+        # records have ill-formed residuals at the verb position. This change
+        # tightens the comparability of spec-adjusted Δ across cells.
+        _CLEAN_BUCKETS = {"clean_check_or_call", "clean_legal_fold",
+                          "clean_bet_or_raise", "illegal_fold"}
         for b, recs in by_bucket.items():
             if b == args.source_bucket:
+                continue
+            if b not in _CLEAN_BUCKETS:
                 continue
             alt_pool.extend(recs)
         n_random = min(args.n_random_control, len(alt_pool))
@@ -752,6 +816,14 @@ def main():
         lines.append(
             f"- **Residual-top-1 target filter**: kept only targets whose "
             f"baseline residual top-1 was in family `{args.target_residual_top1}` "
+            f"({f.get('n_after', '?')}/{f.get('n_before', '?')} = "
+            f"{(f.get('frac_kept', 0)*100):.1f}% retained)."
+        )
+    if args.source_residual_top1 is not None:
+        f = controls.get("source_residual_top1_filter") or {}
+        lines.append(
+            f"- **Residual-top-1 source filter**: kept only sources whose "
+            f"verb-position residual top-1 was in family `{args.source_residual_top1}` "
             f"({f.get('n_after', '?')}/{f.get('n_before', '?')} = "
             f"{(f.get('frac_kept', 0)*100):.1f}% retained)."
         )

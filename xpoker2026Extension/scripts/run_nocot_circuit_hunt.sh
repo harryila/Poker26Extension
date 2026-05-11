@@ -177,6 +177,7 @@ run_components_cell() {
     local target_bucket="$4"
     local layer="$5"
     local out_dir="$6"
+    local extra_args="$7"   # e.g. "--target-residual-top1 FOLD --source-residual-top1 CHECK_CALL --baseline-tolerance-frac 0.0"
 
     if [[ -d "$out_dir" ]] && [[ -f "$out_dir/SUMMARY_components.md" ]]; then
         echo "[skip] $out_dir already has SUMMARY_components.md"
@@ -186,23 +187,14 @@ run_components_cell() {
         echo "[skip] $label: missing $enriched"
         return 0
     fi
-    # Components driver doesn't yet support --target-residual-top1; for Llama
-    # we pre-filter target hand-ids by running the residual driver first and
-    # extracting the kept set. Simpler approach: trust that the component
-    # decomposition at L* on residual-FOLD targets only matters once the
-    # residual-driver test confirms a flip. For now, skip components on Llama
-    # if we don't have residual-FOLD-only targets readily available.
-    # SO: the component decomposition will run on the recorded-action label
-    # but with a permissive baseline tolerance. The flip-rate column may show
-    # the "2/30 flip" pattern that's an artifact; the per-head ratio_to_residual
-    # column is still informative.
 
     mkdir -p "$out_dir"
     echo
     echo "############################################################"
-    echo "## $label  (NB: component decomposition uses recorded-action labels)"
+    echo "## $label"
     echo "##   enriched: $enriched"
     echo "##   layer: $layer"
+    echo "##   filter: $extra_args"
     echo "##   out: $out_dir"
     echo "############################################################"
 
@@ -218,7 +210,8 @@ run_components_cell() {
         --seed "$SEED" \
         --out-dir "$out_dir" \
         --device "$DEVICE" \
-        --dtype "$DTYPE"
+        --dtype "$DTYPE" \
+        $extra_args
     echo "[done] $label wrote $out_dir/SUMMARY_components.md"
 }
 
@@ -293,19 +286,22 @@ if [[ ",$SECTIONS," == *,C,* ]]; then
     echo "SECTION C — non-CoT component decomposition at L*"
     echo "================================================================"
 
-    # Llama at L=14.
-    run_components_cell "Llama non-CoT s42 components at L=$LLAMA_LAYER" \
+    # Llama at L=14 — filtered (target=FOLD-residual, source=CHECK_CALL-residual).
+    run_components_cell "Llama non-CoT s42 components at L=$LLAMA_LAYER (filtered)" \
         "logs/scaled_llama8b_t0_s42_informative_v2_enriched.jsonl" \
         clean_check_or_call clean_legal_fold \
         "$LLAMA_LAYER" \
-        "results/causal_patching/llama8b_nocot_l${LLAMA_LAYER}_components"
+        "results/causal_patching/llama8b_nocot_l${LLAMA_LAYER}_components_filtered" \
+        "--target-residual-top1 FOLD --source-residual-top1 CHECK_CALL --baseline-tolerance-frac 0.0"
 
-    # Qwen at L=23.
-    run_components_cell "Qwen non-CoT s42 components at L=$QWEN_LAYER" \
+    # Qwen at L=23 — Qwen non-CoT baseline is already 1.0; filter is a no-op
+    # but harmless and keeps the protocol uniform across models.
+    run_components_cell "Qwen non-CoT s42 components at L=$QWEN_LAYER (filtered)" \
         "logs/scaled_qwen8b_t0_s42_informative_v2_enriched.jsonl" \
         clean_check_or_call clean_legal_fold \
         "$QWEN_LAYER" \
-        "results/causal_patching/qwen8b_nocot_l${QWEN_LAYER}_components"
+        "results/causal_patching/qwen8b_nocot_l${QWEN_LAYER}_components_filtered" \
+        "--target-residual-top1 FOLD --source-residual-top1 CHECK_CALL --baseline-tolerance-frac 0.0"
 fi
 
 # -----------------------------------------------------------------------------
@@ -323,34 +319,52 @@ if [[ ",$SECTIONS," == *,D,* ]]; then
     #   4. FOLD → BET_RAISE
     # Each at the model's non-CoT L*. Skip Ministral (insufficient data).
 
+    # Helper: map a bucket name to its expected residual-top-1 family.
+    bucket_to_family() {
+        case "$1" in
+            clean_check_or_call) echo "CHECK_CALL" ;;
+            clean_legal_fold)    echo "FOLD" ;;
+            clean_bet_or_raise)  echo "BET_RAISE" ;;
+            *)                   echo "" ;;
+        esac
+    }
+
     for src_tgt in "clean_check_or_call:clean_bet_or_raise:check_to_bet" \
                    "clean_bet_or_raise:clean_check_or_call:bet_to_check" \
                    "clean_bet_or_raise:clean_legal_fold:bet_to_fold" \
                    "clean_legal_fold:clean_bet_or_raise:fold_to_bet"; do
         IFS=':' read -r src tgt name <<< "$src_tgt"
 
-        # For Llama, the residual-top-1 filter only makes sense when
-        # target=clean_legal_fold (the bucket with the pathology). For
-        # other targets, baseline tolerance is fine at default.
-        if [[ "$tgt" == "clean_legal_fold" ]]; then
-            llama_filter_args="$LLAMA_FILTER"
-        else
-            llama_filter_args=""
-        fi
+        src_fam=$(bucket_to_family "$src")
+        tgt_fam=$(bucket_to_family "$tgt")
 
-        run_cell "Llama non-CoT s42 verbpair ${name} at L=$LLAMA_LAYER" \
+        # Llama non-CoT: ALWAYS apply both filters to handle the
+        # CHECK-biased-residual pathology consistently across all 4 cells.
+        # (Phase M §18g audit: 3 of 4 cells halted on baseline tolerance
+        # because non-FOLD targets also have residual top-1 mismatches with
+        # recorded labels.)
+        llama_filter_args="--target-residual-top1 $tgt_fam --source-residual-top1 $src_fam --baseline-tolerance-frac 0.0"
+
+        # NOTE: outputs go into a `_filtered` directory so the prior
+        # (unfiltered) bet_to_fold result is preserved alongside.
+        run_cell "Llama non-CoT s42 verbpair ${name} at L=$LLAMA_LAYER (filtered)" \
             "logs/scaled_llama8b_t0_s42_informative_v2_enriched.jsonl" \
             "$src" "$tgt" \
             "$LLAMA_LAYER" \
-            "results/causal_patching/llama8b_nocot_verbpair_${name}_s42_l${LLAMA_LAYER}" \
+            "results/causal_patching/llama8b_nocot_verbpair_${name}_s42_l${LLAMA_LAYER}_filtered" \
             "$llama_filter_args"
 
-        run_cell "Qwen non-CoT s42 verbpair ${name} at L=$QWEN_LAYER" \
+        # Qwen non-CoT: baseline = 1.0 is intact, so the filter is a no-op
+        # (selects ~100% of records) but we still apply it for protocol
+        # uniformity. The filter is harmless when the baseline is clean.
+        qwen_filter_args="--target-residual-top1 $tgt_fam --source-residual-top1 $src_fam --baseline-tolerance-frac 0.0"
+
+        run_cell "Qwen non-CoT s42 verbpair ${name} at L=$QWEN_LAYER (filtered)" \
             "logs/scaled_qwen8b_t0_s42_informative_v2_enriched.jsonl" \
             "$src" "$tgt" \
             "$QWEN_LAYER" \
-            "results/causal_patching/qwen8b_nocot_verbpair_${name}_s42_l${QWEN_LAYER}" \
-            ""
+            "results/causal_patching/qwen8b_nocot_verbpair_${name}_s42_l${QWEN_LAYER}_filtered" \
+            "$qwen_filter_args"
     done
 fi
 

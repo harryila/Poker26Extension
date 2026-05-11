@@ -83,15 +83,18 @@ def _capture_residuals_for_bucket(
     device: str,
     max_n: int,
     label: str,
-) -> tuple[list, list]:
-    """Returns (residuals_list, hand_dec_list) for up to max_n decisions
-    from the given bucket. Each residual is a 1-D CPU torch tensor of
-    shape [hidden_dim]."""
+) -> tuple[list, list, list]:
+    """Returns (residuals_list, hand_dec_list, top1_id_list) for up to
+    max_n decisions from the given bucket. Each residual is a 1-D CPU
+    torch tensor of shape [hidden_dim]; top1 is an int (lm_head argmax
+    at the verb position).
+    """
     import torch
 
     cap = HiddenStateCapture(model)
     residuals = []
     keys = []
+    top1_ids = []
 
     n = 0
     t0 = time.time()
@@ -113,7 +116,7 @@ def _capture_residuals_for_bucket(
         cap.attach_hooks()
         try:
             with torch.no_grad():
-                model(input_ids=input_ids)
+                fwd = model(input_ids=input_ids)
         finally:
             states = cap.collect()
             cap.detach_hooks()
@@ -122,6 +125,8 @@ def _capture_residuals_for_bucket(
             continue
         residuals.append(states["per_layer_last_pos"][layer].clone())
         keys.append(f"{rec.get('hand_id', '?')}:{rec.get('decision_idx', '?')}")
+        last_logits = fwd.logits[0, -1, :].detach().to("cpu")
+        top1_ids.append(int(last_logits.argmax().item()))
         n += 1
         if n % 25 == 0:
             elapsed = time.time() - t0
@@ -129,7 +134,7 @@ def _capture_residuals_for_bucket(
             print(f"    [{label}] {n} captured ({elapsed:.0f}s, {rate:.2f}/s)")
     elapsed = time.time() - t0
     print(f"    [{label}] DONE: {n} captured in {elapsed:.0f}s")
-    return residuals, keys
+    return residuals, keys, top1_ids
 
 
 def main():
@@ -151,6 +156,18 @@ def main():
                              "(smaller = stronger regularization). Default 0.01 "
                              "is appropriate for hidden_dim >> n_samples.")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--label-source", default="recorded_action",
+                        choices=["recorded_action", "residual_top1"],
+                        help="Label source for the probe. 'recorded_action' "
+                             "(default) labels by bucket (clean_check_or_call=1, "
+                             "clean_legal_fold=0). 'residual_top1' re-labels "
+                             "every clean record by its lm_head top-1 at the "
+                             "verb position (CHECK/CALL=1, FOLD=0); records "
+                             "with other top-1 families are dropped. Use the "
+                             "latter when the recorded action and residual "
+                             "top-1 disagree (e.g. Llama non-CoT) to ask "
+                             "'what does the residual encode?' rather than "
+                             "'what does the model emit?'")
     args = parser.parse_args()
 
     out_dir = Path(args.out_dir)
@@ -208,21 +225,51 @@ def main():
     # ---- Capture residuals -----------------------------------------------
     print(f"\n[capture] up to {args.max_decisions_per_bucket} per bucket "
           f"at L={args.layer} ...")
-    cc_res, cc_keys = _capture_residuals_for_bucket(
+    cc_res, cc_keys, cc_top1 = _capture_residuals_for_bucket(
         model, tokenizer, recon,
         by_bucket["clean_check_or_call"], args.layer, args.device,
         args.max_decisions_per_bucket, "clean_check_or_call",
     )
-    lf_res, lf_keys = _capture_residuals_for_bucket(
+    lf_res, lf_keys, lf_top1 = _capture_residuals_for_bucket(
         model, tokenizer, recon,
         by_bucket["clean_legal_fold"], args.layer, args.device,
         args.max_decisions_per_bucket, "clean_legal_fold",
     )
-    if_res, if_keys = _capture_residuals_for_bucket(
+    if_res, if_keys, if_top1 = _capture_residuals_for_bucket(
         model, tokenizer, recon,
         by_bucket["illegal_fold"], args.layer, args.device,
         args.max_decisions_per_bucket, "illegal_fold",
     )
+
+    # Optional re-labeling by residual top-1 family. With label-source =
+    # 'residual_top1', records from any clean-bucket are re-pooled and
+    # re-classified into CHECK_CALL vs FOLD vs OTHER by their lm_head
+    # argmax at the verb position. The probe then trains on what the
+    # MODEL ENCODES rather than what the model EMITS via the JSON path.
+    if args.label_source == "residual_top1":
+        # Build family-id sets from the action token sets.
+        from experiments.causal_patching import build_action_token_id_sets
+        family_ids = build_action_token_id_sets(tokenizer)
+        cc_set = set(family_ids["CHECK"]) | set(family_ids["CALL"])
+        fold_set = set(family_ids["FOLD"])
+        # Pool all clean residuals + relabel by top-1.
+        all_res = cc_res + lf_res
+        all_keys = cc_keys + lf_keys
+        all_top1 = cc_top1 + lf_top1
+        new_cc_res, new_cc_keys = [], []
+        new_lf_res, new_lf_keys = [], []
+        for r, k, t in zip(all_res, all_keys, all_top1):
+            if t in cc_set:
+                new_cc_res.append(r); new_cc_keys.append(k)
+            elif t in fold_set:
+                new_lf_res.append(r); new_lf_keys.append(k)
+            # records with other top-1 (e.g. BR-family) are dropped
+        print(f"\n[relabel] residual_top1: pooled {len(all_res)} clean records, "
+              f"relabeled CHECK_CALL={len(new_cc_res)}, FOLD={len(new_lf_res)}, "
+              f"OTHER (dropped)={len(all_res) - len(new_cc_res) - len(new_lf_res)}")
+        cc_res, cc_keys = new_cc_res, new_cc_keys
+        lf_res, lf_keys = new_lf_res, new_lf_keys
+        # illegal_fold residuals are not re-pooled (they're our held-out test).
 
     if len(cc_res) < 10 or len(lf_res) < 10:
         print(f"[abort] need ≥10 of each clean bucket; got "

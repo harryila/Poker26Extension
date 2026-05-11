@@ -240,6 +240,21 @@ def main():
                         choices=["bfloat16", "float16", "float32"])
     parser.add_argument("--model-id", default=None)
     parser.add_argument("--baseline-tolerance-frac", type=float, default=0.95)
+    parser.add_argument("--target-residual-top1",
+                        choices=["FOLD", "CHECK_CALL", "BET_RAISE"],
+                        default=None,
+                        help="OPTIONAL filter: drop targets whose baseline "
+                             "residual top-1 family does NOT match this. "
+                             "Plumbing-identical to causal_patching.py's "
+                             "flag of the same name (see that script's help "
+                             "for the rationale).")
+    parser.add_argument("--source-residual-top1",
+                        choices=["FOLD", "CHECK_CALL", "BET_RAISE"],
+                        default=None,
+                        help="OPTIONAL filter: drop sources whose lm_head "
+                             "top-1 (at the verb position) does NOT match "
+                             "this family. Symmetric to --target-residual-"
+                             "top1; same rationale.")
     args = parser.parse_args()
 
     rng = random.Random(args.seed)
@@ -350,24 +365,54 @@ def main():
     print(f"[capture] {len(sources_prep)} source forwards (multi-component) ...")
     cap = HiddenStateCaptureMulti(model)
     source_captures: list[dict] = []
+    source_top1_ids: list[int] = []
+    filter_bookkeeping: dict = {}
     cap_t0 = time.time()
     for i, src in enumerate(sources_prep):
         cap.attach_hooks()
         try:
             with torch.no_grad():
-                model(input_ids=tokenizer(src["input_text"],
-                                          return_tensors="pt",
-                                          add_special_tokens=False
-                                          )["input_ids"].to(args.device))
+                src_out = model(
+                    input_ids=tokenizer(src["input_text"],
+                                        return_tensors="pt",
+                                        add_special_tokens=False
+                                        )["input_ids"].to(args.device)
+                )
         finally:
             states = cap.collect()
             cap.detach_hooks()
         source_captures.append(states)
+        last_logits = src_out.logits[0, -1, :].detach().to("cpu")
+        source_top1_ids.append(int(last_logits.argmax().item()))
         if (i + 1) % 5 == 0 or i + 1 == len(sources_prep):
             elapsed = time.time() - cap_t0
             rate = (i + 1) / elapsed
             print(f"  [capture] {i+1}/{len(sources_prep)} "
                   f"({elapsed:.0f}s, {rate:.2f} src/s)")
+
+    # Optional source-residual-top-1 filter.
+    if args.source_residual_top1 is not None:
+        family = args.source_residual_top1
+        if family == "CHECK_CALL":
+            allowed_ids = set(family_ids["CHECK"]) | set(family_ids["CALL"])
+        elif family == "BET_RAISE":
+            allowed_ids = set(family_ids["BET"]) | set(family_ids["RAISE"])
+        else:
+            allowed_ids = set(family_ids[family])
+        kept = [i for i, t in enumerate(source_top1_ids) if t in allowed_ids]
+        n_before, n_after = len(sources_prep), len(kept)
+        print(f"  [filter] source_residual_top1={family}: "
+              f"keeping {n_after}/{n_before} sources")
+        filter_bookkeeping["source_residual_top1_filter"] = {
+            "family": family, "n_before": n_before, "n_after": n_after,
+            "frac_kept": n_after / max(n_before, 1),
+        }
+        if n_after < 1:
+            print(f"  [HALT] no sources remain after residual-top-1 filter.")
+            sys.exit(3)
+        sources_prep = [sources_prep[i] for i in kept]
+        source_captures = [source_captures[i] for i in kept]
+        source_top1_ids = [source_top1_ids[i] for i in kept]
 
     # ---- Control 1: baseline (no patch) for each target ---------------------
     print(f"\n[control 1/2] baseline (no patch) for {len(targets_prep)} targets ...")
@@ -392,6 +437,31 @@ def main():
     if baseline_match_rate < args.baseline_tolerance_frac:
         print(f"  [HALT] below tolerance {args.baseline_tolerance_frac}.")
         sys.exit(3)
+
+    # Optional target-residual-top-1 filter.
+    if args.target_residual_top1 is not None:
+        family = args.target_residual_top1
+        if family == "CHECK_CALL":
+            allowed_ids = set(family_ids["CHECK"]) | set(family_ids["CALL"])
+        elif family == "BET_RAISE":
+            allowed_ids = set(family_ids["BET"]) | set(family_ids["RAISE"])
+        else:
+            allowed_ids = set(family_ids[family])
+        kept = [ti for ti in range(len(targets_prep))
+                if baseline_cache[ti]["top1_id"] in allowed_ids]
+        n_before, n_after = len(targets_prep), len(kept)
+        print(f"  [filter] target_residual_top1={family}: "
+              f"keeping {n_after}/{n_before} targets")
+        filter_bookkeeping["target_residual_top1_filter"] = {
+            "family": family, "n_before": n_before, "n_after": n_after,
+            "frac_kept": n_after / max(n_before, 1),
+        }
+        if n_after < 1:
+            print(f"  [HALT] no targets remain after residual-top-1 filter.")
+            sys.exit(3)
+        targets_prep = [targets_prep[i] for i in kept]
+        baseline_cache = {new_i: baseline_cache[old_i]
+                          for new_i, old_i in enumerate(kept)}
 
     # ---- Control 2: self-patch identity at the layer (residual mode only) -
     print(f"\n[control 2/2] self-patch identity at L={args.layer} ...")
@@ -563,6 +633,7 @@ def main():
         "controls": {
             "baseline_top1_match_rate": baseline_match_rate,
             "self_patch_max_logit_drift": sp_drift,
+            **filter_bookkeeping,
         },
         "per_mode": {},
     }
@@ -597,6 +668,22 @@ def main():
         lines.append(f"- Enriched logs (pooled, n={len(enriched_logs)}):")
         for p in enriched_logs:
             lines.append(f"  - `{p}`")
+    if args.target_residual_top1 is not None:
+        f = filter_bookkeeping.get("target_residual_top1_filter") or {}
+        lines.append(
+            f"- **Residual-top-1 target filter**: kept only targets whose "
+            f"baseline residual top-1 was in family `{args.target_residual_top1}` "
+            f"({f.get('n_after', '?')}/{f.get('n_before', '?')} = "
+            f"{(f.get('frac_kept', 0)*100):.1f}% retained)."
+        )
+    if args.source_residual_top1 is not None:
+        f = filter_bookkeeping.get("source_residual_top1_filter") or {}
+        lines.append(
+            f"- **Residual-top-1 source filter**: kept only sources whose "
+            f"verb-position residual top-1 was in family `{args.source_residual_top1}` "
+            f"({f.get('n_after', '?')}/{f.get('n_before', '?')} = "
+            f"{(f.get('frac_kept', 0)*100):.1f}% retained)."
+        )
     lines.append(f"- Source bucket: `{args.source_bucket}` (n={len(sources_prep)})")
     lines.append(f"- Target bucket: `{args.target_bucket}` (n={len(targets_prep)})")
     lines.append(f"- Layer: **{args.layer}**")

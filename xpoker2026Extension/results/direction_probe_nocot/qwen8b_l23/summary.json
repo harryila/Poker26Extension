@@ -1,0 +1,38 @@
+{
+  "enriched_logs": [
+    "logs/scaled_qwen8b_t0_s42_informative_v2_enriched.jsonl.gz"
+  ],
+  "model_id": "Qwen/Qwen3-8B",
+  "layer": 23,
+  "n_clean_check_or_call": 89,
+  "n_clean_legal_fold": 100,
+  "n_illegal_fold": 0,
+  "hidden_dim": 4096,
+  "probe": {
+    "C": 0.01,
+    "cv_folds": 5,
+    "cv_accuracy_mean": 1.0,
+    "cv_accuracy_std": 0.0,
+    "cv_accuracy_per_fold": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "train_accuracy": 1.0,
+    "weight_l2_norm": 0.14578347032685887,
+    "cos_centroid_diff_w": 0.9989164681429937
+  },
+  "projection": {
+    "clean_check_or_call": {
+      "mean": 43.16706193803296,
+      "std": 1.7266449234830408
+    },
+    "clean_legal_fold": {
+      "mean": -43.96098362008502,
+      "std": 1.260334406576998
+    },
+    "illegal_fold": null
+  }
+}

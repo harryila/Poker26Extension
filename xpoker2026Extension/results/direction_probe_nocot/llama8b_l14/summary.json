@@ -1,0 +1,38 @@
+{
+  "enriched_logs": [
+    "logs/scaled_llama8b_t0_s42_informative_v2_enriched.jsonl.gz"
+  ],
+  "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+  "layer": 14,
+  "n_clean_check_or_call": 272,
+  "n_clean_legal_fold": 80,
+  "n_illegal_fold": 0,
+  "hidden_dim": 4096,
+  "probe": {
+    "C": 0.01,
+    "cv_folds": 5,
+    "cv_accuracy_mean": 0.7727162977867204,
+    "cv_accuracy_std": 0.0015771362528985927,
+    "cv_accuracy_per_fold": [
+      0.7746478873239436,
+      0.7746478873239436,
+      0.7714285714285715,
+      0.7714285714285715,
+      0.7714285714285715
+    ],
+    "train_accuracy": 0.7727272727272727,
+    "weight_l2_norm": 0.5136435664986634,
+    "cos_centroid_diff_w": 0.9917368496933512
+  },
+  "projection": {
+    "clean_check_or_call": {
+      "mean": 0.5555768093140782,
+      "std": 0.45026410283936297
+    },
+    "clean_legal_fold": {
+      "mean": -0.5550608330128199,
+      "std": 0.7363252558197386
+    },
+    "illegal_fold": null
+  }
+}

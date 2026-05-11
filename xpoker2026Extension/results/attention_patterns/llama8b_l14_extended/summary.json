@@ -1,0 +1,951 @@
+{
+  "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+  "layer": 14,
+  "heads": [
+    5,
+    23,
+    24
+  ],
+  "buckets": [
+    "clean_check_or_call",
+    "clean_legal_fold",
+    "illegal_fold"
+  ],
+  "max_decisions_per_bucket": 200,
+  "top_k": 8,
+  "per_head_per_bucket": {
+    "5": {
+      "clean_check_or_call": {
+        "n_decisions": 200,
+        "mean_entropy": 2.2898608934879303,
+        "std_entropy": 0.5950754688392145,
+        "top_attended_tokens": [
+          [
+            " to",
+            196
+          ],
+          [
+            ",",
+            167
+          ],
+          [
+            "\":",
+            143
+          ],
+          [
+            ".",
+            137
+          ],
+          [
+            " calling",
+            117
+          ],
+          [
+            " consider",
+            88
+          ],
+          [
+            " and",
+            60
+          ],
+          [
+            " should",
+            57
+          ],
+          [
+            " call",
+            54
+          ],
+          [
+            " checking",
+            49
+          ],
+          [
+            " cautious",
+            45
+          ],
+          [
+            "<|begin_of_text|>",
+            34
+          ],
+          [
+            " or",
+            34
+          ],
+          [
+            " option",
+            33
+          ],
+          [
+            " see",
+            28
+          ],
+          [
+            ".\n\n",
+            27
+          ],
+          [
+            " information",
+            22
+          ],
+          [
+            " called",
+            22
+          ],
+          [
+            " but",
+            19
+          ],
+          [
+            " reacts",
+            19
+          ],
+          [
+            " check",
+            17
+          ],
+          [
+            " folding",
+            12
+          ],
+          [
+            " draw",
+            11
+          ],
+          [
+            " betting",
+            10
+          ]
+        ]
+      },
+      "clean_legal_fold": {
+        "n_decisions": 200,
+        "mean_entropy": 2.362261484861374,
+        "std_entropy": 0.49799082272001144,
+        "top_attended_tokens": [
+          [
+            ".",
+            328
+          ],
+          [
+            " losses",
+            131
+          ],
+          [
+            " folding",
+            131
+          ],
+          [
+            " cautious",
+            113
+          ],
+          [
+            "<|begin_of_text|>",
+            108
+          ],
+          [
+            ",",
+            95
+          ],
+          [
+            " consider",
+            92
+          ],
+          [
+            " to",
+            91
+          ],
+          [
+            " is",
+            63
+          ],
+          [
+            " and",
+            62
+          ],
+          [
+            " option",
+            59
+          ],
+          [
+            " minimize",
+            57
+          ],
+          [
+            " so",
+            53
+          ],
+          [
+            " it",
+            39
+          ],
+          [
+            " Folding",
+            34
+          ],
+          [
+            "\":",
+            27
+          ],
+          [
+            " should",
+            14
+          ],
+          [
+            ".\n\n",
+            11
+          ],
+          [
+            " fold",
+            10
+          ],
+          [
+            " calling",
+            10
+          ],
+          [
+            " bet",
+            7
+          ],
+          [
+            " I",
+            6
+          ],
+          [
+            " safest",
+            5
+          ],
+          [
+            " hand",
+            5
+          ]
+        ]
+      },
+      "illegal_fold": {
+        "n_decisions": 68,
+        "mean_entropy": 2.189297784777249,
+        "std_entropy": 0.4777737396902931,
+        "top_attended_tokens": [
+          [
+            ".",
+            98
+          ],
+          [
+            " folding",
+            56
+          ],
+          [
+            " consider",
+            52
+          ],
+          [
+            "<|begin_of_text|>",
+            43
+          ],
+          [
+            " cautious",
+            41
+          ],
+          [
+            " and",
+            38
+          ],
+          [
+            " losses",
+            35
+          ],
+          [
+            ",",
+            31
+          ],
+          [
+            " to",
+            29
+          ],
+          [
+            " minimize",
+            27
+          ],
+          [
+            " so",
+            19
+          ],
+          [
+            " should",
+            18
+          ],
+          [
+            " is",
+            10
+          ],
+          [
+            " option",
+            8
+          ],
+          [
+            "\":",
+            7
+          ],
+          [
+            " Folding",
+            6
+          ],
+          [
+            " it",
+            3
+          ],
+          [
+            " likely",
+            3
+          ],
+          [
+            " opponent",
+            2
+          ],
+          [
+            " bet",
+            2
+          ],
+          [
+            " than",
+            2
+          ],
+          [
+            ".\n\n",
+            2
+          ],
+          [
+            " choice",
+            2
+          ],
+          [
+            " raised",
+            1
+          ]
+        ]
+      }
+    },
+    "23": {
+      "clean_check_or_call": {
+        "n_decisions": 200,
+        "mean_entropy": 2.3404076623916628,
+        "std_entropy": 0.727286789726395,
+        "top_attended_tokens": [
+          [
+            " to",
+            210
+          ],
+          [
+            "<|begin_of_text|>",
+            193
+          ],
+          [
+            "_OR",
+            155
+          ],
+          [
+            " call",
+            127
+          ],
+          [
+            "\":",
+            124
+          ],
+          [
+            " calling",
+            118
+          ],
+          [
+            "_CALL",
+            95
+          ],
+          [
+            " \"",
+            88
+          ],
+          [
+            ".\n\n",
+            78
+          ],
+          [
+            " checking",
+            48
+          ],
+          [
+            " or",
+            45
+          ],
+          [
+            "',",
+            37
+          ],
+          [
+            " is",
+            36
+          ],
+          [
+            ",",
+            36
+          ],
+          [
+            " option",
+            27
+          ],
+          [
+            " check",
+            19
+          ],
+          [
+            " should",
+            18
+          ],
+          [
+            ".",
+            17
+          ],
+          [
+            " {\"",
+            16
+          ],
+          [
+            " and",
+            12
+          ],
+          [
+            " Checking",
+            9
+          ],
+          [
+            " folding",
+            9
+          ],
+          [
+            " might",
+            7
+          ],
+          [
+            " way",
+            6
+          ]
+        ]
+      },
+      "clean_legal_fold": {
+        "n_decisions": 200,
+        "mean_entropy": 2.6256458139419556,
+        "std_entropy": 0.5909927844834915,
+        "top_attended_tokens": [
+          [
+            "<|begin_of_text|>",
+            200
+          ],
+          [
+            "OLD",
+            196
+          ],
+          [
+            ".\n\n",
+            158
+          ],
+          [
+            " \"",
+            158
+          ],
+          [
+            " folding",
+            131
+          ],
+          [
+            "F",
+            126
+          ],
+          [
+            " to",
+            95
+          ],
+          [
+            " minimize",
+            74
+          ],
+          [
+            " is",
+            63
+          ],
+          [
+            " option",
+            60
+          ],
+          [
+            " {\"",
+            48
+          ],
+          [
+            "',",
+            39
+          ],
+          [
+            " call",
+            35
+          ],
+          [
+            " Folding",
+            34
+          ],
+          [
+            "_OR",
+            23
+          ],
+          [
+            " or",
+            23
+          ],
+          [
+            " calling",
+            21
+          ],
+          [
+            " should",
+            19
+          ],
+          [
+            ".",
+            19
+          ],
+          [
+            " the",
+            13
+          ],
+          [
+            " fold",
+            10
+          ],
+          [
+            " cautious",
+            10
+          ],
+          [
+            "_CALL",
+            5
+          ],
+          [
+            " bet",
+            4
+          ]
+        ]
+      },
+      "illegal_fold": {
+        "n_decisions": 68,
+        "mean_entropy": 2.9241319333805755,
+        "std_entropy": 0.4239013048331343,
+        "top_attended_tokens": [
+          [
+            "_OR",
+            75
+          ],
+          [
+            "<|begin_of_text|>",
+            68
+          ],
+          [
+            "_CALL",
+            58
+          ],
+          [
+            " folding",
+            56
+          ],
+          [
+            " \"",
+            55
+          ],
+          [
+            " call",
+            45
+          ],
+          [
+            "',",
+            41
+          ],
+          [
+            ".\n\n",
+            33
+          ],
+          [
+            " to",
+            30
+          ],
+          [
+            " {\"",
+            20
+          ],
+          [
+            " minimize",
+            12
+          ],
+          [
+            " should",
+            10
+          ],
+          [
+            " is",
+            10
+          ],
+          [
+            " option",
+            8
+          ],
+          [
+            " Folding",
+            6
+          ],
+          [
+            " bet",
+            4
+          ],
+          [
+            " the",
+            3
+          ],
+          [
+            " CALL",
+            2
+          ],
+          [
+            " choice",
+            2
+          ],
+          [
+            " calling",
+            2
+          ],
+          [
+            " cautious",
+            1
+          ],
+          [
+            "']\n\n",
+            1
+          ],
+          [
+            " or",
+            1
+          ],
+          [
+            "\":",
+            1
+          ]
+        ]
+      }
+    },
+    "24": {
+      "clean_check_or_call": {
+        "n_decisions": 200,
+        "mean_entropy": 3.260103839635849,
+        "std_entropy": 0.23421662695116496,
+        "top_attended_tokens": [
+          [
+            ".",
+            421
+          ],
+          [
+            "<|begin_of_text|>",
+            197
+          ],
+          [
+            ".\n\n",
+            181
+          ],
+          [
+            "\":",
+            161
+          ],
+          [
+            " calling",
+            95
+          ],
+          [
+            " However",
+            77
+          ],
+          [
+            ",",
+            77
+          ],
+          [
+            " I",
+            59
+          ],
+          [
+            " call",
+            43
+          ],
+          [
+            " cautious",
+            32
+          ],
+          [
+            "action",
+            32
+          ],
+          [
+            " option",
+            30
+          ],
+          [
+            " checking",
+            28
+          ],
+          [
+            " hand",
+            23
+          ],
+          [
+            " {\"",
+            21
+          ],
+          [
+            " \n\n",
+            19
+          ],
+          [
+            " check",
+            11
+          ],
+          [
+            " but",
+            10
+          ],
+          [
+            "0",
+            9
+          ],
+          [
+            " and",
+            8
+          ],
+          [
+            " me",
+            4
+          ],
+          [
+            " reaction",
+            4
+          ],
+          [
+            " it",
+            4
+          ],
+          [
+            " \"",
+            3
+          ]
+        ]
+      },
+      "clean_legal_fold": {
+        "n_decisions": 200,
+        "mean_entropy": 3.525400815010071,
+        "std_entropy": 0.1318052206397333,
+        "top_attended_tokens": [
+          [
+            ".",
+            328
+          ],
+          [
+            "<|begin_of_text|>",
+            200
+          ],
+          [
+            ".\n\n",
+            199
+          ],
+          [
+            " folding",
+            130
+          ],
+          [
+            "\":",
+            125
+          ],
+          [
+            " losses",
+            120
+          ],
+          [
+            " cautious",
+            94
+          ],
+          [
+            " I",
+            70
+          ],
+          [
+            " option",
+            57
+          ],
+          [
+            ",",
+            46
+          ],
+          [
+            " Folding",
+            30
+          ],
+          [
+            " {\"",
+            29
+          ],
+          [
+            " it",
+            27
+          ],
+          [
+            "action",
+            20
+          ],
+          [
+            " However",
+            18
+          ],
+          [
+            " minimize",
+            12
+          ],
+          [
+            " fold",
+            10
+          ],
+          [
+            " doesn",
+            10
+          ],
+          [
+            " hand",
+            9
+          ],
+          [
+            " me",
+            9
+          ],
+          [
+            " potential",
+            9
+          ],
+          [
+            " don",
+            9
+          ],
+          [
+            "']\n\n",
+            8
+          ],
+          [
+            " loss",
+            3
+          ]
+        ]
+      },
+      "illegal_fold": {
+        "n_decisions": 68,
+        "mean_entropy": 3.6017341052784637,
+        "std_entropy": 0.10144831818212731,
+        "top_attended_tokens": [
+          [
+            ".",
+            126
+          ],
+          [
+            "<|begin_of_text|>",
+            68
+          ],
+          [
+            ".\n\n",
+            68
+          ],
+          [
+            " folding",
+            56
+          ],
+          [
+            " cautious",
+            39
+          ],
+          [
+            " I",
+            38
+          ],
+          [
+            " losses",
+            32
+          ],
+          [
+            "\":",
+            29
+          ],
+          [
+            " it",
+            22
+          ],
+          [
+            " option",
+            10
+          ],
+          [
+            ",",
+            9
+          ],
+          [
+            " However",
+            8
+          ],
+          [
+            " Folding",
+            6
+          ],
+          [
+            " hand",
+            6
+          ],
+          [
+            " minimize",
+            5
+          ],
+          [
+            " potential",
+            4
+          ],
+          [
+            " {\"",
+            3
+          ],
+          [
+            " weakness",
+            3
+          ],
+          [
+            " me",
+            2
+          ],
+          [
+            " choice",
+            2
+          ],
+          [
+            " amount",
+            1
+          ],
+          [
+            " mine",
+            1
+          ],
+          [
+            "-su",
+            1
+          ],
+          [
+            "action",
+            1
+          ]
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,1613 @@
+bucket,hand_id,decision_idx,verb_abs_pos,rel_pos,abs_pos,projection,token
+clean_check_or_call,a4f238cd,1,318,-300,18,0.1625, your
+clean_check_or_call,a4f238cd,1,318,-200,118,-0.5621,JSON
+clean_check_or_call,a4f238cd,1,318,-100,218,-0.5092,action
+clean_check_or_call,a4f238cd,1,318,-50,268,0.5038,","
+clean_check_or_call,a4f238cd,1,318,-20,298,0.2434, the
+clean_check_or_call,a4f238cd,1,318,-10,308,0.6774, what
+clean_check_or_call,a4f238cd,1,318,-5,313,-0.5629,JSON
+clean_check_or_call,a4f238cd,1,318,-2,316,-0.2381,action
+clean_check_or_call,a4f238cd,1,318,-1,317,0.5464,""":"
+clean_check_or_call,a4f238cd,1,318,0,318,1.2204," """
+clean_check_or_call,a4f238cd,1,318,1,319,0.1910,CH
+clean_check_or_call,a4f238cd,1,318,2,320,0.9632,EC
+clean_check_or_call,a4f238cd,1,318,5,323,0.5844,_CALL
+clean_check_or_call,49af524b,1,310,-300,10,0.3581, the
+clean_check_or_call,49af524b,1,310,-200,110,0.3791, draw
+clean_check_or_call,49af524b,1,310,-100,210,-0.2122, as
+clean_check_or_call,49af524b,1,310,-50,260,0.0611, hand
+clean_check_or_call,49af524b,1,310,-20,290,0.3515, the
+clean_check_or_call,49af524b,1,310,-10,300,0.6416, what
+clean_check_or_call,49af524b,1,310,-5,305,-0.5540,JSON
+clean_check_or_call,49af524b,1,310,-2,308,-0.2801,action
+clean_check_or_call,49af524b,1,310,-1,309,0.6090,""":"
+clean_check_or_call,49af524b,1,310,0,310,1.1992," """
+clean_check_or_call,49af524b,1,310,1,311,0.2195,CH
+clean_check_or_call,49af524b,1,310,2,312,0.8981,EC
+clean_check_or_call,49af524b,1,310,5,315,0.5829,_CALL
+clean_check_or_call,49af524b,2,309,-300,9,0.1846,yze
+clean_check_or_call,49af524b,2,309,-200,109,0.2262, little
+clean_check_or_call,49af524b,2,309,-100,209,-0.0996, action
+clean_check_or_call,49af524b,2,309,-50,259,0.0254,es
+clean_check_or_call,49af524b,2,309,-20,289,0.2040, if
+clean_check_or_call,49af524b,2,309,-10,299,1.2243, to
+clean_check_or_call,49af524b,2,309,-5,304,-0.5664,JSON
+clean_check_or_call,49af524b,2,309,-2,307,-0.3755,action
+clean_check_or_call,49af524b,2,309,-1,308,0.5925,""":"
+clean_check_or_call,49af524b,2,309,0,309,1.1526," """
+clean_check_or_call,49af524b,2,309,1,310,0.1937,CH
+clean_check_or_call,49af524b,2,309,2,311,1.0725,EC
+clean_check_or_call,49af524b,4,347,-300,47,-0.1405, on
+clean_check_or_call,49af524b,4,347,-200,147,0.1846,d
+clean_check_or_call,49af524b,4,347,-100,247,-0.1543,RE
+clean_check_or_call,49af524b,4,347,-50,297,0.3647, potentially
+clean_check_or_call,49af524b,4,347,-20,327,0.2699,'s
+clean_check_or_call,49af524b,4,347,-10,337,0.5667, opponent
+clean_check_or_call,49af524b,4,347,-5,342,-0.5089,JSON
+clean_check_or_call,49af524b,4,347,-2,345,-0.1356,action
+clean_check_or_call,49af524b,4,347,-1,346,0.7121,""":"
+clean_check_or_call,49af524b,4,347,0,347,1.2487," """
+clean_check_or_call,49af524b,4,347,1,348,0.2957,CH
+clean_check_or_call,49af524b,4,347,2,349,1.2798,EC
+clean_check_or_call,d8ee7de6,2,329,-300,29,0.0586, by
+clean_check_or_call,d8ee7de6,2,329,-200,129,0.1684, poker
+clean_check_or_call,d8ee7de6,2,329,-100,229,-0.3139,ICE
+clean_check_or_call,d8ee7de6,2,329,-50,279,0.2499, hand
+clean_check_or_call,d8ee7de6,2,329,-20,309,-0.0065, better
+clean_check_or_call,d8ee7de6,2,329,-10,319,0.5752, what
+clean_check_or_call,d8ee7de6,2,329,-5,324,-0.5750,JSON
+clean_check_or_call,d8ee7de6,2,329,-2,327,-0.4032,action
+clean_check_or_call,d8ee7de6,2,329,-1,328,0.6106,""":"
+clean_check_or_call,d8ee7de6,2,329,0,329,1.0387," """
+clean_check_or_call,d8ee7de6,2,329,1,330,0.1181,CH
+clean_check_or_call,d8ee7de6,2,329,2,331,1.1941,EC
+clean_check_or_call,54e89359,1,308,-300,8,0.0925, Anal
+clean_check_or_call,54e89359,1,308,-200,108,-0.0851, with
+clean_check_or_call,54e89359,1,308,-100,208,0.0996, reasoning
+clean_check_or_call,54e89359,1,308,-50,258,0.1750,","
+clean_check_or_call,54e89359,1,308,-20,288,0.4474, it
+clean_check_or_call,54e89359,1,308,-10,298,0.4519, before
+clean_check_or_call,54e89359,1,308,-5,303,-0.5722,JSON
+clean_check_or_call,54e89359,1,308,-2,306,-0.3392,action
+clean_check_or_call,54e89359,1,308,-1,307,0.5531,""":"
+clean_check_or_call,54e89359,1,308,0,308,1.1097," """
+clean_check_or_call,54e89359,1,308,1,309,0.2316,CH
+clean_check_or_call,54e89359,1,308,2,310,0.8011,EC
+clean_check_or_call,54e89359,1,308,5,313,0.5744,_CALL
+clean_check_or_call,c84bdcb3,2,318,-300,18,0.1625, your
+clean_check_or_call,c84bdcb3,2,318,-200,118,-0.5621,JSON
+clean_check_or_call,c84bdcb3,2,318,-100,218,-0.3154, your
+clean_check_or_call,c84bdcb3,2,318,-50,268,0.1120, not
+clean_check_or_call,c84bdcb3,2,318,-20,298,0.2372,","
+clean_check_or_call,c84bdcb3,2,318,-10,308,0.8138, do
+clean_check_or_call,c84bdcb3,2,318,-5,313,-0.5451,JSON
+clean_check_or_call,c84bdcb3,2,318,-2,316,-0.2065,action
+clean_check_or_call,c84bdcb3,2,318,-1,317,0.8740,""":"
+clean_check_or_call,c84bdcb3,2,318,0,318,1.6031," """
+clean_check_or_call,c84bdcb3,2,318,1,319,0.3388,CH
+clean_check_or_call,c84bdcb3,2,318,2,320,1.1002,EC
+clean_check_or_call,b3c594b5,2,313,-300,13,0.2615,-by
+clean_check_or_call,b3c594b5,2,313,-200,113,-0.8089, so
+clean_check_or_call,b3c594b5,2,313,-100,213,0.0919, reasoning
+clean_check_or_call,b3c594b5,2,313,-50,263,0.4942, board
+clean_check_or_call,b3c594b5,2,313,-20,293,0.3110,","
+clean_check_or_call,b3c594b5,2,313,-10,303,0.8185, do
+clean_check_or_call,b3c594b5,2,313,-5,308,-0.5346,JSON
+clean_check_or_call,b3c594b5,2,313,-2,311,-0.1519,action
+clean_check_or_call,b3c594b5,2,313,-1,312,0.8607,""":"
+clean_check_or_call,b3c594b5,2,313,0,313,1.6191," """
+clean_check_or_call,b3c594b5,2,313,1,314,0.3872,CH
+clean_check_or_call,b3c594b5,2,313,2,315,1.1335,EC
+clean_check_or_call,5db85f5e,2,314,-300,14,0.4120,-step
+clean_check_or_call,5db85f5e,2,314,-200,114,-1.0307, folding
+clean_check_or_call,5db85f5e,2,314,-100,214,-0.0902, Provide
+clean_check_or_call,5db85f5e,2,314,-50,264,-0.0322, is
+clean_check_or_call,5db85f5e,2,314,-20,294,-0.1498, met
+clean_check_or_call,5db85f5e,2,314,-10,304,0.9625, to
+clean_check_or_call,5db85f5e,2,314,-5,309,-0.5805,JSON
+clean_check_or_call,5db85f5e,2,314,-2,312,-0.4728,action
+clean_check_or_call,5db85f5e,2,314,-1,313,0.4027,""":"
+clean_check_or_call,5db85f5e,2,314,0,314,0.8533," """
+clean_check_or_call,5db85f5e,2,314,1,315,0.1743,CH
+clean_check_or_call,5db85f5e,2,314,2,316,0.9696,EC
+clean_check_or_call,7f799478,1,292,-200,92,0.2216,op
+clean_check_or_call,7f799478,1,292,-100,192,0.4464, actions
+clean_check_or_call,7f799478,1,292,-50,242,0.1994, strong
+clean_check_or_call,7f799478,1,292,-20,272,0.3373, the
+clean_check_or_call,7f799478,1,292,-10,282,0.6642, what
+clean_check_or_call,7f799478,1,292,-5,287,-0.5674,JSON
+clean_check_or_call,7f799478,1,292,-2,290,-0.2183,action
+clean_check_or_call,7f799478,1,292,-1,291,0.5557,""":"
+clean_check_or_call,7f799478,1,292,0,292,1.2924," """
+clean_check_or_call,7f799478,1,292,1,293,0.2388,CH
+clean_check_or_call,7f799478,1,292,2,294,0.9900,EC
+clean_check_or_call,7f799478,1,292,5,297,0.6035,_CALL
+clean_check_or_call,ff2290f0,2,317,-300,17,0.0453, choose
+clean_check_or_call,ff2290f0,2,317,-200,117,-0.3202,".
+
+"
+clean_check_or_call,ff2290f0,2,317,-100,217,-0.2231, as
+clean_check_or_call,ff2290f0,2,317,-50,267,0.4977, suggests
+clean_check_or_call,ff2290f0,2,317,-20,297,0.0103, hand
+clean_check_or_call,ff2290f0,2,317,-10,307,0.4512, the
+clean_check_or_call,ff2290f0,2,317,-5,312,-0.5375,JSON
+clean_check_or_call,ff2290f0,2,317,-2,315,-0.2027,action
+clean_check_or_call,ff2290f0,2,317,-1,316,0.8576,""":"
+clean_check_or_call,ff2290f0,2,317,0,317,1.5037," """
+clean_check_or_call,ff2290f0,2,317,1,318,0.2206,CH
+clean_check_or_call,ff2290f0,2,317,2,319,1.1991,EC
+clean_check_or_call,47193a37,1,288,-200,88,0.2122, opponent
+clean_check_or_call,47193a37,1,288,-100,188,0.3175,I
+clean_check_or_call,47193a37,1,288,-50,238,0.5741, they
+clean_check_or_call,47193a37,1,288,-20,268,0.3339, the
+clean_check_or_call,47193a37,1,288,-10,278,0.6469, what
+clean_check_or_call,47193a37,1,288,-5,283,-0.5731,JSON
+clean_check_or_call,47193a37,1,288,-2,286,-0.2412,action
+clean_check_or_call,47193a37,1,288,-1,287,0.5115,""":"
+clean_check_or_call,47193a37,1,288,0,288,1.2718," """
+clean_check_or_call,47193a37,1,288,1,289,0.2085,CH
+clean_check_or_call,47193a37,1,288,2,290,0.9211,EC
+clean_check_or_call,47193a37,1,288,5,293,0.6031,_CALL
+clean_check_or_call,47193a37,2,323,-300,23,0.1723, RE
+clean_check_or_call,47193a37,2,323,-200,123,-1.8418," """
+clean_check_or_call,47193a37,2,323,-100,223,-0.1594,Y
+clean_check_or_call,47193a37,2,323,-50,273,0.4323, very
+clean_check_or_call,47193a37,2,323,-20,303,0.2589, draw
+clean_check_or_call,47193a37,2,323,-10,313,0.4734, the
+clean_check_or_call,47193a37,2,323,-5,318,-0.5405,JSON
+clean_check_or_call,47193a37,2,323,-2,321,-0.0866,action
+clean_check_or_call,47193a37,2,323,-1,322,0.9567,""":"
+clean_check_or_call,47193a37,2,323,0,323,1.5414," """
+clean_check_or_call,47193a37,2,323,1,324,0.1859,CH
+clean_check_or_call,47193a37,2,323,2,325,1.2657,EC
+clean_check_or_call,0306ad6b,2,316,-300,16,0.0560, then
+clean_check_or_call,0306ad6b,2,316,-200,116,-0.5453, best
+clean_check_or_call,0306ad6b,2,316,-100,216,-0.2826, JSON
+clean_check_or_call,0306ad6b,2,316,-50,266,-0.0092, threatening
+clean_check_or_call,0306ad6b,2,316,-20,296,-0.0392,","
+clean_check_or_call,0306ad6b,2,316,-10,306,0.8468, do
+clean_check_or_call,0306ad6b,2,316,-5,311,-0.5336,JSON
+clean_check_or_call,0306ad6b,2,316,-2,314,-0.1503,action
+clean_check_or_call,0306ad6b,2,316,-1,315,0.8574,""":"
+clean_check_or_call,0306ad6b,2,316,0,316,1.5798," """
+clean_check_or_call,0306ad6b,2,316,1,317,0.3221,CH
+clean_check_or_call,0306ad6b,2,316,2,318,1.1649,EC
+clean_check_or_call,4ed956f9,2,309,-300,9,0.1846,yze
+clean_check_or_call,4ed956f9,2,309,-200,109,0.2262, little
+clean_check_or_call,4ed956f9,2,309,-100,209,0.4780,:
+clean_check_or_call,4ed956f9,2,309,-50,259,0.2363, a
+clean_check_or_call,4ed956f9,2,309,-20,289,0.3027, potential
+clean_check_or_call,4ed956f9,2,309,-10,299,0.8918, to
+clean_check_or_call,4ed956f9,2,309,-5,304,-0.5305,JSON
+clean_check_or_call,4ed956f9,2,309,-2,307,-0.2499,action
+clean_check_or_call,4ed956f9,2,309,-1,308,0.4025,""":"
+clean_check_or_call,4ed956f9,2,309,0,309,0.9357," """
+clean_check_or_call,4ed956f9,2,309,1,310,0.1889,CH
+clean_check_or_call,4ed956f9,2,309,2,311,0.9500,EC
+clean_check_or_call,4ed956f9,2,309,5,314,0.5021,_CALL
+clean_check_or_call,449d749d,2,309,-300,9,0.1846,yze
+clean_check_or_call,449d749d,2,309,-200,109,0.2262, little
+clean_check_or_call,449d749d,2,309,-100,209,-0.0697,Choose
+clean_check_or_call,449d749d,2,309,-50,259,0.0145, is
+clean_check_or_call,449d749d,2,309,-20,289,-0.1466, met
+clean_check_or_call,449d749d,2,309,-10,299,0.9817, to
+clean_check_or_call,449d749d,2,309,-5,304,-0.5919,JSON
+clean_check_or_call,449d749d,2,309,-2,307,-0.4630,action
+clean_check_or_call,449d749d,2,309,-1,308,0.3635,""":"
+clean_check_or_call,449d749d,2,309,0,309,0.8873," """
+clean_check_or_call,449d749d,2,309,1,310,0.1615,CH
+clean_check_or_call,449d749d,2,309,2,311,0.9580,EC
+clean_check_or_call,19eacc75,2,302,-300,2,0.1864,You
+clean_check_or_call,19eacc75,2,302,-200,102,0.1847, hand
+clean_check_or_call,19eacc75,2,302,-100,202,0.3364,1
+clean_check_or_call,19eacc75,2,302,-50,252,0.2553, opponent
+clean_check_or_call,19eacc75,2,302,-20,282,1.2542, Checking
+clean_check_or_call,19eacc75,2,302,-10,292,0.1392, has
+clean_check_or_call,19eacc75,2,302,-5,297,-0.5758,JSON
+clean_check_or_call,19eacc75,2,302,-2,300,-0.3776,action
+clean_check_or_call,19eacc75,2,302,-1,301,0.4628,""":"
+clean_check_or_call,19eacc75,2,302,0,302,0.9866," """
+clean_check_or_call,19eacc75,2,302,1,303,0.1719,CH
+clean_check_or_call,19eacc75,2,302,2,304,1.0663,EC
+clean_check_or_call,cbef2e9a,2,324,-300,24,0.1717,AS
+clean_check_or_call,cbef2e9a,2,324,-200,124,0.2309,F
+clean_check_or_call,cbef2e9a,2,324,-100,224,-0.4664,action
+clean_check_or_call,cbef2e9a,2,324,-50,274,0.3530, a
+clean_check_or_call,cbef2e9a,2,324,-20,304,0.3961, stronger
+clean_check_or_call,cbef2e9a,2,324,-10,314,0.4952, the
+clean_check_or_call,cbef2e9a,2,324,-5,319,-0.5327,JSON
+clean_check_or_call,cbef2e9a,2,324,-2,322,-0.1565,action
+clean_check_or_call,cbef2e9a,2,324,-1,323,1.0002,""":"
+clean_check_or_call,cbef2e9a,2,324,0,324,1.5271," """
+clean_check_or_call,cbef2e9a,2,324,1,325,0.1619,CH
+clean_check_or_call,cbef2e9a,2,324,2,326,1.1686,EC
+clean_check_or_call,e2b6cc38,2,304,-300,4,0.0258, a
+clean_check_or_call,e2b6cc38,2,304,-200,104,0.1373, My
+clean_check_or_call,e2b6cc38,2,304,-100,204,0.4809,")
+"
+clean_check_or_call,e2b6cc38,2,304,-50,254,0.4395, draw
+clean_check_or_call,e2b6cc38,2,304,-20,284,1.1485, Checking
+clean_check_or_call,e2b6cc38,2,304,-10,294,0.1588, has
+clean_check_or_call,e2b6cc38,2,304,-5,299,-0.5625,JSON
+clean_check_or_call,e2b6cc38,2,304,-2,302,-0.3690,action
+clean_check_or_call,e2b6cc38,2,304,-1,303,0.4754,""":"
+clean_check_or_call,e2b6cc38,2,304,0,304,0.9791," """
+clean_check_or_call,e2b6cc38,2,304,1,305,0.2548,CH
+clean_check_or_call,e2b6cc38,2,304,2,306,1.0505,EC
+clean_check_or_call,fafb7903,1,291,-200,91,0.3930,fl
+clean_check_or_call,fafb7903,1,291,-100,191,0.4495,Recent
+clean_check_or_call,fafb7903,1,291,-50,241,0.4351, a
+clean_check_or_call,fafb7903,1,291,-20,271,0.3311, the
+clean_check_or_call,fafb7903,1,291,-10,281,0.6526, what
+clean_check_or_call,fafb7903,1,291,-5,286,-0.5682,JSON
+clean_check_or_call,fafb7903,1,291,-2,289,-0.2296,action
+clean_check_or_call,fafb7903,1,291,-1,290,0.5438,""":"
+clean_check_or_call,fafb7903,1,291,0,291,1.2814," """
+clean_check_or_call,fafb7903,1,291,1,292,0.2127,CH
+clean_check_or_call,fafb7903,1,291,2,293,0.9826,EC
+clean_check_or_call,fafb7903,1,291,5,296,0.6264,_CALL
+clean_check_or_call,b571799e,2,325,-300,25,0.0953,ON
+clean_check_or_call,b571799e,2,325,-200,125,-1.0455,OLD
+clean_check_or_call,b571799e,2,325,-100,225,-0.4381,""":"
+clean_check_or_call,b571799e,2,325,-50,275,0.2780, have
+clean_check_or_call,b571799e,2,325,-20,305,0.4457, the
+clean_check_or_call,b571799e,2,325,-10,315,0.6481, what
+clean_check_or_call,b571799e,2,325,-5,320,-0.5321,JSON
+clean_check_or_call,b571799e,2,325,-2,323,-0.1501,action
+clean_check_or_call,b571799e,2,325,-1,324,0.8335,""":"
+clean_check_or_call,b571799e,2,325,0,325,1.5486," """
+clean_check_or_call,b571799e,2,325,1,326,0.2185,CH
+clean_check_or_call,b571799e,2,325,2,327,1.1902,EC
+clean_check_or_call,0a3ee396,1,283,-200,83,0.0835,AS
+clean_check_or_call,0a3ee396,1,283,-100,183,0.2049,B
+clean_check_or_call,0a3ee396,1,283,-50,233,0.2264, called
+clean_check_or_call,0a3ee396,1,283,-20,263,0.5649,.
+clean_check_or_call,0a3ee396,1,283,-10,273,0.6590, what
+clean_check_or_call,0a3ee396,1,283,-5,278,-0.5647,JSON
+clean_check_or_call,0a3ee396,1,283,-2,281,-0.2954,action
+clean_check_or_call,0a3ee396,1,283,-1,282,0.5375,""":"
+clean_check_or_call,0a3ee396,1,283,0,283,1.2514," """
+clean_check_or_call,0a3ee396,1,283,1,284,0.2134,CH
+clean_check_or_call,0a3ee396,1,283,2,285,0.8924,EC
+clean_check_or_call,0a3ee396,2,343,-300,43,0.1085, by
+clean_check_or_call,0a3ee396,2,343,-200,143,0.1502, 
+clean_check_or_call,0a3ee396,2,343,-100,243,0.4541, on
+clean_check_or_call,0a3ee396,2,343,-50,293,0.4131, they
+clean_check_or_call,0a3ee396,2,343,-20,323,0.1793, opponent
+clean_check_or_call,0a3ee396,2,343,-10,333,0.5435, they
+clean_check_or_call,0a3ee396,2,343,-5,338,-0.5377,JSON
+clean_check_or_call,0a3ee396,2,343,-2,341,-0.1409,action
+clean_check_or_call,0a3ee396,2,343,-1,342,0.9537,""":"
+clean_check_or_call,0a3ee396,2,343,0,343,1.4813," """
+clean_check_or_call,0a3ee396,2,343,1,344,0.1452,CH
+clean_check_or_call,0a3ee396,2,343,2,345,1.2247,EC
+clean_check_or_call,0a3ee396,4,335,-300,35,0.1875,4
+clean_check_or_call,0a3ee396,4,335,-200,135,0.1461,:
+clean_check_or_call,0a3ee396,4,335,-100,235,-0.2214, as
+clean_check_or_call,0a3ee396,4,335,-50,285,0.0933, not
+clean_check_or_call,0a3ee396,4,335,-20,315,0.0736, believe
+clean_check_or_call,0a3ee396,4,335,-10,325,-0.1174, want
+clean_check_or_call,0a3ee396,4,335,-5,330,-0.5253,JSON
+clean_check_or_call,0a3ee396,4,335,-2,333,-0.2173,action
+clean_check_or_call,0a3ee396,4,335,-1,334,0.2672,""":"
+clean_check_or_call,0a3ee396,4,335,0,335,0.8059," """
+clean_check_or_call,0a3ee396,4,335,1,336,0.1864,CH
+clean_check_or_call,0a3ee396,4,335,2,337,0.4874,EC
+clean_check_or_call,0a3ee396,4,335,5,340,0.4174,_CALL
+clean_check_or_call,0a3ee396,7,349,-300,49,-0.1873, new
+clean_check_or_call,0a3ee396,7,349,-200,149,0.2771, 
+clean_check_or_call,0a3ee396,7,349,-100,249,0.3433,_CH
+clean_check_or_call,0a3ee396,7,349,-50,299,0.8861, suggests
+clean_check_or_call,0a3ee396,7,349,-20,329,0.0161, flush
+clean_check_or_call,0a3ee396,7,349,-10,339,0.2958, the
+clean_check_or_call,0a3ee396,7,349,-5,344,-0.5488,JSON
+clean_check_or_call,0a3ee396,7,349,-2,347,-0.1202,action
+clean_check_or_call,0a3ee396,7,349,-1,348,0.7449,""":"
+clean_check_or_call,0a3ee396,7,349,0,349,1.3221," """
+clean_check_or_call,0a3ee396,7,349,1,350,0.0982,CH
+clean_check_or_call,0a3ee396,7,349,2,351,0.9102,EC
+clean_check_or_call,629cf86a,1,287,-200,87,-0.0293, The
+clean_check_or_call,629cf86a,1,287,-100,187,0.1726,RA
+clean_check_or_call,629cf86a,1,287,-50,237,0.5199,","
+clean_check_or_call,629cf86a,1,287,-20,267,0.6106,.
+clean_check_or_call,629cf86a,1,287,-10,277,0.6943, what
+clean_check_or_call,629cf86a,1,287,-5,282,-0.5675,JSON
+clean_check_or_call,629cf86a,1,287,-2,285,-0.2408,action
+clean_check_or_call,629cf86a,1,287,-1,286,0.5428,""":"
+clean_check_or_call,629cf86a,1,287,0,287,1.2893," """
+clean_check_or_call,629cf86a,1,287,1,288,0.2354,CH
+clean_check_or_call,629cf86a,1,287,2,289,0.8651,EC
+clean_check_or_call,3f1c36f9,2,304,-300,4,0.0258, a
+clean_check_or_call,3f1c36f9,2,304,-200,104,0.1373, My
+clean_check_or_call,3f1c36f9,2,304,-100,204,0.4357,")
+"
+clean_check_or_call,3f1c36f9,2,304,-50,254,0.3199, Since
+clean_check_or_call,3f1c36f9,2,304,-20,284,1.2054, Checking
+clean_check_or_call,3f1c36f9,2,304,-10,294,0.1180, has
+clean_check_or_call,3f1c36f9,2,304,-5,299,-0.5742,JSON
+clean_check_or_call,3f1c36f9,2,304,-2,302,-0.4034,action
+clean_check_or_call,3f1c36f9,2,304,-1,303,0.4793,""":"
+clean_check_or_call,3f1c36f9,2,304,0,304,0.9665," """
+clean_check_or_call,3f1c36f9,2,304,1,305,0.1981,CH
+clean_check_or_call,3f1c36f9,2,304,2,306,1.0189,EC
+clean_check_or_call,a86a2bba,4,332,-300,32,0.1998, (
+clean_check_or_call,a86a2bba,4,332,-200,132,0.4289,-
+clean_check_or_call,a86a2bba,4,332,-100,232,0.3071,")
+
+"
+clean_check_or_call,a86a2bba,4,332,-50,282,0.1989, for
+clean_check_or_call,a86a2bba,4,332,-20,312,0.7812, call
+clean_check_or_call,a86a2bba,4,332,-10,322,0.0765, or
+clean_check_or_call,a86a2bba,4,332,-5,327,-0.5222,JSON
+clean_check_or_call,a86a2bba,4,332,-2,330,-0.0773,action
+clean_check_or_call,a86a2bba,4,332,-1,331,0.4102,""":"
+clean_check_or_call,a86a2bba,4,332,0,332,0.8742," """
+clean_check_or_call,a86a2bba,4,332,1,333,0.1859,CH
+clean_check_or_call,a86a2bba,4,332,2,334,0.8046,EC
+clean_check_or_call,a86a2bba,4,332,5,337,0.4650,_CALL
+clean_check_or_call,39e14634,2,308,-300,8,0.0925, Anal
+clean_check_or_call,39e14634,2,308,-200,108,-0.0851, with
+clean_check_or_call,39e14634,2,308,-100,208,-0.0730,Choose
+clean_check_or_call,39e14634,2,308,-50,258,0.1000, 
+clean_check_or_call,39e14634,2,308,-20,288,0.0577, raise
+clean_check_or_call,39e14634,2,308,-10,298,0.0589, the
+clean_check_or_call,39e14634,2,308,-5,303,-0.6398,JSON
+clean_check_or_call,39e14634,2,308,-2,306,-0.6652,action
+clean_check_or_call,39e14634,2,308,-1,307,0.1587,""":"
+clean_check_or_call,39e14634,2,308,0,308,0.5985," """
+clean_check_or_call,39e14634,2,308,1,309,0.0669,CH
+clean_check_or_call,39e14634,2,308,2,310,0.8472,EC
+clean_check_or_call,327dacee,1,308,-300,8,0.0925, Anal
+clean_check_or_call,327dacee,1,308,-200,108,-0.0851, with
+clean_check_or_call,327dacee,1,308,-100,208,-0.0956,Choose
+clean_check_or_call,327dacee,1,308,-50,258,0.0707, pair
+clean_check_or_call,327dacee,1,308,-20,288,0.5381, if
+clean_check_or_call,327dacee,1,308,-10,298,-0.0600, giving
+clean_check_or_call,327dacee,1,308,-5,303,-0.6074,JSON
+clean_check_or_call,327dacee,1,308,-2,306,-0.4996,action
+clean_check_or_call,327dacee,1,308,-1,307,0.4260,""":"
+clean_check_or_call,327dacee,1,308,0,308,0.8449," """
+clean_check_or_call,327dacee,1,308,1,309,0.1575,CH
+clean_check_or_call,327dacee,1,308,2,310,0.9335,EC
+clean_check_or_call,327dacee,1,308,5,313,0.3800,_CALL
+clean_check_or_call,10edf7bd,1,308,-300,8,0.0925, Anal
+clean_check_or_call,10edf7bd,1,308,-200,108,-0.0851, with
+clean_check_or_call,10edf7bd,1,308,-100,208,-0.0769, Provide
+clean_check_or_call,10edf7bd,1,308,-50,258,0.0701, Ace
+clean_check_or_call,10edf7bd,1,308,-20,288,0.2112,2
+clean_check_or_call,10edf7bd,1,308,-10,298,0.4223, the
+clean_check_or_call,10edf7bd,1,308,-5,303,-0.5413,JSON
+clean_check_or_call,10edf7bd,1,308,-2,306,-0.2295,action
+clean_check_or_call,10edf7bd,1,308,-1,307,0.1574,""":"
+clean_check_or_call,10edf7bd,1,308,0,308,0.5379," """
+clean_check_or_call,10edf7bd,1,308,1,309,0.1923,CH
+clean_check_or_call,10edf7bd,1,308,2,310,0.3591,EC
+clean_check_or_call,10edf7bd,1,308,5,313,0.3886,_CALL
+clean_check_or_call,127c5655,1,309,-300,9,0.1846,yze
+clean_check_or_call,127c5655,1,309,-200,109,0.2262, little
+clean_check_or_call,127c5655,1,309,-100,209,-0.1240,.
+clean_check_or_call,127c5655,1,309,-50,259,0.4640,","
+clean_check_or_call,127c5655,1,309,-20,289,0.2903, for
+clean_check_or_call,127c5655,1,309,-10,299,0.5908, see
+clean_check_or_call,127c5655,1,309,-5,304,-0.5396,JSON
+clean_check_or_call,127c5655,1,309,-2,307,-0.2244,action
+clean_check_or_call,127c5655,1,309,-1,308,0.2496,""":"
+clean_check_or_call,127c5655,1,309,0,309,0.6676," """
+clean_check_or_call,127c5655,1,309,1,310,0.2069,CH
+clean_check_or_call,127c5655,1,309,2,311,0.4537,EC
+clean_check_or_call,127c5655,1,309,5,314,0.3803,_CALL
+clean_check_or_call,5fd9af8f,1,312,-300,12,0.2923, step
+clean_check_or_call,5fd9af8f,1,312,-200,112,-0.8836,","
+clean_check_or_call,5fd9af8f,1,312,-100,212,-0.0771, then
+clean_check_or_call,5fd9af8f,1,312,-50,262,0.1882, a
+clean_check_or_call,5fd9af8f,1,312,-20,292,0.5054, and
+clean_check_or_call,5fd9af8f,1,312,-10,302,0.5161, is
+clean_check_or_call,5fd9af8f,1,312,-5,307,-0.5519,JSON
+clean_check_or_call,5fd9af8f,1,312,-2,310,-0.2680,action
+clean_check_or_call,5fd9af8f,1,312,-1,311,0.1264,""":"
+clean_check_or_call,5fd9af8f,1,312,0,312,0.5406," """
+clean_check_or_call,5fd9af8f,1,312,1,313,0.1478,CH
+clean_check_or_call,5fd9af8f,1,312,2,314,0.4328,EC
+clean_check_or_call,5fd9af8f,1,312,5,317,0.3270,_CALL
+clean_legal_fold,b2b2ff6a,4,331,-300,31,0.3313, analysis
+clean_legal_fold,b2b2ff6a,4,331,-200,131,0.1996,":
+"
+clean_legal_fold,b2b2ff6a,4,331,-100,231,-0.0023, your
+clean_legal_fold,b2b2ff6a,4,331,-50,281,0.1289,s
+clean_legal_fold,b2b2ff6a,4,331,-20,311,0.1433, have
+clean_legal_fold,b2b2ff6a,4,331,-10,321,-0.1734, avoid
+clean_legal_fold,b2b2ff6a,4,331,-5,326,-0.7338,JSON
+clean_legal_fold,b2b2ff6a,4,331,-2,329,-1.4592,action
+clean_legal_fold,b2b2ff6a,4,331,-1,330,-1.6950,""":"
+clean_legal_fold,b2b2ff6a,4,331,0,331,-2.0193," """
+clean_legal_fold,b2b2ff6a,4,331,1,332,0.2789,F
+clean_legal_fold,b2b2ff6a,4,331,2,333,-0.8322,OLD
+clean_legal_fold,276323bb,4,341,-300,41,0.0353,:
+clean_legal_fold,276323bb,4,341,-200,141,0.3455,-
+clean_legal_fold,276323bb,4,341,-100,241,-0.4425,""":"
+clean_legal_fold,276323bb,4,341,-50,291,0.3992, draw
+clean_legal_fold,276323bb,4,341,-20,321,0.6323,-fl
+clean_legal_fold,276323bb,4,341,-10,331,0.0916, avoid
+clean_legal_fold,276323bb,4,341,-5,336,-0.7698,JSON
+clean_legal_fold,276323bb,4,341,-2,339,-1.3348,action
+clean_legal_fold,276323bb,4,341,-1,340,-1.4124,""":"
+clean_legal_fold,276323bb,4,341,0,341,-1.8167," """
+clean_legal_fold,276323bb,4,341,1,342,0.2529,F
+clean_legal_fold,276323bb,4,341,2,343,-0.8244,OLD
+clean_legal_fold,a4f238cd,4,319,-300,19,0.3027, action
+clean_legal_fold,a4f238cd,4,319,-200,119,-0.7688,:
+clean_legal_fold,a4f238cd,4,319,-100,219,0.2840, 
+clean_legal_fold,a4f238cd,4,319,-50,269,0.4946, the
+clean_legal_fold,a4f238cd,4,319,-20,299,0.2535, for
+clean_legal_fold,a4f238cd,4,319,-10,309,0.0614, avoid
+clean_legal_fold,a4f238cd,4,319,-5,314,-0.7502,JSON
+clean_legal_fold,a4f238cd,4,319,-2,317,-1.4607,action
+clean_legal_fold,a4f238cd,4,319,-1,318,-1.7735,""":"
+clean_legal_fold,a4f238cd,4,319,0,319,-2.1115," """
+clean_legal_fold,a4f238cd,4,319,1,320,0.2540,F
+clean_legal_fold,a4f238cd,4,319,2,321,-0.8309,OLD
+clean_legal_fold,6f403582,4,337,-300,37,0.0823,").
+"
+clean_legal_fold,6f403582,4,337,-200,137,0.0972,8
+clean_legal_fold,6f403582,4,337,-100,237,-0.2850, JSON
+clean_legal_fold,6f403582,4,337,-50,287,0.2479, and
+clean_legal_fold,6f403582,4,337,-20,317,0.2519, strong
+clean_legal_fold,6f403582,4,337,-10,327,-0.1029, avoid
+clean_legal_fold,6f403582,4,337,-5,332,-0.7768,JSON
+clean_legal_fold,6f403582,4,337,-2,335,-1.4713,action
+clean_legal_fold,6f403582,4,337,-1,336,-1.7583,""":"
+clean_legal_fold,6f403582,4,337,0,337,-2.0049," """
+clean_legal_fold,6f403582,4,337,1,338,0.2910,F
+clean_legal_fold,6f403582,4,337,2,339,-0.8621,OLD
+clean_legal_fold,49af524b,9,322,-300,22,0.0886, write
+clean_legal_fold,49af524b,9,322,-200,122,-1.2465,""":"
+clean_legal_fold,49af524b,9,322,-100,222,0.9387,:
+clean_legal_fold,49af524b,9,322,-50,272,0.3487, is
+clean_legal_fold,49af524b,9,322,-20,302,0.2110, pot
+clean_legal_fold,49af524b,9,322,-10,312,0.2540,'s
+clean_legal_fold,49af524b,9,322,-5,317,-0.7531,JSON
+clean_legal_fold,49af524b,9,322,-2,320,-1.4658,action
+clean_legal_fold,49af524b,9,322,-1,321,-1.7538,""":"
+clean_legal_fold,49af524b,9,322,0,322,-2.0071," """
+clean_legal_fold,49af524b,9,322,1,323,0.2708,F
+clean_legal_fold,49af524b,9,322,2,324,-0.8050,OLD
+clean_legal_fold,eedb32c6,4,304,-300,4,0.0258, a
+clean_legal_fold,eedb32c6,4,304,-200,104,0.1373, My
+clean_legal_fold,eedb32c6,4,304,-100,204,0.3825, (
+clean_legal_fold,eedb32c6,4,304,-50,254,0.3859, opponent
+clean_legal_fold,eedb32c6,4,304,-20,284,0.2194, no
+clean_legal_fold,eedb32c6,4,304,-10,294,-0.0862, avoid
+clean_legal_fold,eedb32c6,4,304,-5,299,-0.7679,JSON
+clean_legal_fold,eedb32c6,4,304,-2,302,-1.4725,action
+clean_legal_fold,eedb32c6,4,304,-1,303,-1.7678,""":"
+clean_legal_fold,eedb32c6,4,304,0,304,-2.0855," """
+clean_legal_fold,eedb32c6,4,304,1,305,0.2022,F
+clean_legal_fold,eedb32c6,4,304,2,306,-0.8738,OLD
+clean_legal_fold,f3f391d6,4,320,-300,20,0.2523,".
+"
+clean_legal_fold,f3f391d6,4,320,-200,120,-0.6058," {"""
+clean_legal_fold,f3f391d6,4,320,-100,220,0.3673, (
+clean_legal_fold,f3f391d6,4,320,-50,270,0.3000, The
+clean_legal_fold,f3f391d6,4,320,-20,300,0.0915, is
+clean_legal_fold,f3f391d6,4,320,-10,310,-0.1014, avoid
+clean_legal_fold,f3f391d6,4,320,-5,315,-0.7883,JSON
+clean_legal_fold,f3f391d6,4,320,-2,318,-1.4420,action
+clean_legal_fold,f3f391d6,4,320,-1,319,-1.6595,""":"
+clean_legal_fold,f3f391d6,4,320,0,320,-2.0166," """
+clean_legal_fold,f3f391d6,4,320,1,321,0.2478,F
+clean_legal_fold,f3f391d6,4,320,2,322,-0.8706,OLD
+clean_legal_fold,454e22e9,4,337,-300,37,0.0823,").
+"
+clean_legal_fold,454e22e9,4,337,-200,137,0.0859,d
+clean_legal_fold,454e22e9,4,337,-100,237,-0.2827, JSON
+clean_legal_fold,454e22e9,4,337,-50,287,0.0698,8
+clean_legal_fold,454e22e9,4,337,-20,317,-0.5219, it
+clean_legal_fold,454e22e9,4,337,-10,327,-1.0203, is
+clean_legal_fold,454e22e9,4,337,-5,332,-0.7721,JSON
+clean_legal_fold,454e22e9,4,337,-2,335,-1.4243,action
+clean_legal_fold,454e22e9,4,337,-1,336,-1.7126,""":"
+clean_legal_fold,454e22e9,4,337,0,337,-1.9808," """
+clean_legal_fold,454e22e9,4,337,1,338,0.2927,F
+clean_legal_fold,454e22e9,4,337,2,339,-0.8385,OLD
+clean_legal_fold,3572764f,4,323,-300,23,0.1723, RE
+clean_legal_fold,3572764f,4,323,-200,123,-1.8418," """
+clean_legal_fold,3572764f,4,323,-100,223,0.3641, (
+clean_legal_fold,3572764f,4,323,-50,273,0.3057, The
+clean_legal_fold,3572764f,4,323,-20,303,0.1055, the
+clean_legal_fold,3572764f,4,323,-10,313,-1.0019, is
+clean_legal_fold,3572764f,4,323,-5,318,-0.7589,JSON
+clean_legal_fold,3572764f,4,323,-2,321,-1.4293,action
+clean_legal_fold,3572764f,4,323,-1,322,-1.6946,""":"
+clean_legal_fold,3572764f,4,323,0,323,-1.9899," """
+clean_legal_fold,3572764f,4,323,1,324,0.2684,F
+clean_legal_fold,3572764f,4,323,2,325,-0.8560,OLD
+clean_legal_fold,751736f7,4,322,-300,22,0.0886, write
+clean_legal_fold,751736f7,4,322,-200,122,-1.2465,""":"
+clean_legal_fold,751736f7,4,322,-100,222,0.3121,")
+
+"
+clean_legal_fold,751736f7,4,322,-50,272,0.5079, is
+clean_legal_fold,751736f7,4,322,-20,302,-0.1347, potential
+clean_legal_fold,751736f7,4,322,-10,312,-1.0385, is
+clean_legal_fold,751736f7,4,322,-5,317,-0.7787,JSON
+clean_legal_fold,751736f7,4,322,-2,320,-1.4922,action
+clean_legal_fold,751736f7,4,322,-1,321,-1.8336,""":"
+clean_legal_fold,751736f7,4,322,0,322,-1.9896," """
+clean_legal_fold,751736f7,4,322,1,323,0.2645,F
+clean_legal_fold,751736f7,4,322,2,324,-0.8374,OLD
+clean_legal_fold,d8ee7de6,4,316,-300,16,0.0560, then
+clean_legal_fold,d8ee7de6,4,316,-200,116,-0.5453, best
+clean_legal_fold,d8ee7de6,4,316,-100,216,1.0125,"
+"
+clean_legal_fold,d8ee7de6,4,316,-50,266,0.4865, on
+clean_legal_fold,d8ee7de6,4,316,-20,296,-0.0145,","
+clean_legal_fold,d8ee7de6,4,316,-10,306,-0.6483, action
+clean_legal_fold,d8ee7de6,4,316,-5,311,-0.7436,JSON
+clean_legal_fold,d8ee7de6,4,316,-2,314,-1.4353,action
+clean_legal_fold,d8ee7de6,4,316,-1,315,-1.5669,""":"
+clean_legal_fold,d8ee7de6,4,316,0,316,-2.1323," """
+clean_legal_fold,d8ee7de6,4,316,1,317,0.2348,F
+clean_legal_fold,d8ee7de6,4,316,2,318,-0.8227,OLD
+clean_legal_fold,2181c7ce,4,338,-300,38,0.1256,Then
+clean_legal_fold,2181c7ce,4,338,-200,138,-0.0711,8
+clean_legal_fold,2181c7ce,4,338,-100,238,-0.2848, JSON
+clean_legal_fold,2181c7ce,4,338,-50,288,0.1574, but
+clean_legal_fold,2181c7ce,4,338,-20,318,-0.0361, potential
+clean_legal_fold,2181c7ce,4,338,-10,328,0.1139,'s
+clean_legal_fold,2181c7ce,4,338,-5,333,-0.7604,JSON
+clean_legal_fold,2181c7ce,4,338,-2,336,-1.5304,action
+clean_legal_fold,2181c7ce,4,338,-1,337,-1.8826,""":"
+clean_legal_fold,2181c7ce,4,338,0,338,-1.9479," """
+clean_legal_fold,2181c7ce,4,338,1,339,0.2963,F
+clean_legal_fold,2181c7ce,4,338,2,340,-0.7687,OLD
+clean_legal_fold,592aa918,4,336,-300,36,0.3471, sentences
+clean_legal_fold,592aa918,4,336,-200,136,-0.0030, 
+clean_legal_fold,592aa918,4,336,-100,236,-0.2211, as
+clean_legal_fold,592aa918,4,336,-50,286,0.0997, you
+clean_legal_fold,592aa918,4,336,-20,316,0.4421, odds
+clean_legal_fold,592aa918,4,336,-10,326,-0.0499,'s
+clean_legal_fold,592aa918,4,336,-5,331,-0.7427,JSON
+clean_legal_fold,592aa918,4,336,-2,334,-1.5416,action
+clean_legal_fold,592aa918,4,336,-1,335,-1.8610,""":"
+clean_legal_fold,592aa918,4,336,0,336,-2.1345," """
+clean_legal_fold,592aa918,4,336,1,337,0.2693,F
+clean_legal_fold,592aa918,4,336,2,338,-0.8143,OLD
+clean_legal_fold,9529648d,4,306,-300,6,0.1955, player
+clean_legal_fold,9529648d,4,306,-200,106,-0.1415, is
+clean_legal_fold,9529648d,4,306,-100,206,0.3770, (
+clean_legal_fold,9529648d,4,306,-50,256,0.3858, opponent
+clean_legal_fold,9529648d,4,306,-20,286,0.2798, little
+clean_legal_fold,9529648d,4,306,-10,296,0.0273, avoid
+clean_legal_fold,9529648d,4,306,-5,301,-0.7561,JSON
+clean_legal_fold,9529648d,4,306,-2,304,-1.4663,action
+clean_legal_fold,9529648d,4,306,-1,305,-1.7840,""":"
+clean_legal_fold,9529648d,4,306,0,306,-2.1444," """
+clean_legal_fold,9529648d,4,306,1,307,0.2576,F
+clean_legal_fold,9529648d,4,306,2,308,-0.8438,OLD
+clean_legal_fold,102d86aa,4,324,-300,24,0.1717,AS
+clean_legal_fold,102d86aa,4,324,-200,124,0.2309,F
+clean_legal_fold,102d86aa,4,324,-100,224,-0.0928,Choose
+clean_legal_fold,102d86aa,4,324,-50,274,0.3944, a
+clean_legal_fold,102d86aa,4,324,-20,304,0.3955, bet
+clean_legal_fold,102d86aa,4,324,-10,314,-1.1092, is
+clean_legal_fold,102d86aa,4,324,-5,319,-0.7799,JSON
+clean_legal_fold,102d86aa,4,324,-2,322,-1.4227,action
+clean_legal_fold,102d86aa,4,324,-1,323,-1.6751,""":"
+clean_legal_fold,102d86aa,4,324,0,324,-2.0151," """
+clean_legal_fold,102d86aa,4,324,1,325,0.2672,F
+clean_legal_fold,102d86aa,4,324,2,326,-0.8532,OLD
+clean_legal_fold,43e31fb5,4,322,-300,22,0.0886, write
+clean_legal_fold,43e31fb5,4,322,-200,122,-1.2465,""":"
+clean_legal_fold,43e31fb5,4,322,-100,222,0.3196,")
+
+"
+clean_legal_fold,43e31fb5,4,322,-50,272,0.5057, is
+clean_legal_fold,43e31fb5,4,322,-20,302,-0.1297, potential
+clean_legal_fold,43e31fb5,4,322,-10,312,-1.0399, is
+clean_legal_fold,43e31fb5,4,322,-5,317,-0.7748,JSON
+clean_legal_fold,43e31fb5,4,322,-2,320,-1.5068,action
+clean_legal_fold,43e31fb5,4,322,-1,321,-1.8237,""":"
+clean_legal_fold,43e31fb5,4,322,0,322,-2.0030," """
+clean_legal_fold,43e31fb5,4,322,1,323,0.2618,F
+clean_legal_fold,43e31fb5,4,322,2,324,-0.8413,OLD
+clean_legal_fold,54e89359,4,326,-300,26,0.2941,ING
+clean_legal_fold,54e89359,4,326,-200,126,-0.4592,""""
+clean_legal_fold,54e89359,4,326,-100,226,-0.0991,Choose
+clean_legal_fold,54e89359,4,326,-50,276,0.1266, not
+clean_legal_fold,54e89359,4,326,-20,306,-0.1360, potential
+clean_legal_fold,54e89359,4,326,-10,316,-1.0545, is
+clean_legal_fold,54e89359,4,326,-5,321,-0.7768,JSON
+clean_legal_fold,54e89359,4,326,-2,324,-1.4940,action
+clean_legal_fold,54e89359,4,326,-1,325,-1.8395,""":"
+clean_legal_fold,54e89359,4,326,0,326,-1.9990," """
+clean_legal_fold,54e89359,4,326,1,327,0.2627,F
+clean_legal_fold,54e89359,4,326,2,328,-0.8421,OLD
+clean_legal_fold,68dbd243,4,327,-300,27,0.3218,:
+clean_legal_fold,68dbd243,4,327,-200,127,-0.2315,"}
+
+"
+clean_legal_fold,68dbd243,4,327,-100,227,0.2712, your
+clean_legal_fold,68dbd243,4,327,-50,277,0.1538, particularly
+clean_legal_fold,68dbd243,4,327,-20,307,-0.1334, potential
+clean_legal_fold,68dbd243,4,327,-10,317,-1.0642, is
+clean_legal_fold,68dbd243,4,327,-5,322,-0.7739,JSON
+clean_legal_fold,68dbd243,4,327,-2,325,-1.4910,action
+clean_legal_fold,68dbd243,4,327,-1,326,-1.8265,""":"
+clean_legal_fold,68dbd243,4,327,0,327,-2.0384," """
+clean_legal_fold,68dbd243,4,327,1,328,0.2590,F
+clean_legal_fold,68dbd243,4,327,2,329,-0.8433,OLD
+clean_legal_fold,387f112f,4,326,-300,26,0.2941,ING
+clean_legal_fold,387f112f,4,326,-200,126,-0.4592,""""
+clean_legal_fold,387f112f,4,326,-100,226,-0.0960,Choose
+clean_legal_fold,387f112f,4,326,-50,276,0.4444, a
+clean_legal_fold,387f112f,4,326,-20,306,0.3992, bet
+clean_legal_fold,387f112f,4,326,-10,316,-1.1059, is
+clean_legal_fold,387f112f,4,326,-5,321,-0.7795,JSON
+clean_legal_fold,387f112f,4,326,-2,324,-1.4155,action
+clean_legal_fold,387f112f,4,326,-1,325,-1.6972,""":"
+clean_legal_fold,387f112f,4,326,0,326,-2.0444," """
+clean_legal_fold,387f112f,4,326,1,327,0.2695,F
+clean_legal_fold,387f112f,4,326,2,328,-0.8553,OLD
+clean_legal_fold,4863ad40,4,328,-300,28,0.0485, followed
+clean_legal_fold,4863ad40,4,328,-200,128,0.1522,Current
+clean_legal_fold,4863ad40,4,328,-100,228,0.2348, your
+clean_legal_fold,4863ad40,4,328,-50,278,0.1341, particularly
+clean_legal_fold,4863ad40,4,328,-20,308,-0.1305, potential
+clean_legal_fold,4863ad40,4,328,-10,318,-1.0650, is
+clean_legal_fold,4863ad40,4,328,-5,323,-0.7717,JSON
+clean_legal_fold,4863ad40,4,328,-2,326,-1.4828,action
+clean_legal_fold,4863ad40,4,328,-1,327,-1.8352,""":"
+clean_legal_fold,4863ad40,4,328,0,328,-2.0565," """
+clean_legal_fold,4863ad40,4,328,1,329,0.2600,F
+clean_legal_fold,4863ad40,4,328,2,330,-0.8381,OLD
+clean_legal_fold,c84bdcb3,4,305,-300,5,0.2191, poker
+clean_legal_fold,c84bdcb3,4,305,-200,105,0.1892, hand
+clean_legal_fold,c84bdcb3,4,305,-100,205,0.3890, CALL
+clean_legal_fold,c84bdcb3,4,305,-50,255,0.4032, The
+clean_legal_fold,c84bdcb3,4,305,-20,285,0.2128, no
+clean_legal_fold,c84bdcb3,4,305,-10,295,-0.0932, avoid
+clean_legal_fold,c84bdcb3,4,305,-5,300,-0.7620,JSON
+clean_legal_fold,c84bdcb3,4,305,-2,303,-1.4656,action
+clean_legal_fold,c84bdcb3,4,305,-1,304,-1.7586,""":"
+clean_legal_fold,c84bdcb3,4,305,0,305,-2.0581," """
+clean_legal_fold,c84bdcb3,4,305,1,306,0.2098,F
+clean_legal_fold,c84bdcb3,4,305,2,307,-0.8696,OLD
+clean_legal_fold,1741f686,4,309,-300,9,0.1846,yze
+clean_legal_fold,1741f686,4,309,-200,109,0.2262, little
+clean_legal_fold,1741f686,4,309,-100,209,0.3202,1
+clean_legal_fold,1741f686,4,309,-50,259,0.5432, has
+clean_legal_fold,1741f686,4,309,-20,289,0.2343, no
+clean_legal_fold,1741f686,4,309,-10,299,-0.0982, avoid
+clean_legal_fold,1741f686,4,309,-5,304,-0.7578,JSON
+clean_legal_fold,1741f686,4,309,-2,307,-1.4367,action
+clean_legal_fold,1741f686,4,309,-1,308,-1.7041,""":"
+clean_legal_fold,1741f686,4,309,0,309,-2.1064," """
+clean_legal_fold,1741f686,4,309,1,310,0.2025,F
+clean_legal_fold,1741f686,4,309,2,311,-0.8619,OLD
+clean_legal_fold,b3c594b5,4,334,-300,34,0.1519,-
+clean_legal_fold,b3c594b5,4,334,-200,134,0.0723, cards
+clean_legal_fold,b3c594b5,4,334,-100,234,-0.2745, JSON
+clean_legal_fold,b3c594b5,4,334,-50,284,-0.0410,c
+clean_legal_fold,b3c594b5,4,334,-20,314,-0.0051, be
+clean_legal_fold,b3c594b5,4,334,-10,324,-0.1569, avoid
+clean_legal_fold,b3c594b5,4,334,-5,329,-0.7837,JSON
+clean_legal_fold,b3c594b5,4,334,-2,332,-1.4203,action
+clean_legal_fold,b3c594b5,4,334,-1,333,-1.5582,""":"
+clean_legal_fold,b3c594b5,4,334,0,334,-1.9930," """
+clean_legal_fold,b3c594b5,4,334,1,335,0.2500,F
+clean_legal_fold,b3c594b5,4,334,2,336,-0.8364,OLD
+clean_legal_fold,d966fa41,4,340,-300,40,0.1482, JSON
+clean_legal_fold,d966fa41,4,340,-200,140,0.2588,"
+"
+clean_legal_fold,d966fa41,4,340,-100,240,-0.1945, action
+clean_legal_fold,d966fa41,4,340,-50,290,0.0352, for
+clean_legal_fold,d966fa41,4,340,-20,320,0.0315,","
+clean_legal_fold,d966fa41,4,340,-10,330,-0.0344, and
+clean_legal_fold,d966fa41,4,340,-5,335,-0.7273,JSON
+clean_legal_fold,d966fa41,4,340,-2,338,-1.4586,action
+clean_legal_fold,d966fa41,4,340,-1,339,-1.8198,""":"
+clean_legal_fold,d966fa41,4,340,0,340,-1.8910," """
+clean_legal_fold,d966fa41,4,340,1,341,0.2602,F
+clean_legal_fold,d966fa41,4,340,2,342,-0.8169,OLD
+clean_legal_fold,3d657182,4,307,-300,7,10.3058,.
+clean_legal_fold,3d657182,4,307,-200,107,-0.1913, weak
+clean_legal_fold,3d657182,4,307,-100,207,0.3247,1
+clean_legal_fold,3d657182,4,307,-50,257,0.5482, has
+clean_legal_fold,3d657182,4,307,-20,287,0.2058, no
+clean_legal_fold,3d657182,4,307,-10,297,-0.0882, avoid
+clean_legal_fold,3d657182,4,307,-5,302,-0.7676,JSON
+clean_legal_fold,3d657182,4,307,-2,305,-1.4504,action
+clean_legal_fold,3d657182,4,307,-1,306,-1.7410,""":"
+clean_legal_fold,3d657182,4,307,0,307,-2.1032," """
+clean_legal_fold,3d657182,4,307,1,308,0.2060,F
+clean_legal_fold,3d657182,4,307,2,309,-0.8620,OLD
+clean_legal_fold,5db85f5e,4,331,-300,31,0.3313, analysis
+clean_legal_fold,5db85f5e,4,331,-200,131,0.1996,":
+"
+clean_legal_fold,5db85f5e,4,331,-100,231,-0.0352, your
+clean_legal_fold,5db85f5e,4,331,-50,281,0.1548,s
+clean_legal_fold,5db85f5e,4,331,-20,311,0.1393, have
+clean_legal_fold,5db85f5e,4,331,-10,321,-0.1811, avoid
+clean_legal_fold,5db85f5e,4,331,-5,326,-0.7332,JSON
+clean_legal_fold,5db85f5e,4,331,-2,329,-1.4604,action
+clean_legal_fold,5db85f5e,4,331,-1,330,-1.7050,""":"
+clean_legal_fold,5db85f5e,4,331,0,331,-2.0293," """
+clean_legal_fold,5db85f5e,4,331,1,332,0.2765,F
+clean_legal_fold,5db85f5e,4,331,2,333,-0.8352,OLD
+clean_legal_fold,6a8bb293,4,337,-300,37,0.0823,").
+"
+clean_legal_fold,6a8bb293,4,337,-200,137,0.1029,h
+clean_legal_fold,6a8bb293,4,337,-100,237,-0.2224, as
+clean_legal_fold,6a8bb293,4,337,-50,287,0.1914, you
+clean_legal_fold,6a8bb293,4,337,-20,317,0.1003, and
+clean_legal_fold,6a8bb293,4,337,-10,327,0.2902, good
+clean_legal_fold,6a8bb293,4,337,-5,332,-0.6902,JSON
+clean_legal_fold,6a8bb293,4,337,-2,335,-1.4073,action
+clean_legal_fold,6a8bb293,4,337,-1,336,-1.6396,""":"
+clean_legal_fold,6a8bb293,4,337,0,337,-1.5831," """
+clean_legal_fold,6a8bb293,4,337,1,338,0.2741,F
+clean_legal_fold,6a8bb293,4,337,2,339,-0.9677,OLD
+clean_legal_fold,c1e6d25f,4,329,-300,29,0.0586, by
+clean_legal_fold,c1e6d25f,4,329,-200,129,0.1684, poker
+clean_legal_fold,c1e6d25f,4,329,-100,229,0.0219, your
+clean_legal_fold,c1e6d25f,4,329,-50,279,-0.1184, 
+clean_legal_fold,c1e6d25f,4,329,-20,309,0.2000, strong
+clean_legal_fold,c1e6d25f,4,329,-10,319,-0.1287, avoid
+clean_legal_fold,c1e6d25f,4,329,-5,324,-0.7814,JSON
+clean_legal_fold,c1e6d25f,4,329,-2,327,-1.3943,action
+clean_legal_fold,c1e6d25f,4,329,-1,328,-1.6111,""":"
+clean_legal_fold,c1e6d25f,4,329,0,329,-2.0004," """
+clean_legal_fold,c1e6d25f,4,329,1,330,0.2574,F
+clean_legal_fold,c1e6d25f,4,329,2,331,-0.8563,OLD
+clean_legal_fold,633d67b8,4,320,-300,20,0.2523,".
+"
+clean_legal_fold,633d67b8,4,320,-200,120,-0.6058," {"""
+clean_legal_fold,633d67b8,4,320,-100,220,0.5887,:
+clean_legal_fold,633d67b8,4,320,-50,270,0.4151,op
+clean_legal_fold,633d67b8,4,320,-20,300,0.2534, not
+clean_legal_fold,633d67b8,4,320,-10,310,-0.0558, avoid
+clean_legal_fold,633d67b8,4,320,-5,315,-0.7627,JSON
+clean_legal_fold,633d67b8,4,320,-2,318,-1.4451,action
+clean_legal_fold,633d67b8,4,320,-1,319,-1.6631,""":"
+clean_legal_fold,633d67b8,4,320,0,320,-2.0362," """
+clean_legal_fold,633d67b8,4,320,1,321,0.2043,F
+clean_legal_fold,633d67b8,4,320,2,322,-0.8592,OLD
+clean_legal_fold,c0beff0a,4,322,-300,22,0.0886, write
+clean_legal_fold,c0beff0a,4,322,-200,122,-1.2465,""":"
+clean_legal_fold,c0beff0a,4,322,-100,222,0.3888,2
+clean_legal_fold,c0beff0a,4,322,-50,272,0.4583, board
+clean_legal_fold,c0beff0a,4,322,-20,302,-0.1371, potential
+clean_legal_fold,c0beff0a,4,322,-10,312,-1.0551, is
+clean_legal_fold,c0beff0a,4,322,-5,317,-0.7724,JSON
+clean_legal_fold,c0beff0a,4,322,-2,320,-1.4993,action
+clean_legal_fold,c0beff0a,4,322,-1,321,-1.8589,""":"
+clean_legal_fold,c0beff0a,4,322,0,322,-2.0354," """
+clean_legal_fold,c0beff0a,4,322,1,323,0.2677,F
+clean_legal_fold,c0beff0a,4,322,2,324,-0.8401,OLD
+clean_legal_fold,41e915ba,4,328,-300,28,0.0485, followed
+clean_legal_fold,41e915ba,4,328,-200,128,0.1522,Current
+clean_legal_fold,41e915ba,4,328,-100,228,0.1327, your
+clean_legal_fold,41e915ba,4,328,-50,278,0.1446, particularly
+clean_legal_fold,41e915ba,4,328,-20,308,-0.1396, potential
+clean_legal_fold,41e915ba,4,328,-10,318,-1.0760, is
+clean_legal_fold,41e915ba,4,328,-5,323,-0.7677,JSON
+clean_legal_fold,41e915ba,4,328,-2,326,-1.4846,action
+clean_legal_fold,41e915ba,4,328,-1,327,-1.8361,""":"
+clean_legal_fold,41e915ba,4,328,0,328,-2.0559," """
+clean_legal_fold,41e915ba,4,328,1,329,0.2636,F
+clean_legal_fold,41e915ba,4,328,2,330,-0.8355,OLD
+clean_legal_fold,b89802f0,4,355,-300,55,-0.0720,action
+clean_legal_fold,b89802f0,4,355,-200,155,0.2520,"
+"
+clean_legal_fold,b89802f0,4,355,-100,255,-0.2154,"""}"
+clean_legal_fold,b89802f0,4,355,-50,305,0.3669,","
+clean_legal_fold,b89802f0,4,355,-20,335,0.1456, likely
+clean_legal_fold,b89802f0,4,355,-10,345,-0.4087,'s
+clean_legal_fold,b89802f0,4,355,-5,350,-0.7271,JSON
+clean_legal_fold,b89802f0,4,355,-2,353,-1.4548,action
+clean_legal_fold,b89802f0,4,355,-1,354,-1.8164,""":"
+clean_legal_fold,b89802f0,4,355,0,355,-1.7994," """
+clean_legal_fold,b89802f0,4,355,1,356,0.2902,F
+clean_legal_fold,b89802f0,4,355,2,357,-0.7901,OLD
+clean_legal_fold,b653cfda,4,327,-300,27,0.3218,:
+clean_legal_fold,b653cfda,4,327,-200,127,-0.2315,"}
+
+"
+clean_legal_fold,b653cfda,4,327,-100,227,0.3130, your
+clean_legal_fold,b653cfda,4,327,-50,277,0.1646, particularly
+clean_legal_fold,b653cfda,4,327,-20,307,-0.1511, potential
+clean_legal_fold,b653cfda,4,327,-10,317,-1.0679, is
+clean_legal_fold,b653cfda,4,327,-5,322,-0.7764,JSON
+clean_legal_fold,b653cfda,4,327,-2,325,-1.4930,action
+clean_legal_fold,b653cfda,4,327,-1,326,-1.8262,""":"
+clean_legal_fold,b653cfda,4,327,0,327,-2.0451," """
+clean_legal_fold,b653cfda,4,327,1,328,0.2731,F
+clean_legal_fold,b653cfda,4,327,2,329,-0.8417,OLD
+clean_legal_fold,7f799478,4,309,-300,9,0.1846,yze
+clean_legal_fold,7f799478,4,309,-200,109,0.2262, little
+clean_legal_fold,7f799478,4,309,-100,209,0.3049, You
+clean_legal_fold,7f799478,4,309,-50,259,0.4676, by
+clean_legal_fold,7f799478,4,309,-20,289,0.3076, not
+clean_legal_fold,7f799478,4,309,-10,299,-0.0788, avoid
+clean_legal_fold,7f799478,4,309,-5,304,-0.7553,JSON
+clean_legal_fold,7f799478,4,309,-2,307,-1.4291,action
+clean_legal_fold,7f799478,4,309,-1,308,-1.7110,""":"
+clean_legal_fold,7f799478,4,309,0,309,-2.0197," """
+clean_legal_fold,7f799478,4,309,1,310,0.2161,F
+clean_legal_fold,7f799478,4,309,2,311,-0.8577,OLD
+clean_legal_fold,5c6fc73c,4,323,-300,23,0.1723, RE
+clean_legal_fold,5c6fc73c,4,323,-200,123,-1.8418," """
+clean_legal_fold,5c6fc73c,4,323,-100,223,0.3673, (
+clean_legal_fold,5c6fc73c,4,323,-50,273,0.3324, The
+clean_legal_fold,5c6fc73c,4,323,-20,303,-0.1083, not
+clean_legal_fold,5c6fc73c,4,323,-10,313,-0.4863, action
+clean_legal_fold,5c6fc73c,4,323,-5,318,-0.7543,JSON
+clean_legal_fold,5c6fc73c,4,323,-2,321,-1.4333,action
+clean_legal_fold,5c6fc73c,4,323,-1,322,-1.5804,""":"
+clean_legal_fold,5c6fc73c,4,323,0,323,-2.1468," """
+clean_legal_fold,5c6fc73c,4,323,1,324,0.2383,F
+clean_legal_fold,5c6fc73c,4,323,2,325,-0.8294,OLD
+clean_legal_fold,96a628bd,4,308,-300,8,0.0925, Anal
+clean_legal_fold,96a628bd,4,308,-200,108,-0.0851, with
+clean_legal_fold,96a628bd,4,308,-100,208,0.4549, 
+clean_legal_fold,96a628bd,4,308,-50,258,0.3822, strength
+clean_legal_fold,96a628bd,4,308,-20,288,0.2358, draw
+clean_legal_fold,96a628bd,4,308,-10,298,-0.0664, avoid
+clean_legal_fold,96a628bd,4,308,-5,303,-0.7827,JSON
+clean_legal_fold,96a628bd,4,308,-2,306,-1.4020,action
+clean_legal_fold,96a628bd,4,308,-1,307,-1.6982,""":"
+clean_legal_fold,96a628bd,4,308,0,308,-2.0041," """
+clean_legal_fold,96a628bd,4,308,1,309,0.2162,F
+clean_legal_fold,96a628bd,4,308,2,310,-0.8544,OLD
+clean_legal_fold,4fcb30df,4,329,-300,29,0.0586, by
+clean_legal_fold,4fcb30df,4,329,-200,129,0.1684, poker
+clean_legal_fold,4fcb30df,4,329,-100,229,0.2914, your
+clean_legal_fold,4fcb30df,4,329,-50,279,0.1535, particularly
+clean_legal_fold,4fcb30df,4,329,-20,309,-0.1275, potential
+clean_legal_fold,4fcb30df,4,329,-10,319,-1.0594, is
+clean_legal_fold,4fcb30df,4,329,-5,324,-0.7723,JSON
+clean_legal_fold,4fcb30df,4,329,-2,327,-1.4950,action
+clean_legal_fold,4fcb30df,4,329,-1,328,-1.8361,""":"
+clean_legal_fold,4fcb30df,4,329,0,329,-2.0285," """
+clean_legal_fold,4fcb30df,4,329,1,330,0.2604,F
+clean_legal_fold,4fcb30df,4,329,2,331,-0.8377,OLD
+clean_legal_fold,76fef162,4,325,-300,25,0.0953,ON
+clean_legal_fold,76fef162,4,325,-200,125,-1.0455,OLD
+clean_legal_fold,76fef162,4,325,-100,225,0.3872,2
+clean_legal_fold,76fef162,4,325,-50,275,0.3957, board
+clean_legal_fold,76fef162,4,325,-20,305,0.1043, the
+clean_legal_fold,76fef162,4,325,-10,315,-1.0009, is
+clean_legal_fold,76fef162,4,325,-5,320,-0.7616,JSON
+clean_legal_fold,76fef162,4,325,-2,323,-1.4340,action
+clean_legal_fold,76fef162,4,325,-1,324,-1.6978,""":"
+clean_legal_fold,76fef162,4,325,0,325,-1.9783," """
+clean_legal_fold,76fef162,4,325,1,326,0.2630,F
+clean_legal_fold,76fef162,4,325,2,327,-0.8531,OLD
+clean_legal_fold,99f6aac3,4,330,-300,30,-0.0420, your
+clean_legal_fold,99f6aac3,4,330,-200,130,0.1729, situation
+clean_legal_fold,99f6aac3,4,330,-100,230,-0.1045,.
+clean_legal_fold,99f6aac3,4,330,-50,280,0.0969, for
+clean_legal_fold,99f6aac3,4,330,-20,310,0.0100, a
+clean_legal_fold,99f6aac3,4,330,-10,320,-1.0274, is
+clean_legal_fold,99f6aac3,4,330,-5,325,-0.7721,JSON
+clean_legal_fold,99f6aac3,4,330,-2,328,-1.4670,action
+clean_legal_fold,99f6aac3,4,330,-1,329,-1.7419,""":"
+clean_legal_fold,99f6aac3,4,330,0,330,-2.0213," """
+clean_legal_fold,99f6aac3,4,330,1,331,0.2488,F
+clean_legal_fold,99f6aac3,4,330,2,332,-0.8546,OLD
+clean_legal_fold,7637e912,4,306,-300,6,0.1955, player
+clean_legal_fold,7637e912,4,306,-200,106,-0.1415, is
+clean_legal_fold,7637e912,4,306,-100,206,0.3737, (
+clean_legal_fold,7637e912,4,306,-50,256,0.3910, opponent
+clean_legal_fold,7637e912,4,306,-20,286,0.2529, no
+clean_legal_fold,7637e912,4,306,-10,296,-0.0824, avoid
+clean_legal_fold,7637e912,4,306,-5,301,-0.7644,JSON
+clean_legal_fold,7637e912,4,306,-2,304,-1.4476,action
+clean_legal_fold,7637e912,4,306,-1,305,-1.7331,""":"
+clean_legal_fold,7637e912,4,306,0,306,-2.0474," """
+clean_legal_fold,7637e912,4,306,1,307,0.2148,F
+clean_legal_fold,7637e912,4,306,2,308,-0.8622,OLD
+clean_legal_fold,aa9823da,4,328,-300,28,0.0485, followed
+clean_legal_fold,aa9823da,4,328,-200,128,0.1522,Current
+clean_legal_fold,aa9823da,4,328,-100,228,0.2563, your
+clean_legal_fold,aa9823da,4,328,-50,278,0.1462, particularly
+clean_legal_fold,aa9823da,4,328,-20,308,-0.1336, potential
+clean_legal_fold,aa9823da,4,328,-10,318,-1.0825, is
+clean_legal_fold,aa9823da,4,328,-5,323,-0.7728,JSON
+clean_legal_fold,aa9823da,4,328,-2,326,-1.4864,action
+clean_legal_fold,aa9823da,4,328,-1,327,-1.7884,""":"
+clean_legal_fold,aa9823da,4,328,0,328,-2.0384," """
+clean_legal_fold,aa9823da,4,328,1,329,0.2565,F
+clean_legal_fold,aa9823da,4,328,2,330,-0.8458,OLD
+clean_legal_fold,ff2290f0,4,323,-300,23,0.1723, RE
+clean_legal_fold,ff2290f0,4,323,-200,123,-1.8418," """
+clean_legal_fold,ff2290f0,4,323,-100,223,-0.0904,Choose
+clean_legal_fold,ff2290f0,4,323,-50,273,0.2420, a
+clean_legal_fold,ff2290f0,4,323,-20,303,0.1252, have
+clean_legal_fold,ff2290f0,4,323,-10,313,-1.0515, is
+clean_legal_fold,ff2290f0,4,323,-5,318,-0.7727,JSON
+clean_legal_fold,ff2290f0,4,323,-2,321,-1.3970,action
+clean_legal_fold,ff2290f0,4,323,-1,322,-1.6789,""":"
+clean_legal_fold,ff2290f0,4,323,0,323,-1.9666," """
+clean_legal_fold,ff2290f0,4,323,1,324,0.2698,F
+clean_legal_fold,ff2290f0,4,323,2,325,-0.8420,OLD
+clean_legal_fold,7bb97155,4,313,-300,13,0.2615,-by
+clean_legal_fold,7bb97155,4,313,-200,113,-0.8089, so
+clean_legal_fold,7bb97155,4,313,-100,213,0.5357, 
+clean_legal_fold,7bb97155,4,313,-50,263,0.7715, check
+clean_legal_fold,7bb97155,4,313,-20,293,0.2481, draw
+clean_legal_fold,7bb97155,4,313,-10,303,-0.0754, avoid
+clean_legal_fold,7bb97155,4,313,-5,308,-0.7751,JSON
+clean_legal_fold,7bb97155,4,313,-2,311,-1.4270,action
+clean_legal_fold,7bb97155,4,313,-1,312,-1.6818,""":"
+clean_legal_fold,7bb97155,4,313,0,313,-2.0018," """
+clean_legal_fold,7bb97155,4,313,1,314,0.2436,F
+clean_legal_fold,7bb97155,4,313,2,315,-0.8642,OLD
+clean_legal_fold,47193a37,4,322,-300,22,0.0886, write
+clean_legal_fold,47193a37,4,322,-200,122,-1.2465,""":"
+clean_legal_fold,47193a37,4,322,-100,222,-0.0883,Choose
+clean_legal_fold,47193a37,4,322,-50,272,0.1154, not
+clean_legal_fold,47193a37,4,322,-20,302,-0.1266, potential
+clean_legal_fold,47193a37,4,322,-10,312,-1.0522, is
+clean_legal_fold,47193a37,4,322,-5,317,-0.7756,JSON
+clean_legal_fold,47193a37,4,322,-2,320,-1.4887,action
+clean_legal_fold,47193a37,4,322,-1,321,-1.8218,""":"
+clean_legal_fold,47193a37,4,322,0,322,-1.9947," """
+clean_legal_fold,47193a37,4,322,1,323,0.2657,F
+clean_legal_fold,47193a37,4,322,2,324,-0.8494,OLD
+clean_legal_fold,2f52fd5d,4,312,-300,12,0.2923, step
+clean_legal_fold,2f52fd5d,4,312,-200,112,-0.8836,","
+clean_legal_fold,2f52fd5d,4,312,-100,212,0.5445, You
+clean_legal_fold,2f52fd5d,4,312,-50,262,0.4897, and
+clean_legal_fold,2f52fd5d,4,312,-20,292,0.2450, draw
+clean_legal_fold,2f52fd5d,4,312,-10,302,-0.0797, avoid
+clean_legal_fold,2f52fd5d,4,312,-5,307,-0.7725,JSON
+clean_legal_fold,2f52fd5d,4,312,-2,310,-1.4332,action
+clean_legal_fold,2f52fd5d,4,312,-1,311,-1.6936,""":"
+clean_legal_fold,2f52fd5d,4,312,0,312,-1.9971," """
+clean_legal_fold,2f52fd5d,4,312,1,313,0.2480,F
+clean_legal_fold,2f52fd5d,4,312,2,314,-0.8662,OLD
+clean_legal_fold,7a9da27b,8,340,-300,40,0.1482, JSON
+clean_legal_fold,7a9da27b,8,340,-200,140,-0.0801,5
+clean_legal_fold,7a9da27b,8,340,-100,240,0.5664, BET
+clean_legal_fold,7a9da27b,8,340,-50,290,0.6116, turn
+clean_legal_fold,7a9da27b,8,340,-20,320,-0.0649, 
+clean_legal_fold,7a9da27b,8,340,-10,330,-0.0544, avoid
+clean_legal_fold,7a9da27b,8,340,-5,335,-0.7556,JSON
+clean_legal_fold,7a9da27b,8,340,-2,338,-1.4199,action
+clean_legal_fold,7a9da27b,8,340,-1,339,-1.7326,""":"
+clean_legal_fold,7a9da27b,8,340,0,340,-1.7485," """
+clean_legal_fold,7a9da27b,8,340,1,341,0.1791,F
+clean_legal_fold,7a9da27b,8,340,2,342,-0.8253,OLD
+clean_legal_fold,115e352c,4,324,-300,24,0.1717,AS
+clean_legal_fold,115e352c,4,324,-200,124,0.2309,F
+clean_legal_fold,115e352c,4,324,-100,224,0.3914,2
+clean_legal_fold,115e352c,4,324,-50,274,0.4819, board
+clean_legal_fold,115e352c,4,324,-20,304,-0.1323, potential
+clean_legal_fold,115e352c,4,324,-10,314,-1.0737, is
+clean_legal_fold,115e352c,4,324,-5,319,-0.7769,JSON
+clean_legal_fold,115e352c,4,324,-2,322,-1.5133,action
+clean_legal_fold,115e352c,4,324,-1,323,-1.8509,""":"
+clean_legal_fold,115e352c,4,324,0,324,-2.0141," """
+clean_legal_fold,115e352c,4,324,1,325,0.2661,F
+clean_legal_fold,115e352c,4,324,2,326,-0.8428,OLD
+clean_legal_fold,cfefb1f7,4,335,-300,35,0.1875,4
+clean_legal_fold,cfefb1f7,4,335,-200,135,0.1461,:
+clean_legal_fold,cfefb1f7,4,335,-100,235,-0.2205, as
+clean_legal_fold,cfefb1f7,4,335,-50,285,0.3253,6
+clean_legal_fold,cfefb1f7,4,335,-20,315,0.2720, strong
+clean_legal_fold,cfefb1f7,4,335,-10,325,-0.1074, avoid
+clean_legal_fold,cfefb1f7,4,335,-5,330,-0.7748,JSON
+clean_legal_fold,cfefb1f7,4,335,-2,333,-1.4777,action
+clean_legal_fold,cfefb1f7,4,335,-1,334,-1.7687,""":"
+clean_legal_fold,cfefb1f7,4,335,0,335,-2.0052," """
+clean_legal_fold,cfefb1f7,4,335,1,336,0.2969,F
+clean_legal_fold,cfefb1f7,4,335,2,337,-0.8609,OLD
+clean_legal_fold,134242bf,4,322,-300,22,0.0886, write
+clean_legal_fold,134242bf,4,322,-200,122,-1.2465,""":"
+clean_legal_fold,134242bf,4,322,-100,222,0.5107, BET
+clean_legal_fold,134242bf,4,322,-50,272,0.3087,.
+clean_legal_fold,134242bf,4,322,-20,302,0.4772, bet
+clean_legal_fold,134242bf,4,322,-10,312,-1.1657, is
+clean_legal_fold,134242bf,4,322,-5,317,-0.7500,JSON
+clean_legal_fold,134242bf,4,322,-2,320,-1.4327,action
+clean_legal_fold,134242bf,4,322,-1,321,-1.6952,""":"
+clean_legal_fold,134242bf,4,322,0,322,-1.9979," """
+clean_legal_fold,134242bf,4,322,1,323,0.2551,F
+clean_legal_fold,134242bf,4,322,2,324,-0.8752,OLD
+clean_legal_fold,0306ad6b,4,320,-300,20,0.2523,".
+"
+clean_legal_fold,0306ad6b,4,320,-200,120,-0.6058," {"""
+clean_legal_fold,0306ad6b,4,320,-100,220,0.3153,")
+
+"
+clean_legal_fold,0306ad6b,4,320,-50,270,0.5581, is
+clean_legal_fold,0306ad6b,4,320,-20,300,-0.1464, potential
+clean_legal_fold,0306ad6b,4,320,-10,310,-1.0275, is
+clean_legal_fold,0306ad6b,4,320,-5,315,-0.7790,JSON
+clean_legal_fold,0306ad6b,4,320,-2,318,-1.4845,action
+clean_legal_fold,0306ad6b,4,320,-1,319,-1.8198,""":"
+clean_legal_fold,0306ad6b,4,320,0,320,-1.9715," """
+clean_legal_fold,0306ad6b,4,320,1,321,0.2572,F
+clean_legal_fold,0306ad6b,4,320,2,322,-0.8379,OLD
+illegal_fold,b2b2ff6a,1,285,-200,85,-0.0568,ING
+illegal_fold,b2b2ff6a,1,285,-100,185,0.1020, '
+illegal_fold,b2b2ff6a,1,285,-50,235,0.3158, opponent
+illegal_fold,b2b2ff6a,1,285,-20,265,0.2513, no
+illegal_fold,b2b2ff6a,1,285,-10,275,-0.0111, avoid
+illegal_fold,b2b2ff6a,1,285,-5,280,-0.7351,JSON
+illegal_fold,b2b2ff6a,1,285,-2,283,-1.3978,action
+illegal_fold,b2b2ff6a,1,285,-1,284,-1.6348,""":"
+illegal_fold,b2b2ff6a,1,285,0,285,-1.6844," """
+illegal_fold,b2b2ff6a,1,285,1,286,0.2473,F
+illegal_fold,b2b2ff6a,1,285,2,287,-0.8061,OLD
+illegal_fold,b2b2ff6a,2,307,-300,7,10.3058,.
+illegal_fold,b2b2ff6a,2,307,-200,107,-0.1913, weak
+illegal_fold,b2b2ff6a,2,307,-100,207,0.4744,:
+illegal_fold,b2b2ff6a,2,307,-50,257,-0.1299,7
+illegal_fold,b2b2ff6a,2,307,-20,287,0.0989, pair
+illegal_fold,b2b2ff6a,2,307,-10,297,0.1223, avoid
+illegal_fold,b2b2ff6a,2,307,-5,302,-0.7358,JSON
+illegal_fold,b2b2ff6a,2,307,-2,305,-1.3568,action
+illegal_fold,b2b2ff6a,2,307,-1,306,-1.4417,""":"
+illegal_fold,b2b2ff6a,2,307,0,307,-1.3937," """
+illegal_fold,b2b2ff6a,2,307,1,308,0.2380,F
+illegal_fold,b2b2ff6a,2,307,2,309,-0.7752,OLD
+illegal_fold,276323bb,1,279,-200,79,-0.1826,"}
+
+"
+illegal_fold,276323bb,1,279,-100,179,0.9004,K
+illegal_fold,276323bb,1,279,-50,229,-0.1808,ING
+illegal_fold,276323bb,1,279,-20,259,0.2330, no
+illegal_fold,276323bb,1,279,-10,269,-0.0004, avoid
+illegal_fold,276323bb,1,279,-5,274,-0.7254,JSON
+illegal_fold,276323bb,1,279,-2,277,-1.3707,action
+illegal_fold,276323bb,1,279,-1,278,-1.4951,""":"
+illegal_fold,276323bb,1,279,0,279,-1.5724," """
+illegal_fold,276323bb,1,279,1,280,0.2689,F
+illegal_fold,276323bb,1,279,2,281,-0.8246,OLD
+illegal_fold,276323bb,2,283,-200,83,0.0835,AS
+illegal_fold,276323bb,2,283,-100,183,0.7443,_OR
+illegal_fold,276323bb,2,283,-50,233,-0.1000,[/INST]
+illegal_fold,276323bb,2,283,-20,263,-0.0315, hand
+illegal_fold,276323bb,2,283,-10,273,-1.1635, is
+illegal_fold,276323bb,2,283,-5,278,-0.7714,JSON
+illegal_fold,276323bb,2,283,-2,281,-1.3620,action
+illegal_fold,276323bb,2,283,-1,282,-1.6605,""":"
+illegal_fold,276323bb,2,283,0,283,-1.4689," """
+illegal_fold,276323bb,2,283,1,284,0.1632,F
+illegal_fold,276323bb,2,283,2,285,-0.8574,OLD
+illegal_fold,a4f238cd,2,290,-200,90,0.2930, pre
+illegal_fold,a4f238cd,2,290,-100,190,0.3162,_
+illegal_fold,a4f238cd,2,290,-50,240,0.3830, board
+illegal_fold,a4f238cd,2,290,-20,270,0.0928, not
+illegal_fold,a4f238cd,2,290,-10,280,-0.9013, is
+illegal_fold,a4f238cd,2,290,-5,285,-0.7589,JSON
+illegal_fold,a4f238cd,2,290,-2,288,-1.2995,action
+illegal_fold,a4f238cd,2,290,-1,289,-1.4185,""":"
+illegal_fold,a4f238cd,2,290,0,290,-1.3121," """
+illegal_fold,a4f238cd,2,290,1,291,0.2552,F
+illegal_fold,a4f238cd,2,290,2,292,-0.7996,OLD
+illegal_fold,6f403582,1,285,-200,85,-0.0568,ING
+illegal_fold,6f403582,1,285,-100,185,0.2219,B
+illegal_fold,6f403582,1,285,-50,235,0.2305, called
+illegal_fold,6f403582,1,285,-20,265,0.3809, draw
+illegal_fold,6f403582,1,285,-10,275,-0.1029, avoid
+illegal_fold,6f403582,1,285,-5,280,-0.7655,JSON
+illegal_fold,6f403582,1,285,-2,283,-1.3319,action
+illegal_fold,6f403582,1,285,-1,284,-1.3738,""":"
+illegal_fold,6f403582,1,285,0,285,-1.4561," """
+illegal_fold,6f403582,1,285,1,286,0.2312,F
+illegal_fold,6f403582,1,285,2,287,-0.8218,OLD
+illegal_fold,6f403582,2,276,-200,76,0.2086,I
+illegal_fold,6f403582,2,276,-100,176,0.2071, Legal
+illegal_fold,6f403582,2,276,-50,226,-0.1686," """
+illegal_fold,6f403582,2,276,-20,256,0.1422, have
+illegal_fold,6f403582,2,276,-10,266,-0.3694,'s
+illegal_fold,6f403582,2,276,-5,271,-0.7555,JSON
+illegal_fold,6f403582,2,276,-2,274,-1.4175,action
+illegal_fold,6f403582,2,276,-1,275,-1.6606,""":"
+illegal_fold,6f403582,2,276,0,276,-1.7402," """
+illegal_fold,6f403582,2,276,1,277,0.2608,F
+illegal_fold,6f403582,2,276,2,278,-0.8089,OLD
+illegal_fold,49af524b,5,324,-300,24,0.1717,AS
+illegal_fold,49af524b,5,324,-200,124,0.2309,F
+illegal_fold,49af524b,5,324,-100,224,-0.0901,.
+illegal_fold,49af524b,5,324,-50,274,-0.0355, a
+illegal_fold,49af524b,5,324,-20,304,0.2727, for
+illegal_fold,49af524b,5,324,-10,314,-0.0897,'s
+illegal_fold,49af524b,5,324,-5,319,-0.7326,JSON
+illegal_fold,49af524b,5,324,-2,322,-1.3926,action
+illegal_fold,49af524b,5,324,-1,323,-1.6134,""":"
+illegal_fold,49af524b,5,324,0,324,-1.5793," """
+illegal_fold,49af524b,5,324,1,325,0.2831,F
+illegal_fold,49af524b,5,324,2,326,-0.7830,OLD
+illegal_fold,49af524b,7,315,-300,15,0.1921,","
+illegal_fold,49af524b,7,315,-200,115,-1.0126, is
+illegal_fold,49af524b,7,315,-100,215,0.2909,2
+illegal_fold,49af524b,7,315,-50,265,0.3262,","
+illegal_fold,49af524b,7,315,-20,295,0.0695,","
+illegal_fold,49af524b,7,315,-10,305,-1.1598, is
+illegal_fold,49af524b,7,315,-5,310,-0.7454,JSON
+illegal_fold,49af524b,7,315,-2,313,-1.3138,action
+illegal_fold,49af524b,7,315,-1,314,-1.4642,""":"
+illegal_fold,49af524b,7,315,0,315,-1.5401," """
+illegal_fold,49af524b,7,315,1,316,0.2496,F
+illegal_fold,49af524b,7,315,2,317,-0.8195,OLD
+illegal_fold,eedb32c6,1,280,-200,80,-0.0172,Example
+illegal_fold,eedb32c6,1,280,-100,180,0.7281,_OR
+illegal_fold,eedb32c6,1,280,-50,230,0.3032,:
+illegal_fold,eedb32c6,1,280,-20,260,0.1617, no
+illegal_fold,eedb32c6,1,280,-10,270,0.0333, avoid
+illegal_fold,eedb32c6,1,280,-5,275,-0.7226,JSON
+illegal_fold,eedb32c6,1,280,-2,278,-1.3858,action
+illegal_fold,eedb32c6,1,280,-1,279,-1.4985,""":"
+illegal_fold,eedb32c6,1,280,0,280,-1.5456," """
+illegal_fold,eedb32c6,1,280,1,281,0.2823,F
+illegal_fold,eedb32c6,1,280,2,282,-0.8102,OLD
+illegal_fold,eedb32c6,2,300,-300,0,6.7505,<s>
+illegal_fold,eedb32c6,2,300,-200,100,0.2513, a
+illegal_fold,eedb32c6,2,300,-100,200,0.3871, (
+illegal_fold,eedb32c6,2,300,-50,250,0.4913, have
+illegal_fold,eedb32c6,2,300,-20,280,0.4951, board
+illegal_fold,eedb32c6,2,300,-10,290,-0.4437, action
+illegal_fold,eedb32c6,2,300,-5,295,-0.7503,JSON
+illegal_fold,eedb32c6,2,300,-2,298,-1.3371,action
+illegal_fold,eedb32c6,2,300,-1,299,-1.4757,""":"
+illegal_fold,eedb32c6,2,300,0,300,-1.6188," """
+illegal_fold,eedb32c6,2,300,1,301,0.2517,F
+illegal_fold,eedb32c6,2,300,2,302,-0.7916,OLD
+illegal_fold,f3f391d6,1,279,-200,79,-0.1826,"}
+
+"
+illegal_fold,f3f391d6,1,279,-100,179,0.8988,K
+illegal_fold,f3f391d6,1,279,-50,229,-0.1853,ING
+illegal_fold,f3f391d6,1,279,-20,259,0.2084, little
+illegal_fold,f3f391d6,1,279,-10,269,-0.0336, avoid
+illegal_fold,f3f391d6,1,279,-5,274,-0.7293,JSON
+illegal_fold,f3f391d6,1,279,-2,277,-1.3748,action
+illegal_fold,f3f391d6,1,279,-1,278,-1.5023,""":"
+illegal_fold,f3f391d6,1,279,0,279,-1.5492," """
+illegal_fold,f3f391d6,1,279,1,280,0.2599,F
+illegal_fold,f3f391d6,1,279,2,281,-0.8237,OLD
+illegal_fold,f3f391d6,2,301,-300,1,0.5874,[INST]
+illegal_fold,f3f391d6,2,301,-200,101,0.1669, strong
+illegal_fold,f3f391d6,2,301,-100,201,0.4435,")
+"
+illegal_fold,f3f391d6,2,301,-50,251,0.2703,.
+illegal_fold,f3f391d6,2,301,-20,281,0.0356,suit
+illegal_fold,f3f391d6,2,301,-10,291,-0.3082, action
+illegal_fold,f3f391d6,2,301,-5,296,-0.7458,JSON
+illegal_fold,f3f391d6,2,301,-2,299,-1.3178,action
+illegal_fold,f3f391d6,2,301,-1,300,-1.4732,""":"
+illegal_fold,f3f391d6,2,301,0,301,-1.5788," """
+illegal_fold,f3f391d6,2,301,1,302,0.2664,F
+illegal_fold,f3f391d6,2,301,2,303,-0.7860,OLD
+illegal_fold,454e22e9,1,283,-200,83,0.0835,AS
+illegal_fold,454e22e9,1,283,-100,183,0.1592,"',"
+illegal_fold,454e22e9,1,283,-50,233,0.0781, have
+illegal_fold,454e22e9,1,283,-20,263,0.2206, no
+illegal_fold,454e22e9,1,283,-10,273,-0.5271,'s
+illegal_fold,454e22e9,1,283,-5,278,-0.7401,JSON
+illegal_fold,454e22e9,1,283,-2,281,-1.4150,action
+illegal_fold,454e22e9,1,283,-1,282,-1.6547,""":"
+illegal_fold,454e22e9,1,283,0,283,-1.6773," """
+illegal_fold,454e22e9,1,283,1,284,0.2399,F
+illegal_fold,454e22e9,1,283,2,285,-0.7984,OLD
+illegal_fold,454e22e9,2,280,-200,80,-0.0172,Example
+illegal_fold,454e22e9,2,280,-100,180,0.4837,CH
+illegal_fold,454e22e9,2,280,-50,230,0.6418,O
+illegal_fold,454e22e9,2,280,-20,260,-0.0893, hand
+illegal_fold,454e22e9,2,280,-10,270,-0.6513,'s
+illegal_fold,454e22e9,2,280,-5,275,-0.7431,JSON
+illegal_fold,454e22e9,2,280,-2,278,-1.3733,action
+illegal_fold,454e22e9,2,280,-1,279,-1.5140,""":"
+illegal_fold,454e22e9,2,280,0,280,-1.6229," """
+illegal_fold,454e22e9,2,280,1,281,0.2628,F
+illegal_fold,454e22e9,2,280,2,282,-0.8166,OLD
+illegal_fold,3572764f,1,279,-200,79,-0.1826,"}
+
+"
+illegal_fold,3572764f,1,279,-100,179,0.9116,K
+illegal_fold,3572764f,1,279,-50,229,-0.1936,ING
+illegal_fold,3572764f,1,279,-20,259,0.3666, draw
+illegal_fold,3572764f,1,279,-10,269,-0.1111, avoid
+illegal_fold,3572764f,1,279,-5,274,-0.7675,JSON
+illegal_fold,3572764f,1,279,-2,277,-1.3319,action
+illegal_fold,3572764f,1,279,-1,278,-1.4719,""":"
+illegal_fold,3572764f,1,279,0,279,-1.4919," """
+illegal_fold,3572764f,1,279,1,280,0.2373,F
+illegal_fold,3572764f,1,279,2,281,-0.8477,OLD
+illegal_fold,3572764f,2,292,-200,92,0.2216,op
+illegal_fold,3572764f,2,292,-100,192,0.1719,I
+illegal_fold,3572764f,2,292,-50,242,0.8305, your
+illegal_fold,3572764f,2,292,-20,272,0.2893, and
+illegal_fold,3572764f,2,292,-10,282,-0.6629,'s
+illegal_fold,3572764f,2,292,-5,287,-0.7483,JSON
+illegal_fold,3572764f,2,292,-2,290,-1.4317,action
+illegal_fold,3572764f,2,292,-1,291,-1.6009,""":"
+illegal_fold,3572764f,2,292,0,292,-1.6756," """
+illegal_fold,3572764f,2,292,1,293,0.2732,F
+illegal_fold,3572764f,2,292,2,294,-0.8032,OLD
+illegal_fold,751736f7,1,283,-200,83,0.0835,AS
+illegal_fold,751736f7,1,283,-100,183,0.2020,B
+illegal_fold,751736f7,1,283,-50,233,0.2309, called
+illegal_fold,751736f7,1,283,-20,263,0.5690, a
+illegal_fold,751736f7,1,283,-10,273,-0.0767, avoid
+illegal_fold,751736f7,1,283,-5,278,-0.7701,JSON
+illegal_fold,751736f7,1,283,-2,281,-1.3082,action
+illegal_fold,751736f7,1,283,-1,282,-1.4035,""":"
+illegal_fold,751736f7,1,283,0,283,-1.3065," """
+illegal_fold,751736f7,1,283,1,284,0.2641,F
+illegal_fold,751736f7,1,283,2,285,-0.8010,OLD
+illegal_fold,751736f7,2,289,-200,89,0.3765, raised
+illegal_fold,751736f7,2,289,-100,189,0.2145,I
+illegal_fold,751736f7,2,289,-50,239,0.4321, a
+illegal_fold,751736f7,2,289,-20,269,0.0131,","
+illegal_fold,751736f7,2,289,-10,279,-0.4058, action
+illegal_fold,751736f7,2,289,-5,284,-0.7624,JSON
+illegal_fold,751736f7,2,289,-2,287,-1.3645,action
+illegal_fold,751736f7,2,289,-1,288,-1.5216,""":"
+illegal_fold,751736f7,2,289,0,289,-1.6939," """
+illegal_fold,751736f7,2,289,1,290,0.2562,F
+illegal_fold,751736f7,2,289,2,291,-0.8057,OLD
+illegal_fold,d8ee7de6,1,269,-200,69,-0.0416, |
+illegal_fold,d8ee7de6,1,269,-100,169,0.1836, 
+illegal_fold,d8ee7de6,1,269,-50,219,-0.2333,Y
+illegal_fold,d8ee7de6,1,269,-20,249,0.0277, being
+illegal_fold,d8ee7de6,1,269,-10,259,-0.0029, avoid
+illegal_fold,d8ee7de6,1,269,-5,264,-0.7411,JSON
+illegal_fold,d8ee7de6,1,269,-2,267,-1.3679,action
+illegal_fold,d8ee7de6,1,269,-1,268,-1.4888,""":"
+illegal_fold,d8ee7de6,1,269,0,269,-1.4767," """
+illegal_fold,d8ee7de6,1,269,1,270,0.2358,F
+illegal_fold,d8ee7de6,1,269,2,271,-0.8054,OLD
+illegal_fold,2181c7ce,1,271,-200,71,0.2536,B
+illegal_fold,2181c7ce,1,271,-100,171,0.4579,"
+"
+illegal_fold,2181c7ce,1,271,-50,221,0.2392,_CH
+illegal_fold,2181c7ce,1,271,-20,251,0.0438, weak
+illegal_fold,2181c7ce,1,271,-10,261,0.0111, avoid
+illegal_fold,2181c7ce,1,271,-5,266,-0.7424,JSON
+illegal_fold,2181c7ce,1,271,-2,269,-1.3403,action
+illegal_fold,2181c7ce,1,271,-1,270,-1.4766,""":"
+illegal_fold,2181c7ce,1,271,0,271,-1.5509," """
+illegal_fold,2181c7ce,1,271,1,272,0.2132,F
+illegal_fold,2181c7ce,1,271,2,273,-0.7988,OLD
+illegal_fold,592aa918,1,283,-200,83,0.0835,AS
+illegal_fold,592aa918,1,283,-100,183,0.3128,_CALL
+illegal_fold,592aa918,1,283,-50,233,0.4327, Since
+illegal_fold,592aa918,1,283,-20,263,0.3470, draw
+illegal_fold,592aa918,1,283,-10,273,-0.1173, avoid
+illegal_fold,592aa918,1,283,-5,278,-0.7670,JSON
+illegal_fold,592aa918,1,283,-2,281,-1.3286,action
+illegal_fold,592aa918,1,283,-1,282,-1.5048,""":"
+illegal_fold,592aa918,1,283,0,283,-1.4911," """
+illegal_fold,592aa918,1,283,1,284,0.2250,F
+illegal_fold,592aa918,1,283,2,285,-0.8320,OLD
+illegal_fold,592aa918,2,329,-300,29,0.0586, by
+illegal_fold,592aa918,2,329,-200,129,0.1684, poker
+illegal_fold,592aa918,2,329,-100,229,0.3487,_CH
+illegal_fold,592aa918,2,329,-50,279,0.3521,.
+illegal_fold,592aa918,2,329,-20,309,0.3911, straight
+illegal_fold,592aa918,2,329,-10,319,-0.0903, avoid
+illegal_fold,592aa918,2,329,-5,324,-0.7474,JSON
+illegal_fold,592aa918,2,329,-2,327,-1.3450,action
+illegal_fold,592aa918,2,329,-1,328,-1.5157,""":"
+illegal_fold,592aa918,2,329,0,329,-1.4763," """
+illegal_fold,592aa918,2,329,1,330,-0.4049,F
+illegal_fold,592aa918,2,329,2,331,-0.7923,OLD
+illegal_fold,9529648d,1,278,-200,78,0.2264,""""
+illegal_fold,9529648d,1,278,-100,178,0.2444,EC
+illegal_fold,9529648d,1,278,-50,228,0.2245,ON
+illegal_fold,9529648d,1,278,-20,258,0.1974, no
+illegal_fold,9529648d,1,278,-10,268,-0.0552, avoid
+illegal_fold,9529648d,1,278,-5,273,-0.7350,JSON
+illegal_fold,9529648d,1,278,-2,276,-1.3736,action
+illegal_fold,9529648d,1,278,-1,277,-1.5881,""":"
+illegal_fold,9529648d,1,278,0,278,-1.6714," """
+illegal_fold,9529648d,1,278,1,279,0.2529,F
+illegal_fold,9529648d,1,278,2,280,-0.8186,OLD
+illegal_fold,9529648d,2,311,-300,11,0.3585, situation
+illegal_fold,9529648d,2,311,-200,111,0.2376, potential
+illegal_fold,9529648d,2,311,-100,211,0.5555, your
+illegal_fold,9529648d,2,311,-50,261,0.1508, of
+illegal_fold,9529648d,2,311,-20,291,0.1436, you
+illegal_fold,9529648d,2,311,-10,301,-0.2427, is
+illegal_fold,9529648d,2,311,-5,306,-0.6747,JSON
+illegal_fold,9529648d,2,311,-2,309,-1.2030,action
+illegal_fold,9529648d,2,311,-1,310,-0.7745,""":"
+illegal_fold,9529648d,2,311,0,311,-0.6101," """
+illegal_fold,9529648d,2,311,1,312,0.2094,F
+illegal_fold,9529648d,2,311,2,313,-0.8571,OLD
+illegal_fold,102d86aa,1,269,-200,69,-0.0416, |
+illegal_fold,102d86aa,1,269,-100,169,0.1744, 
+illegal_fold,102d86aa,1,269,-50,219,-0.2352,Y
+illegal_fold,102d86aa,1,269,-20,249,-0.0029, being
+illegal_fold,102d86aa,1,269,-10,259,-0.0177, avoid
+illegal_fold,102d86aa,1,269,-5,264,-0.7430,JSON
+illegal_fold,102d86aa,1,269,-2,267,-1.3720,action
+illegal_fold,102d86aa,1,269,-1,268,-1.5424,""":"
+illegal_fold,102d86aa,1,269,0,269,-1.5583," """
+illegal_fold,102d86aa,1,269,1,270,0.2331,F
+illegal_fold,102d86aa,1,269,2,271,-0.8090,OLD
+illegal_fold,102d86aa,2,305,-300,5,0.2191, poker
+illegal_fold,102d86aa,2,305,-200,105,0.1892, hand
+illegal_fold,102d86aa,2,305,-100,205,0.4649,:
+illegal_fold,102d86aa,2,305,-50,255,0.3632, likely
+illegal_fold,102d86aa,2,305,-20,285,0.3398, little
+illegal_fold,102d86aa,2,305,-10,295,-0.5111, action
+illegal_fold,102d86aa,2,305,-5,300,-0.7519,JSON
+illegal_fold,102d86aa,2,305,-2,303,-1.3449,action
+illegal_fold,102d86aa,2,305,-1,304,-1.4714,""":"
+illegal_fold,102d86aa,2,305,0,305,-1.6335," """
+illegal_fold,102d86aa,2,305,1,306,-0.0741,F
+illegal_fold,102d86aa,2,305,2,307,-0.7911,OLD
+illegal_fold,43e31fb5,1,290,-200,90,0.2930, pre
+illegal_fold,43e31fb5,1,290,-100,190,0.2401,SE
+illegal_fold,43e31fb5,1,290,-50,240,0.4659, they
+illegal_fold,43e31fb5,1,290,-20,270,0.0922, potential
+illegal_fold,43e31fb5,1,290,-10,280,0.0177, avoid
+illegal_fold,43e31fb5,1,290,-5,285,-0.7511,JSON
+illegal_fold,43e31fb5,1,290,-2,288,-1.4060,action
+illegal_fold,43e31fb5,1,290,-1,289,-1.5422,""":"
+illegal_fold,43e31fb5,1,290,0,290,-1.6202," """
+illegal_fold,43e31fb5,1,290,1,291,0.2822,F
+illegal_fold,43e31fb5,1,290,2,292,-0.8014,OLD
+illegal_fold,43e31fb5,2,310,-300,10,0.3581, the
+illegal_fold,43e31fb5,2,310,-200,110,0.3791, draw
+illegal_fold,43e31fb5,2,310,-100,210,-0.1211,.
+illegal_fold,43e31fb5,2,310,-50,260,0.6199, strong
+illegal_fold,43e31fb5,2,310,-20,290,0.3440, for
+illegal_fold,43e31fb5,2,310,-10,300,-0.1159,'s
+illegal_fold,43e31fb5,2,310,-5,305,-0.7263,JSON
+illegal_fold,43e31fb5,2,310,-2,308,-1.3796,action
+illegal_fold,43e31fb5,2,310,-1,309,-1.5317,""":"
+illegal_fold,43e31fb5,2,310,0,310,-1.4983," """
+illegal_fold,43e31fb5,2,310,1,311,0.2996,F
+illegal_fold,43e31fb5,2,310,2,312,-0.7807,OLD
+illegal_fold,54e89359,2,299,-200,99,0.2382, suggesting
+illegal_fold,54e89359,2,299,-100,199,0.3179, Opponent
+illegal_fold,54e89359,2,299,-50,249,0.6611, which
+illegal_fold,54e89359,2,299,-20,279,0.3388, pot
+illegal_fold,54e89359,2,299,-10,289,0.0680, avoid
+illegal_fold,54e89359,2,299,-5,294,-0.7028,JSON
+illegal_fold,54e89359,2,299,-2,297,-1.2449,action
+illegal_fold,54e89359,2,299,-1,298,-0.8841,""":"
+illegal_fold,54e89359,2,299,0,299,-0.6935," """
+illegal_fold,54e89359,2,299,1,300,0.2195,F
+illegal_fold,54e89359,2,299,2,301,-0.8340,OLD
+illegal_fold,68dbd243,1,282,-200,82,-0.0137,RE
+illegal_fold,68dbd243,1,282,-100,182,0.7249,_OR
+illegal_fold,68dbd243,1,282,-50,232,0.2943,:
+illegal_fold,68dbd243,1,282,-20,262,0.2074, no
+illegal_fold,68dbd243,1,282,-10,272,-0.0098, avoid
+illegal_fold,68dbd243,1,282,-5,277,-0.7330,JSON
+illegal_fold,68dbd243,1,282,-2,280,-1.3826,action
+illegal_fold,68dbd243,1,282,-1,281,-1.5967,""":"
+illegal_fold,68dbd243,1,282,0,282,-1.6353," """
+illegal_fold,68dbd243,1,282,1,283,0.2574,F
+illegal_fold,68dbd243,1,282,2,284,-0.8238,OLD
+illegal_fold,68dbd243,2,319,-300,19,0.3027, action
+illegal_fold,68dbd243,2,319,-200,119,-0.7688,:
+illegal_fold,68dbd243,2,319,-100,219,-0.2142, action
+illegal_fold,68dbd243,2,319,-50,269,0.2228, and
+illegal_fold,68dbd243,2,319,-20,299,0.4680, the
+illegal_fold,68dbd243,2,319,-10,309,-0.3079,'s
+illegal_fold,68dbd243,2,319,-5,314,-0.7321,JSON
+illegal_fold,68dbd243,2,319,-2,317,-1.4235,action
+illegal_fold,68dbd243,2,319,-1,318,-1.5153,""":"
+illegal_fold,68dbd243,2,319,0,319,-1.4858," """
+illegal_fold,68dbd243,2,319,1,320,0.2924,F
+illegal_fold,68dbd243,2,319,2,321,-0.7906,OLD
+illegal_fold,387f112f,1,283,-200,83,0.0835,AS
+illegal_fold,387f112f,1,283,-100,183,0.3072,_CALL
+illegal_fold,387f112f,1,283,-50,233,0.4419, Since
+illegal_fold,387f112f,1,283,-20,263,0.3508, draw
+illegal_fold,387f112f,1,283,-10,273,-0.1158, avoid
+illegal_fold,387f112f,1,283,-5,278,-0.7661,JSON
+illegal_fold,387f112f,1,283,-2,281,-1.3427,action
+illegal_fold,387f112f,1,283,-1,282,-1.5065,""":"
+illegal_fold,387f112f,1,283,0,283,-1.4970," """
+illegal_fold,387f112f,1,283,1,284,0.2262,F
+illegal_fold,387f112f,1,283,2,285,-0.8326,OLD
+illegal_fold,387f112f,2,321,-300,21,0.2142,First
+illegal_fold,387f112f,2,321,-200,121,-0.6295,action
+illegal_fold,387f112f,2,321,-100,221,-0.2808, JSON
+illegal_fold,387f112f,2,321,-50,271,0.2601, and
+illegal_fold,387f112f,2,321,-20,301,0.1010,ives
+illegal_fold,387f112f,2,321,-10,311,-0.5711,'s
+illegal_fold,387f112f,2,321,-5,316,-0.7423,JSON
+illegal_fold,387f112f,2,321,-2,319,-1.4087,action
+illegal_fold,387f112f,2,321,-1,320,-1.5488,""":"
+illegal_fold,387f112f,2,321,0,321,-1.5977," """
+illegal_fold,387f112f,2,321,1,322,-0.3567,F
+illegal_fold,387f112f,2,321,2,323,-0.7820,OLD
+illegal_fold,4863ad40,1,284,-200,84,-0.0403,ON
+illegal_fold,4863ad40,1,284,-100,184,0.1542,"',"
+illegal_fold,4863ad40,1,284,-50,234,0.3384, the
+illegal_fold,4863ad40,1,284,-20,264,-0.2038, a
+illegal_fold,4863ad40,1,284,-10,274,-0.0429, avoid
+illegal_fold,4863ad40,1,284,-5,279,-0.7351,JSON
+illegal_fold,4863ad40,1,284,-2,282,-1.4013,action
+illegal_fold,4863ad40,1,284,-1,283,-1.6238,""":"
+illegal_fold,4863ad40,1,284,0,284,-1.7138," """
+illegal_fold,4863ad40,1,284,1,285,0.2592,F
+illegal_fold,4863ad40,1,284,2,286,-0.8099,OLD
+illegal_fold,4863ad40,2,306,-300,6,0.1955, player
+illegal_fold,4863ad40,2,306,-200,106,-0.1415, is
+illegal_fold,4863ad40,2,306,-100,206,0.4475, 
+illegal_fold,4863ad40,2,306,-50,256,-0.1239, 
+illegal_fold,4863ad40,2,306,-20,286,0.1821, no
+illegal_fold,4863ad40,2,306,-10,296,-0.3952,'s
+illegal_fold,4863ad40,2,306,-5,301,-0.7333,JSON
+illegal_fold,4863ad40,2,306,-2,304,-1.4039,action
+illegal_fold,4863ad40,2,306,-1,305,-1.5722,""":"
+illegal_fold,4863ad40,2,306,0,306,-1.5824," """
+illegal_fold,4863ad40,2,306,1,307,0.2651,F
+illegal_fold,4863ad40,2,306,2,308,-0.7929,OLD
+illegal_fold,c84bdcb3,1,291,-200,91,0.3930,fl
+illegal_fold,c84bdcb3,1,291,-100,191,0.1847,"']
+
+"
+illegal_fold,c84bdcb3,1,291,-50,241,0.3877, have
+illegal_fold,c84bdcb3,1,291,-20,271,0.1310, potential
+illegal_fold,c84bdcb3,1,291,-10,281,0.0113, avoid
+illegal_fold,c84bdcb3,1,291,-5,286,-0.7460,JSON
+illegal_fold,c84bdcb3,1,291,-2,289,-1.3936,action
+illegal_fold,c84bdcb3,1,291,-1,290,-1.5629,""":"
+illegal_fold,c84bdcb3,1,291,0,291,-1.6256," """
+illegal_fold,c84bdcb3,1,291,1,292,0.2770,F
+illegal_fold,c84bdcb3,1,291,2,293,-0.8034,OLD
+illegal_fold,1741f686,1,284,-200,84,-0.0403,ON
+illegal_fold,1741f686,1,284,-100,184,0.1459,"',"
+illegal_fold,1741f686,1,284,-50,234,0.3356, the
+illegal_fold,1741f686,1,284,-20,264,-0.1430, a
+illegal_fold,1741f686,1,284,-10,274,0.0045, avoid
+illegal_fold,1741f686,1,284,-5,279,-0.7311,JSON
+illegal_fold,1741f686,1,284,-2,282,-1.3814,action
+illegal_fold,1741f686,1,284,-1,283,-1.5858,""":"
+illegal_fold,1741f686,1,284,0,284,-1.6528," """
+illegal_fold,1741f686,1,284,1,285,0.2767,F
+illegal_fold,1741f686,1,284,2,286,-0.8071,OLD
+illegal_fold,1741f686,2,302,-300,2,0.1864,You
+illegal_fold,1741f686,2,302,-200,102,0.1847, hand
+illegal_fold,1741f686,2,302,-100,202,0.4237,:
+illegal_fold,1741f686,2,302,-50,252,0.7136, suggests
+illegal_fold,1741f686,2,302,-20,282,0.5682, board
+illegal_fold,1741f686,2,302,-10,292,-0.4307, action
+illegal_fold,1741f686,2,302,-5,297,-0.7544,JSON
+illegal_fold,1741f686,2,302,-2,300,-1.3345,action
+illegal_fold,1741f686,2,302,-1,301,-1.4099,""":"
+illegal_fold,1741f686,2,302,0,302,-1.5765," """
+illegal_fold,1741f686,2,302,1,303,0.2125,F
+illegal_fold,1741f686,2,302,2,304,-0.7827,OLD
+illegal_fold,b3c594b5,1,277,-200,77,0.2016,SE
+illegal_fold,b3c594b5,1,277,-100,177,0.8983,K
+illegal_fold,b3c594b5,1,277,-50,227,-0.1847,ING
+illegal_fold,b3c594b5,1,277,-20,257,0.3340, draw
+illegal_fold,b3c594b5,1,277,-10,267,-0.0824, avoid
+illegal_fold,b3c594b5,1,277,-5,272,-0.7726,JSON
+illegal_fold,b3c594b5,1,277,-2,275,-1.3022,action
+illegal_fold,b3c594b5,1,277,-1,276,-1.3353,""":"
+illegal_fold,b3c594b5,1,277,0,277,-1.3662," """
+illegal_fold,b3c594b5,1,277,1,278,0.2509,F
+illegal_fold,b3c594b5,1,277,2,279,-0.8399,OLD
+illegal_fold,d966fa41,1,284,-200,84,-0.0403,ON
+illegal_fold,d966fa41,1,284,-100,184,0.1837,B
+illegal_fold,d966fa41,1,284,-50,234,0.2280, called
+illegal_fold,d966fa41,1,284,-20,264,0.3338, draw
+illegal_fold,d966fa41,1,284,-10,274,-0.1016, avoid
+illegal_fold,d966fa41,1,284,-5,279,-0.7773,JSON
+illegal_fold,d966fa41,1,284,-2,282,-1.3348,action
+illegal_fold,d966fa41,1,284,-1,283,-1.3735,""":"
+illegal_fold,d966fa41,1,284,0,284,-1.4501," """
+illegal_fold,d966fa41,1,284,1,285,0.2435,F
+illegal_fold,d966fa41,1,284,2,286,-0.8192,OLD
+illegal_fold,3d657182,1,285,-200,85,-0.0568,ING
+illegal_fold,3d657182,1,285,-100,185,0.1020, '
+illegal_fold,3d657182,1,285,-50,235,0.3158, opponent
+illegal_fold,3d657182,1,285,-20,265,0.2513, no
+illegal_fold,3d657182,1,285,-10,275,-0.0111, avoid
+illegal_fold,3d657182,1,285,-5,280,-0.7351,JSON
+illegal_fold,3d657182,1,285,-2,283,-1.3978,action
+illegal_fold,3d657182,1,285,-1,284,-1.6348,""":"
+illegal_fold,3d657182,1,285,0,285,-1.6844," """
+illegal_fold,3d657182,1,285,1,286,0.2473,F
+illegal_fold,3d657182,1,285,2,287,-0.8061,OLD
+illegal_fold,3d657182,2,295,-200,95,0.3938, the
+illegal_fold,3d657182,2,295,-100,195,0.4418,Recent
+illegal_fold,3d657182,2,295,-50,245,0.5545, the
+illegal_fold,3d657182,2,295,-20,275,0.4156, and
+illegal_fold,3d657182,2,295,-10,285,-0.3506,'s
+illegal_fold,3d657182,2,295,-5,290,-0.7469,JSON
+illegal_fold,3d657182,2,295,-2,293,-1.4154,action
+illegal_fold,3d657182,2,295,-1,294,-1.6342,""":"
+illegal_fold,3d657182,2,295,0,295,-1.6136," """
+illegal_fold,3d657182,2,295,1,296,0.2749,F
+illegal_fold,3d657182,2,295,2,297,-0.7889,OLD
+illegal_fold,5db85f5e,1,283,-200,83,0.0835,AS
+illegal_fold,5db85f5e,1,283,-100,183,0.3179,_CALL
+illegal_fold,5db85f5e,1,283,-50,233,0.4362, Since
+illegal_fold,5db85f5e,1,283,-20,263,-0.1487, a
+illegal_fold,5db85f5e,1,283,-10,273,0.0071, avoid
+illegal_fold,5db85f5e,1,283,-5,278,-0.7291,JSON
+illegal_fold,5db85f5e,1,283,-2,281,-1.3733,action
+illegal_fold,5db85f5e,1,283,-1,282,-1.5657,""":"
+illegal_fold,5db85f5e,1,283,0,283,-1.6358," """
+illegal_fold,5db85f5e,1,283,1,284,0.2757,F
+illegal_fold,5db85f5e,1,283,2,285,-0.8123,OLD
+illegal_fold,6a8bb293,1,273,-200,73,0.3014,_OR
+illegal_fold,6a8bb293,1,273,-100,173,0.2760,-
+illegal_fold,6a8bb293,1,273,-50,223,0.3026,O
+illegal_fold,6a8bb293,1,273,-20,253,0.0653, pair
+illegal_fold,6a8bb293,1,273,-10,263,-0.0209, avoid
+illegal_fold,6a8bb293,1,273,-5,268,-0.7501,JSON
+illegal_fold,6a8bb293,1,273,-2,271,-1.3479,action
+illegal_fold,6a8bb293,1,273,-1,272,-1.4872,""":"
+illegal_fold,6a8bb293,1,273,0,273,-1.5506," """
+illegal_fold,6a8bb293,1,273,1,274,0.2103,F
+illegal_fold,6a8bb293,1,273,2,275,-0.8024,OLD
+illegal_fold,6a8bb293,2,302,-300,2,0.1864,You
+illegal_fold,6a8bb293,2,302,-200,102,0.1847, hand
+illegal_fold,6a8bb293,2,302,-100,202,0.4177, CALL
+illegal_fold,6a8bb293,2,302,-50,252,0.3513, is
+illegal_fold,6a8bb293,2,302,-20,282,0.5273, call
+illegal_fold,6a8bb293,2,302,-10,292,-0.6203,'s
+illegal_fold,6a8bb293,2,302,-5,297,-0.7342,JSON
+illegal_fold,6a8bb293,2,302,-2,300,-1.3919,action
+illegal_fold,6a8bb293,2,302,-1,301,-1.5529,""":"
+illegal_fold,6a8bb293,2,302,0,302,-1.5211," """
+illegal_fold,6a8bb293,2,302,1,303,0.2687,F
+illegal_fold,6a8bb293,2,302,2,304,-0.8003,OLD
+illegal_fold,c1e6d25f,1,279,-200,79,-0.1826,"}
+
+"
+illegal_fold,c1e6d25f,1,279,-100,179,0.9018,K
+illegal_fold,c1e6d25f,1,279,-50,229,-0.1802,ING
+illegal_fold,c1e6d25f,1,279,-20,259,0.3505, draw
+illegal_fold,c1e6d25f,1,279,-10,269,-0.1008, avoid
+illegal_fold,c1e6d25f,1,279,-5,274,-0.7658,JSON
+illegal_fold,c1e6d25f,1,279,-2,277,-1.3336,action
+illegal_fold,c1e6d25f,1,279,-1,278,-1.4947,""":"
+illegal_fold,c1e6d25f,1,279,0,279,-1.4790," """
+illegal_fold,c1e6d25f,1,279,1,280,0.2302,F
+illegal_fold,c1e6d25f,1,279,2,281,-0.8397,OLD
+illegal_fold,c1e6d25f,2,292,-200,92,0.2216,op
+illegal_fold,c1e6d25f,2,292,-100,192,0.2071,"']
+
+"
+illegal_fold,c1e6d25f,2,292,-50,242,0.4454, on
+illegal_fold,c1e6d25f,2,292,-20,272,-0.0281,","
+illegal_fold,c1e6d25f,2,292,-10,282,-0.0262, avoid
+illegal_fold,c1e6d25f,2,292,-5,287,-0.7508,JSON
+illegal_fold,c1e6d25f,2,292,-2,290,-1.4337,action
+illegal_fold,c1e6d25f,2,292,-1,291,-1.4132,""":"
+illegal_fold,c1e6d25f,2,292,0,292,-1.4205," """
+illegal_fold,c1e6d25f,2,292,1,293,0.2021,F
+illegal_fold,c1e6d25f,2,292,2,294,-0.8344,OLD
+illegal_fold,633d67b8,1,291,-200,91,0.3930,fl
+illegal_fold,633d67b8,1,291,-100,191,0.1929,"']
+
+"
+illegal_fold,633d67b8,1,291,-50,241,0.4004, have
+illegal_fold,633d67b8,1,291,-20,271,0.5635, a
+illegal_fold,633d67b8,1,291,-10,281,-0.0568, avoid
+illegal_fold,633d67b8,1,291,-5,286,-0.7700,JSON
+illegal_fold,633d67b8,1,291,-2,289,-1.3400,action
+illegal_fold,633d67b8,1,291,-1,290,-1.4543,""":"
+illegal_fold,633d67b8,1,291,0,291,-1.3707," """
+illegal_fold,633d67b8,1,291,1,292,0.2558,F
+illegal_fold,633d67b8,1,291,2,293,-0.8023,OLD
+illegal_fold,633d67b8,2,301,-300,1,0.5874,[INST]
+illegal_fold,633d67b8,2,301,-200,101,0.1669, strong
+illegal_fold,633d67b8,2,301,-100,201,0.3932, (
+illegal_fold,633d67b8,2,301,-50,251,0.5230, have
+illegal_fold,633d67b8,2,301,-20,281,0.3008, small
+illegal_fold,633d67b8,2,301,-10,291,0.1027, with
+illegal_fold,633d67b8,2,301,-5,296,-0.6914,JSON
+illegal_fold,633d67b8,2,301,-2,299,-1.1981,action
+illegal_fold,633d67b8,2,301,-1,300,-0.9192,""":"
+illegal_fold,633d67b8,2,301,0,301,-0.7502," """
+illegal_fold,633d67b8,2,301,1,302,0.2496,F
+illegal_fold,633d67b8,2,301,2,303,-0.8585,OLD

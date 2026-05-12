@@ -69,20 +69,21 @@ PCE_SUMMARY_CSV="$OUT_DIR/pce_check_summary.csv"
 UC_CSV="$OUT_DIR/uc_check.csv"
 SUMMARY="$OUT_DIR/SUMMARY.md"
 
-# NOTE: compute_pce_distribution.py expects two output flags (records and
-# summary). compute_update_coherence.py expects --output. Don't use the
-# bare --output flag with PCE — it's ambiguous against --output-records
-# and --output-summary.
+# NOTE: both tools take their input file(s) as a POSITIONAL `files` argument
+# (nargs="+"), NOT as --input. compute_pce_distribution.py requires two
+# explicit output flags (--output-records and --output-summary) since the
+# bare --output is ambiguous against them. compute_update_coherence.py
+# uses --output for its records CSV.
 echo "[1/2] computing PCE distribution ..."
 python -m analysis.compute_pce_distribution \
-    --input "$ANCHOR" \
+    "$ANCHOR" \
     --output-records "$PCE_CSV" \
     --output-summary "$PCE_SUMMARY_CSV" \
     || { echo "[fail] compute_pce_distribution"; exit 1; }
 
 echo "[2/2] computing update coherence ..."
 python -m analysis.compute_update_coherence \
-    --input "$ANCHOR" \
+    "$ANCHOR" \
     --output "$UC_CSV" \
     || { echo "[fail] compute_update_coherence"; exit 1; }
 

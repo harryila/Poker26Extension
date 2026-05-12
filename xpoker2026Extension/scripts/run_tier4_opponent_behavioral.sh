@@ -89,10 +89,12 @@ run_cell() {
 
     if [[ ! -f "$enriched" ]]; then
         echo "[enrich] building enriched dataset ..."
+        # build_dataset.py CLI: positional `input output` + --opponent
+        # (NOT --input/--output/--opponent-preset).
         python -m analysis.build_dataset \
-            --input "$raw" \
-            --output "$enriched" \
-            --opponent-preset "$preset" \
+            "$raw" \
+            "$enriched" \
+            --opponent "$preset" \
             || { echo "[fail] enrich"; return 1; }
     else
         echo "[skip-enrich] $enriched already exists"

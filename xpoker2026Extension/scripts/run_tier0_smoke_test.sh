@@ -65,13 +65,19 @@ echo "##   out:    $OUT_DIR"
 echo "############################################################"
 
 PCE_CSV="$OUT_DIR/pce_check.csv"
+PCE_SUMMARY_CSV="$OUT_DIR/pce_check_summary.csv"
 UC_CSV="$OUT_DIR/uc_check.csv"
 SUMMARY="$OUT_DIR/SUMMARY.md"
 
+# NOTE: compute_pce_distribution.py expects two output flags (records and
+# summary). compute_update_coherence.py expects --output. Don't use the
+# bare --output flag with PCE — it's ambiguous against --output-records
+# and --output-summary.
 echo "[1/2] computing PCE distribution ..."
 python -m analysis.compute_pce_distribution \
     --input "$ANCHOR" \
-    --output "$PCE_CSV" \
+    --output-records "$PCE_CSV" \
+    --output-summary "$PCE_SUMMARY_CSV" \
     || { echo "[fail] compute_pce_distribution"; exit 1; }
 
 echo "[2/2] computing update coherence ..."

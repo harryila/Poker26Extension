@@ -43,11 +43,14 @@ HANDS="${HANDS:-50}"
 TEMP="${TEMP:-0.0}"
 TEMP_TAG="${TEMP/./}"
 
-# Need to invoke run_experiment.py which lives at the repo root.
-REPO_ROOT="$(cd .. && pwd)"
-RUN_EXP="$REPO_ROOT/run_experiment.py"
+# IMPORTANT: there are TWO run_experiment.py files in this workspace —
+# the older one at the repo root and the newer (correct) one inside
+# xpoker2026Extension/. The newer one has the model-name registry that maps
+# short names like 'llama-8b' → 'meta-llama/Llama-3.1-8B-Instruct'.
+# We use the EXT-local one, matching the convention in run_tier1a_small.sh.
+RUN_EXP="run_experiment.py"
 if [[ ! -f "$RUN_EXP" ]]; then
-    echo "[abort] run_experiment.py not found at $RUN_EXP"
+    echo "[abort] run_experiment.py not found in $(pwd) (the EXT-local one)"
     exit 2
 fi
 
@@ -73,13 +76,13 @@ run_cell() {
 
     if [[ ! -f "$raw" ]]; then
         echo "[run] generating $HANDS hands ..."
-        python "$RUN_EXP" \
+        python run_experiment.py \
             --agent hf --hf-model "$model" \
             --opponent threshold --opponent-preset "$preset" \
             --hands "$HANDS" --seed "$SEED" --temperature "$TEMP" \
             --elicit-beliefs --capture-logprobs \
             --out "$raw" -v \
-            || { echo "[fail] $preset / $model raw run"; return 1; }
+            || { echo "[fail] $preset / $model raw run (see error above)"; return 1; }
     else
         echo "[skip-raw] $raw already exists"
     fi

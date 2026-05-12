@@ -1749,3 +1749,236 @@ Updated cross-model story incorporating Phase M:
 | Position sweep | `results/position_sweep/{llama,ministral,qwen}8b_l*/SUMMARY.md` |
 | Extended attention (CoT, 200/bucket) | `results/attention_patterns/{llama,ministral,qwen}8b_l*_extended/SUMMARY.md` |
 | Non-CoT attention | `results/attention_patterns/{llama,qwen}8b_l*_nocot/SUMMARY.md` |
+
+---
+
+## 19. Phase O — Necessity tests, baselines, magnitude, commit-layer, residual-top1, belief
+
+> **Date:** 2026-05-11. Pulled from GPU box in commit `731e7a5` ("check4stage")
+> after running both `run_overnight_master_v3.sh` (cleanup, all PASSED) and
+> `run_overnight_master_v4.sh` (9 sections, 8 PASSED + 1 FAIL on §1 Tier 0,
+> plus 1 silent-failure on §9 Tier 4 — see §19j). The headline finding is
+> **B3 belief × verb orthogonality** (paper-banner) plus an important
+> nuancing of the head story by **A1 head ablation negative result**.
+
+### 19a. THE biggest finding: belief and verb are encoded in ORTHOGONAL subspaces at L*
+
+Multi-output Ridge regression (residual at L\* → 14-d `oracle_strategy_aware` belief distribution) plus SVD of the weight matrix:
+
+| Model | L | Overall R² | Top PC explained var | **cos(w_verb, principal belief PC)** | Max per-bucket cos magnitude |
+|---|---:|---:|---:|---:|---:|
+| Llama | 14 | **0.756** | 70.0% | **+0.016** | 0.034 |
+| Ministral | 16 | 0.550 | 70.9% | **+0.047** | 0.113 (bucket 4) |
+| Qwen | 23 | **0.999** | 63.7% | **+0.007** | 0.005 |
+
+**Two facts stack:**
+
+1. **Belief is highly decodable from L\* in all three models.** R² = 0.55 (Ministral) to **0.999** (Qwen). The residual at L\* carries detailed belief content — the model knows the opponent's probable hand-bucket distribution and that knowledge is in the residual stream as a linearly-recoverable representation.
+
+2. **The verb-decision direction is ORTHOGONAL to the belief subspace.** cos(w_verb, principal belief direction) is **+0.016 / +0.047 / +0.007** in the three models — essentially zero, well below any meaningful alignment threshold (0.5+). Per-bucket cosines are also near-zero (max 0.11 in Ministral, < 0.04 in Llama and Qwen).
+
+**Combined: at L\*, the model represents belief richly but DOES NOT USE IT for the verb decision.** The verb circuit operates on an axis orthogonal to belief encoding.
+
+**This is the cleanest mechanistic correlate of the original paper's "belief inertia" finding we will get.** The behavioral observation that the model's belief evolves but its action doesn't track the belief has a precise residual-space explanation: belief and action are **separately represented at orthogonal axes**, so the verb-decision computation simply doesn't read from the belief subspace.
+
+#### 19a — paper-rewrite implication
+
+The original paper said *"the model's verbalized belief and emitted action are decorrelated."* The mechanistic-extension claim now reads:
+
+> *"At each model's L\*, the residual stream contains a linearly-decodable representation of the opponent's hand-strength distribution (R² = 0.55 to 0.999 across three 8B models against the StrategyAware oracle). The verb-decision direction we identified by causal patching is orthogonal to this belief subspace (cosine 0.007–0.047 with the principal belief direction in all three models). The behavioral belief-action gap therefore has a precise mechanistic correlate: belief and action are encoded in orthogonal subspaces at L\*, so the verb-decision circuit does not consult the belief representation."*
+
+This is a single-paragraph paper-section.
+
+#### 19a — caveats
+
+- **R²=0.999 in Qwen is suspiciously high** (could indicate overfitting since ridge with α=1.0 may be too weak when n_samples=300 and hidden_dim=4096). Need to validate with held-out data; out of scope for tonight but worth a 10-min follow-up.
+- **The belief is the *oracle's* distribution, not the model's stated belief.** A reviewer might ask whether the model's *self-reported* belief (parsed from its CoT) is also orthogonal to verb. This is testable with `agent_belief` (also in the enriched logs); fast follow-up.
+- **Ministral's Ridge fit is weakest** (R² = 0.55) — Ministral's residual at L=16 carries less belief content than the other models. Doesn't change the orthogonality conclusion (cos still 0.05) but worth noting.
+
+### 19b. A1 head ablation: surprising NEGATIVE result that reveals REDUNDANT encoding
+
+We zeroed the dominant heads at L\* (h5/h23/h24 in Llama, h22/h9/h15 in Ministral, h26/h28/h30 in Qwen) and measured verb-prediction degradation on `clean_check_or_call` targets (n=33-50):
+
+| Model | Head set | mean Δ(CHK−FOLD) | top-1 family changed | verb-pred (baseline → ablated) |
+|---|---|---:|---:|---:|
+| Llama L=14 | h5+h23+h24 (the triplet) | -1.886 | **0.0%** | 98% → 98% |
+| Llama L=14 | h2+h5+h23+h24 (quartet) | -2.251 | 2.0% | 98% → 96% |
+| Llama L=14 | h23 alone | -0.863 | 0.0% | 98% → 98% |
+| Llama L=14 | random h0+h1+h7+h9 (control) | +0.101 | 0.0% | 98% → 98% |
+| Ministral L=16 | h9+h15+h22 | -1.081 | 0.0% | 100% → 100% |
+| Qwen L=23 | h26+h28+h30 | +0.083 | 0.0% | 100% → 100% |
+
+**Key observations:**
+
+1. **No head set produces top-1 family change** in any model. Verb prediction stays at baseline.
+2. **The dominant-head sets DO produce a magnitude shift** — Llama h5+h23+h24 ablation produces -1.886 nat shift in Δ(CHECK−FOLD), 18× larger than the random control's +0.101. So the heads do contribute to the *magnitude* of the CHECK signal — they're just not necessary for the *threshold-crossing* verb prediction.
+3. **Even the quartet shifts only 2pp of verb predictions** (Llama 98% → 96%).
+
+**Interpretation: the L\* circuit has REDUNDANT encoding.** The patching evidence (sufficiency) showed these heads CAN encode the verb signal. The ablation evidence (no necessity) shows the model has multiple paths to the same prediction; ablating one path leaves the others intact. The Δ-magnitude shifts confirm the heads contribute to the *strength* of the signal but don't carry it solely.
+
+**Paper-revision implication**: the §17a "sparse triplet" head story needs softening. We can no longer say "h5/h23/h24 *are* the circuit." The correct framing:
+
+> *"At L\*, three heads (Llama h5/h23/h24) sufficiently encode the verb-decision signal — patching their pre-projection outputs from a clean source flips 49% of illegal-FOLD targets to CHECK (and 69% as a quartet with h2). However, ablating these heads on baseline (clean_check_or_call) targets does not change the verb prediction (top-1 family change <2%), indicating REDUNDANT ENCODING: the verb signal is computed in multiple paths at L\*, and the heads we identified are one demonstrated path among several rather than the unique locus of the decision."*
+
+This is a more methodologically honest claim. Sufficiency without necessity is a real finding — we now know the dominant heads *contribute*, but ablating them doesn't break the model.
+
+#### 19b — caveat
+
+- **The ablation target is `clean_check_or_call`** (where the baseline already emits CHECK with high confidence). Ablating CHECK-encoding heads from a CHECK-saturated baseline is a relatively easy test — the model has lots of headroom before threshold-crossing. A *more sensitive* necessity test would target near-threshold decisions (where the model is uncertain). We don't have a clean "near-threshold" bucket; this is a follow-up.
+
+### 19c. A2 attention-mask ablation: modest necessity
+
+Masked attention to the `Legal actions:` line tokens across all heads/layers and re-ran the forward:
+
+| Model | Verb predicted (baseline → masked) | Top-1 family changed | Mean Δ(CHK−FOLD) |
+|---|---:|---:|---:|
+| Llama | 98% → **90%** | 2.0% | -1.363 |
+| Ministral | 100% → 91% | 0.0% | -0.884 |
+| Qwen | 100% → 100% | 0.0% | -1.711 |
+
+**Modest but real degradation in Llama and Ministral; null in Qwen.** Llama loses 8pp of verb-prediction accuracy when the legal-actions list is masked. Combined with the §17a finding that h23 attends to those tokens, this confirms (weakly) that legal-actions attention is one input to the verb decision. Qwen's null is consistent with its distributed circuit — it has alternative information sources.
+
+#### 19c — caveat
+
+- **Coarse mask** (all heads, all layers, all source positions in the bracket). A more targeted mask (only h23 at L=14 attending to those positions) would isolate the specific head-token dependency. Out of scope tonight; the coarse mask establishes existence of the dependency.
+
+### 19d. A3 direction-probe baselines: probe credibility CONFIRMED with caveats
+
+| Model | L | Learned | Permuted-label | Random-direction | Cross-task (`bet_to_call > 0`) |
+|---|---:|---:|---:|---:|---:|
+| Llama | 14 | **0.988** | 0.523 | 0.742 | **0.988** ⚠️ |
+| Ministral | 16 | 0.900 | **0.900** ⚠️ | **0.946** ⚠️ | 0.921 |
+| Qwen | 23 | **0.998** | 0.508 | 0.775 | **1.000** ⚠️ |
+
+**Learned ≫ permuted-label in Llama and Qwen** (0.99 vs 0.52, 1.00 vs 0.51): the probe isn't memorizing labels. The probe is learning a real signal from the residuals.
+
+**Two caveats to flag:**
+
+1. **Cross-task baseline was poorly chosen.** `bet_to_call > 0` is highly correlated with verb (all FOLD decisions have `bet > 0`; CHECK_OR_CALL is mixed). Cross-task accuracy of 0.99-1.00 doesn't *contradict* the verb-direction story — it shows the residual jointly encodes both signals — but the cross-task as a "verb-specific direction" control is invalid because the labels aren't independent. **Better baselines for the writeup**: a feature like `street == "river"` or `position == "BB"` that's truly uncorrelated with verb. Quick follow-up if needed.
+
+2. **Ministral's baselines are degenerate due to class imbalance.** With 33 CHECK and 298 FOLD samples (90/10 split), permuted-label achieves 90% by predicting the majority class. Random-direction achieves 95% for the same reason. The Ministral row is uninformative for probe credibility; need either upsampling or a balanced metric.
+
+The Llama and Qwen learned-vs-permuted comparisons (0.99 vs 0.52) are the credibility story. The cross-task and Ministral controls need follow-up before they appear in the paper.
+
+### 19e. B2 CoT vs non-CoT magnitude: cleanly confirms the §18a "prior-dominated" mechanism
+
+| Bucket | CoT mean ‖x‖ | non-CoT mean ‖x‖ |
+|---|---:|---:|
+| clean_CC | 8.59 | 8.41 |
+| clean_LF | 8.50 | 8.39 |
+| illegal_F | 8.41 | — |
+
+**Residual norms are nearly identical across modes.** The §18a "non-CoT residual is compressed" hypothesis is wrong on the magnitude axis.
+
+But the **centroid-distance metric tells the real story**:
+
+| Mode | ‖mean(CHECK) − mean(FOLD)‖ |
+|---|---:|
+| Llama CoT | **3.32** |
+| Llama non-CoT | **1.12** |
+| **ratio non-CoT / CoT** | **0.34** |
+
+**In non-CoT mode, the CHECK and FOLD residuals are 3× CLOSER together than in CoT.** Same overall residual norm, but the *verb-discriminating* axis is much more compressed. This is the precise mechanism for the §18a "prior-dominated" finding: the patching content has less "room" to push the residual past the verb threshold because the threshold is closer to the baseline residual.
+
+Projection magnitudes onto each mode's own verb direction:
+- CoT: CHECK +1.46, FOLD -1.86 (well-separated)
+- non-CoT: CHECK +0.69, FOLD -0.90 (about half the separation)
+
+**Paper-ready sentence**: *"Non-CoT decisions in Llama have residual norms nearly identical to CoT (8.4 vs 8.6) but a verb-discrimination centroid distance 3× smaller (1.12 vs 3.32). The §18a 'prior-dominated' behavior is therefore not a residual-magnitude effect but a verb-axis-compression effect: in non-CoT mode the model's residual representation packs CHECK and FOLD decisions onto a much narrower axis, and any prior bias in residual flow-through dominates the discrimination."*
+
+### 19f. C3 commit-layer components: three-model commit-layer confirmation
+
+Following Phase J §15c (Llama L=15 commit-layer profile), we ran the same component decomposition at the commit layer in Ministral (L=17) and Qwen (L=24):
+
+| Model | Layer | residual flip | attn ratio | mlp ratio | Top single head | (Llama L=15 reference) |
+|---|---:|---:|---:|---:|:---:|---|
+| Llama | 15 (Phase J) | 100% | 17% | 9% | h08 19% | — |
+| Ministral | 17 | 100% | 31% | 2% | h04 +3% | matches commit pattern |
+| Qwen | 24 | 100% | 34% | -3% | h05 +4% | matches commit pattern |
+
+**Three-model confirmation: at the commit layer (L\*+1 in each model), residual-mode patches flip 100% but local attention and MLP carry only 17–34% of the residual effect, with no single head dominating.** The remaining 60–80% is residual flow-through from the compute layer below. The compute-then-commit two-stage circuit story holds across all three 8B models.
+
+### 19g. C2 residual-top1-labeled probes: CoT alignment confirmed
+
+Running the direction probe with `--label-source residual_top1` instead of `recorded_action` produces near-identical probes in CoT mode (Llama: 98.5% vs 98.8%; cosines essentially unchanged). **In CoT mode, what the residual encodes and what the model emits agree closely**, so the §17b probe results don't depend on which label source we use. (In non-CoT mode the labels disagree heavily, but we don't have a non-CoT residual-top1 probe in this batch — fast follow-up.)
+
+### 19h. Phase N cleanup results (v3 §1, all PASSED)
+
+Section A/B/D of `run_nocot_circuit_hunt.sh` re-ran with `--source-residual-top1` and `--target-residual-top1` filters applied uniformly to all Llama non-CoT cells. Output dirs are now `_filtered`. The 4 Llama verb-pair cells that previously halted on baseline tolerance now all produced output:
+
+| Direction | Source filter | Target filter | top-1 → CHECK | top-1 → BR |
+|---|---|---|---:|---:|
+| CC → BR target | CHECK_CALL (10/10 kept) | BET_RAISE (28/30 kept) | **75.4%** ← prior-dominated | 24.6% |
+| BR → CC target | BET_RAISE (9/10 kept) | CHECK_CALL (26/30 kept) | **80.3%** ← prior-dominated | 19.7% |
+| BR → FOLD-residual target | BET_RAISE (10/10 kept) | FOLD (5/30 kept) | 90% | 0% |
+| LF → BR target | FOLD (2/10 kept; very few) | BET_RAISE (26/30 kept) | **88.5%** ← prior-dominated | 11.5% |
+
+**Confirms §18a "prior-dominated non-CoT in Llama" robustly: across all 4 verb directions, ≥75% of patched targets emit CHECK regardless of source content.** The CHECK-bias prior is so strong it dominates every patch direction.
+
+The Phase N item 4 mode-balanced direction probe (v3 §2) ran but no `results/mode_balanced_probe/` dir was pushed — likely the probe ran but its results weren't committed. Need to verify on GPU box.
+
+### 19i. The ABLATION + PROBING + PATCHING combined story
+
+After Phase O, we have a fully-developed mech-interp picture for the L\* circuit:
+
+| Evidence type | Verdict |
+|---|---|
+| **Causal patching at L\* (sufficiency)** | ✅ patching CHECK source flips verb 79–100% in all 3 models (Phase H–K) |
+| **Causal head-zeroing at L\* (necessity)** | ⚠️ ablating dominant heads on CHECK-baseline targets does NOT degrade verb prediction. Redundant encoding. |
+| **Attention-mask of legal-actions list (input necessity)** | ⚠️ modest 8–10pp drop in Llama/Ministral, null in Qwen |
+| **Linear probe at L\* (representation existence)** | ✅ verb decodable with 99% CV accuracy in Llama+Qwen |
+| **Centroid-direction verification** | ✅ probe weight aligned 0.99 with centroid difference (sanity passed) |
+| **Cross-mode direction comparison** | ✅ CoT and non-CoT directions live in shared subspace (cos ≈ 0.27–0.43, both cross-projection signs correct) |
+| **Position-sweep (where decision crystallizes)** | ✅ residual diverges within last ~10 tokens before verb (Phase L §17c) |
+| **Belief direction probe at L\*** | ✅ belief is decodable (R² 0.55–0.999) but ORTHOGONAL to verb direction |
+
+**Combined paper claim**: At L\* in each 8B model, the residual stream linearly encodes both the opponent's hand-strength belief and the model's verb decision, *but on orthogonal axes*. The verb decision is computed by a redundant attention-mediated mechanism — the dominant heads we identified sufficiently encode the signal but ablating them does not break the prediction, indicating multiple computational paths converge to the same residual-direction projection. The model's "belief inertia" is mechanistically reflected in this orthogonality: the verb-decision circuit does not consult the belief representation, even though the belief is well-represented in the same residual stream at the same layer.
+
+### 19j. Issues that need fixing or follow-up
+
+#### 19j.1 — Tier 0 smoke test FAILED (script bug, easy fix)
+
+`run_tier0_smoke_test.sh` passed `--output <path>` to `analysis.compute_pce_distribution` but the script expects two flags: `--output-records` and `--output-summary`. Need to update the wrapper. Fast follow-up.
+
+#### 19j.2 — Tier 4 reported PASSED but produced NO outputs (silent failure)
+
+The orchestrator log says §9 took 1369s (~23 min) and exited 0, but `results/tier4_opponent/` doesn't exist on disk and no `logs/opp_*.jsonl` files were pushed. Expected wall-clock for 15 fresh 8B inference cells × 50 hands is 2-3 hours, NOT 23 minutes — the cells almost certainly silently failed and bash didn't propagate (`set -uo pipefail` without `-e` on the outer for-loop). **Need to inspect `logs/overnight_v4_*/9_tier4_opponent_8b.log` on the GPU box** to find the actual error per cell.
+
+Likely candidates: `run_experiment.py` path resolution failed on GPU box; HF model download/load issue; or some env discrepancy. Until investigated, treat Tier 4 as not-yet-run.
+
+#### 19j.3 — A3 cross-task baseline confounded
+
+`bet_to_call > 0` correlates with verb. Replace with a truly independent feature (`street == "river"`, `position`) for a clean control. ~5 min code + 5 min compute.
+
+#### 19j.4 — A3 Ministral baselines degenerate
+
+Class imbalance (90/10) drives all baselines to majority-class accuracy. Either upsample CHECK or report stratified F1 instead of accuracy.
+
+#### 19j.5 — A1 head ablation only on CHECK-baseline targets
+
+The most informative ablation would be on near-threshold decisions. We don't have a clean "near-threshold" bucket but could try ablating on `illegal_fold` targets (where the model's residual is presumably mid-strength FOLD-leaning). Same script, different `--target-bucket`. ~30 min compute.
+
+### 19k. Combined claims after Phase O (replacing §18i)
+
+1. At L\* in each 8B model, an attention-mediated sub-circuit encodes the verb decision. Patching residuals from a clean source flips the verb (sufficiency), but ablating the specific dominant heads does NOT break the prediction (no necessity) — the encoding is REDUNDANT across multiple computational paths.
+2. The verb-decision direction is real, model-specific, and cross-validated at 99% accuracy in Llama and Qwen. Direction-probe baselines confirm the probe isn't memorizing labels (learned ≫ permuted in Llama+Qwen).
+3. **Belief is highly decodable from L\* (R² = 0.55–0.999) but encoded in a subspace ORTHOGONAL to the verb direction (cos ≈ 0.01–0.05 in all three models).** This is the mechanistic correlate of the original paper's "belief-action gap": the verb circuit does not read from the belief subspace.
+4. The compute-then-commit two-stage circuit (compute at L\*, commit at L\*+1 with residual flow-through) is confirmed across all three models.
+5. CoT mode produces a verb-axis ~3× more separated than non-CoT mode at the residual level (centroid distance 3.32 vs 1.12 in Llama). This is the geometric mechanism of the §18a "prior-dominated non-CoT" finding.
+6. Non-CoT verb-pair patches in Llama produce CHECK-output 75–88% of the time regardless of source direction (prior-dominated, all 4 directions confirmed).
+
+### 19l. Files
+
+| Code | Document |
+|---|---|
+| A1 head ablation | `results/head_ablation/{llama,ministral,qwen}8b_l*/SUMMARY.md` |
+| A2 attn-mask | `results/attn_mask_ablation/{llama,ministral,qwen}8b/SUMMARY.md` |
+| A3 baselines | `results/direction_probe_baselines/{llama,ministral,qwen}8b_l*.md` |
+| B2 magnitude | `results/cot_magnitude_analysis/{llama,qwen}8b_l*.md` |
+| B3 belief probe | `results/belief_direction_probe/{llama,ministral,qwen}8b_l*/SUMMARY.md` |
+| C1 random-null | (driver-level fix; affects all future patching runs) |
+| C2 residual-top1 | `results/direction_probe_residual_top1/{llama,ministral,qwen}8b_l*/SUMMARY.md` |
+| C3 commit-layer | `results/causal_patching/{ministral8b_l17,qwen8b_l24}_components/SUMMARY_components.md` |
+| Phase N cleanup | `results/causal_patching/{llama,qwen}8b_nocot_*_filtered/SUMMARY.md` |
+| Tier 0 | ❌ FAILED (script fix needed) |
+| Tier 4 | ❌ silently failed (investigation needed) |

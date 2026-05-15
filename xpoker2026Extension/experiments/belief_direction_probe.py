@@ -77,6 +77,19 @@ def main():
     parser.add_argument("--belief-source", default="oracle_strategy_aware",
                         choices=["oracle_strategy_aware", "oracle_card_only", "agent_belief"],
                         help="Which belief distribution to regress against.")
+    parser.add_argument(
+        "--cv-folds",
+        type=int,
+        default=0,
+        help=(
+            "If > 0, also run k-fold cross-validation and report HELD-OUT "
+            "R^2 (averaged across folds) in addition to the in-sample R^2. "
+            "Mandatory for high-dimensional residuals (hidden_dim ~ 4096) "
+            "where in-sample R^2 can hit 0.999 due to overfitting; the "
+            "held-out R^2 is the trustworthy summary statistic. "
+            "Recommended: --cv-folds 5."
+        ),
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--device", default="cuda")
@@ -195,16 +208,48 @@ def main():
     reg = Ridge(alpha=1.0, random_state=args.seed)
     reg.fit(X, Y)
     W = reg.coef_   # shape [14, hidden]
-    train_score = reg.score(X, Y)   # average R^2 across outputs
-    # Per-bucket R^2.
+    train_score = reg.score(X, Y)   # average R^2 across outputs (in-sample)
+    # Per-bucket R^2 (in-sample).
     Y_pred = reg.predict(X)
     ss_res = ((Y - Y_pred) ** 2).sum(axis=0)
     ss_tot = ((Y - Y.mean(0)) ** 2).sum(axis=0)
     r2_per_bucket = 1 - (ss_res / np.maximum(ss_tot, 1e-12))
-    print(f"  overall R^2: {train_score:.3f}")
-    print(f"  per-bucket R^2: " + ", ".join(
+    print(f"  in-sample overall R^2: {train_score:.3f}")
+    print(f"  in-sample per-bucket R^2: " + ", ".join(
         f"{b}={r:.2f}" for b, r in zip(BUCKET_NAMES_14, r2_per_bucket)
     ))
+
+    # Optional k-fold CV: held-out R^2 is the trustworthy generalization
+    # estimate when hidden_dim ≫ n_samples. Without this, the in-sample
+    # R^2 is essentially uninterpretable for high-dimensional residuals.
+    cv_overall = None
+    cv_per_bucket = None
+    if args.cv_folds and args.cv_folds >= 2:
+        from sklearn.model_selection import KFold
+        kf = KFold(n_splits=args.cv_folds, shuffle=True, random_state=args.seed)
+        fold_overall = []
+        fold_per_bucket = []
+        print(f"\n[probe] running {args.cv_folds}-fold CV for held-out R^2 ...")
+        for fold_i, (tr, te) in enumerate(kf.split(X)):
+            reg_cv = Ridge(alpha=1.0, random_state=args.seed)
+            reg_cv.fit(X[tr], Y[tr])
+            Y_te_pred = reg_cv.predict(X[te])
+            ss_res_te = ((Y[te] - Y_te_pred) ** 2).sum(axis=0)
+            ss_tot_te = ((Y[te] - Y[tr].mean(0)) ** 2).sum(axis=0)
+            r2_b = 1 - (ss_res_te / np.maximum(ss_tot_te, 1e-12))
+            fold_per_bucket.append(r2_b)
+            fold_overall.append(float(r2_b.mean()))
+            print(f"  fold {fold_i+1}: held-out R^2 = {fold_overall[-1]:.3f}")
+        cv_overall = float(np.mean(fold_overall))
+        cv_overall_std = float(np.std(fold_overall))
+        cv_per_bucket = np.mean(np.stack(fold_per_bucket, 0), axis=0)
+        print(f"[probe] HELD-OUT overall R^2 (mean over {args.cv_folds} folds): "
+              f"{cv_overall:.3f} ± {cv_overall_std:.3f}")
+        print(f"[probe] HELD-OUT per-bucket R^2: " + ", ".join(
+            f"{b}={r:.2f}" for b, r in zip(BUCKET_NAMES_14, cv_per_bucket)
+        ))
+    else:
+        cv_overall_std = None
 
     # ---- SVD: dominant directions of W -----------------------------------
     # W ∈ R^{14 × hidden}. SVD: W = U S V^T, where columns of V^T are
@@ -249,8 +294,15 @@ def main():
         "n_decisions": int(n_processed),
         "n_belief_skipped": int(n_skipped_belief),
         "ridge_alpha": 1.0,
-        "overall_R2": float(train_score),
-        "per_bucket_R2": dict(zip(BUCKET_NAMES_14, [float(r) for r in r2_per_bucket])),
+        "in_sample_overall_R2": float(train_score),
+        "in_sample_per_bucket_R2": dict(zip(BUCKET_NAMES_14, [float(r) for r in r2_per_bucket])),
+        "cv_folds": int(args.cv_folds) if args.cv_folds else 0,
+        "held_out_overall_R2_mean": (float(cv_overall) if cv_overall is not None else None),
+        "held_out_overall_R2_std": (float(cv_overall_std) if cv_overall_std is not None else None),
+        "held_out_per_bucket_R2": (
+            dict(zip(BUCKET_NAMES_14, [float(r) for r in cv_per_bucket]))
+            if cv_per_bucket is not None else None
+        ),
         "singular_values_top5": [float(s) for s in S[:5]],
         "explained_variance_ratios_top5": [float(e) for e in explained[:5]],
         "cos_verb_principal_belief_direction": cos_verb_principal,
@@ -273,13 +325,23 @@ def main():
     md.append(f"- n_decisions: {n_processed} (skipped due to missing belief: {n_skipped_belief})")
     md.append("")
     md.append("## Multi-output Ridge regression: residual → 14-d belief distribution")
-    md.append(f"- overall R²: **{train_score:.3f}**")
-    md.append("- per-bucket R²:")
+    md.append(f"- in-sample overall R²: {train_score:.3f}")
+    if cv_overall is not None:
+        md.append(
+            f"- **held-out overall R² (mean over {args.cv_folds} folds): "
+            f"{cv_overall:.3f} ± {cv_overall_std:.3f}** "
+            "(this is the trustworthy generalization estimate)"
+        )
+    else:
+        md.append("- held-out R²: (not computed; pass `--cv-folds 5` to enable)")
     md.append("")
-    md.append("| Bucket | R² |")
-    md.append("|---|---:|")
-    for b, r in zip(BUCKET_NAMES_14, r2_per_bucket):
-        md.append(f"| `{b}` | {r:+.3f} |")
+    md.append("| Bucket | in-sample R² | held-out R² (CV) |")
+    md.append("|---|---:|---:|")
+    for i, b in enumerate(BUCKET_NAMES_14):
+        in_r = r2_per_bucket[i]
+        out_r = cv_per_bucket[i] if cv_per_bucket is not None else None
+        out_str = f"{out_r:+.3f}" if out_r is not None else "—"
+        md.append(f"| `{b}` | {in_r:+.3f} | {out_str} |")
     md.append("")
     md.append("## Principal directions of the belief subspace (SVD)")
     md.append("")

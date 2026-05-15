@@ -88,84 +88,99 @@ python -m analysis.compute_update_coherence \
     || { echo "[fail] compute_update_coherence"; exit 1; }
 
 # Aggregate published-vs-observed comparison.
+#
+# IMPORTANT: the published headline "mean_js_to_sa = 0.014 ± 0.003" actually
+# refers to the |js_cardonly − js_strategyaware| difference for the OVERALL
+# group, NOT the absolute mean js_strategyaware (which is ~0.4 in well-
+# calibrated 70B runs because the LLM is much closer to CardOnly than to
+# StrategyAware — that gap IS the headline finding). The summary CSV
+# emitted by compute_pce_distribution.py exposes this as the
+# `js_difference` column on the OVERALL row.
 python - <<PY > "$SUMMARY"
-import csv, statistics, sys
+import csv, statistics
 
 def safe_float(x):
     try: return float(x)
     except: return None
 
-# Read PCE — js_to_strategy_aware column if present.
-pce_path = "$PCE_CSV"
-js_to_sa = []
+# 1) PCE — read the aggregated summary CSV and pull the OVERALL row.
+pce_summary_path = "$PCE_SUMMARY_CSV"
+js_diff_overall = None
+js_cardonly_mean = None
+js_strategyaware_mean = None
+n_overall = None
 try:
-    with open(pce_path) as f:
+    with open(pce_summary_path) as f:
         reader = csv.DictReader(f)
         for row in reader:
-            for col in ("js_to_strategy_aware", "js_strategy_aware", "js_to_sa", "JS_to_StrategyAware"):
-                if col in row:
-                    v = safe_float(row[col])
-                    if v is not None:
-                        js_to_sa.append(v)
-                        break
+            if row.get("group") == "OVERALL":
+                js_diff_overall = safe_float(row.get("js_difference"))
+                js_cardonly_mean = safe_float(row.get("js_cardonly_mean"))
+                js_strategyaware_mean = safe_float(row.get("js_strategyaware_mean"))
+                n_overall = safe_float(row.get("n"))
+                break
 except Exception as e:
-    print(f"[warn] could not parse PCE CSV: {e}")
+    print(f"[warn] could not parse PCE summary CSV: {e}")
 
-mean_js = statistics.mean(js_to_sa) if js_to_sa else None
-std_js  = statistics.stdev(js_to_sa) if len(js_to_sa) > 1 else None
-
-# Read UC — update correlation if present.
+# 2) UC — read per-record CSV, mean the `correlation` column.
 uc_path = "$UC_CSV"
-update_r = None
+corrs = []
 try:
     with open(uc_path) as f:
         reader = csv.DictReader(f)
-        cols = reader.fieldnames or []
         for row in reader:
-            for col in ("update_correlation_r", "correlation_r", "r", "update_r"):
-                if col in row:
-                    v = safe_float(row[col])
-                    if v is not None:
-                        update_r = v
-                        break
-            if update_r is not None:
-                break
+            v = safe_float(row.get("correlation"))
+            if v is not None:
+                corrs.append(v)
 except Exception as e:
     print(f"[warn] could not parse UC CSV: {e}")
+
+mean_r = statistics.mean(corrs) if corrs else None
 
 print("# Tier 0 — Replication smoke test")
 print()
 print(f"- Anchor log: \`$ANCHOR\`")
-print(f"- PCE records read: {len(js_to_sa)}")
+print(f"- PCE OVERALL records: {int(n_overall) if n_overall else '?'}")
+print(f"- UC update records:   {len(corrs)}")
 print()
 print("## Headline number comparison")
 print()
 print("| Metric | Published anchor | Observed | Pass criterion |")
 print("|---|---:|---:|---|")
-if mean_js is not None and std_js is not None:
-    pass_js = abs(mean_js - 0.014) < 0.006   # ±2× the published 0.003 stdev
-    print(f"| mean js_to_strategy_aware | 0.014 ± 0.003 | "
-          f"{mean_js:.4f} ± {std_js:.4f} | "
+if js_diff_overall is not None:
+    abs_diff = abs(js_diff_overall)
+    pass_js = abs(abs_diff - 0.014) < 0.006   # ±2× the published 0.003 stdev
+    print(f"| \`|js_cardonly − js_strategyaware|\` (OVERALL) | 0.014 ± 0.003 | "
+          f"{abs_diff:.4f} (raw {js_diff_overall:+.4f}) | "
           f"{'✅ PASS' if pass_js else '❌ FAIL'} (within ±0.006) |")
 else:
-    print("| mean js_to_strategy_aware | 0.014 ± 0.003 | (could not extract) | ❓ inconclusive |")
-if update_r is not None:
-    pass_r = abs(update_r - 0.06) < 0.10
-    print(f"| update correlation r | 0.06 | {update_r:.3f} | "
+    print("| \`|js_cardonly − js_strategyaware|\` (OVERALL) | 0.014 ± 0.003 | "
+          "(could not extract) | ❓ inconclusive |")
+if js_cardonly_mean is not None and js_strategyaware_mean is not None:
+    print(f"| mean js_cardonly        | — | {js_cardonly_mean:.4f} | (context) |")
+    print(f"| mean js_strategyaware   | — | {js_strategyaware_mean:.4f} | (context) |")
+if mean_r is not None:
+    pass_r = abs(mean_r - 0.06) < 0.10
+    print(f"| mean update correlation r | 0.06 | {mean_r:.3f} | "
           f"{'✅ PASS' if pass_r else '⚠️  out of band'} (target ±0.10) |")
 else:
-    print("| update correlation r | 0.06 | (could not extract) | ❓ inconclusive |")
+    print("| mean update correlation r | 0.06 | (could not extract) | ❓ inconclusive |")
 print()
 print("## Reading guide")
 print()
-print("- **All ✅ PASS**: extension's analysis pipeline reproduces published "
-      "70B numbers within tolerance. Every downstream finding (8B mech-interp, "
+print("- **\`|js_difference|\` PASSES**: extension's PCE pipeline reproduces the "
+      "published 70B headline (the LLM is ~0.014 nats closer to CardOnly than "
+      "StrategyAware in JS-divergence). Every downstream finding (8B mech-interp, "
       "circuit work, etc.) rests on a sound foundation.")
-print("- **❌ FAIL on mean_js**: extension's PCE pipeline diverges from the "
-      "paper's. Investigate `analysis/compute_pce_distribution.py` for "
-      "regressions before trusting any extension-side calibration numbers.")
-print("- **❓ inconclusive**: column names in the CSV don't match expected. "
-      "Check the CSV manually and update this script's column-name search.")
+print("- **\`|js_difference|\` FAILS**: extension's PCE pipeline diverges from "
+      "the paper's. Investigate \`analysis/compute_pce_distribution.py\` and "
+      "\`analysis/oracle_posterior.py\` for regressions before trusting any "
+      "extension-side calibration numbers.")
+print("- **mean js_strategyaware ≈ 0.43** is the model's distance from the "
+      "StrategyAware oracle in absolute terms; this is the headline finding, "
+      "not the smoke-test target. Smoke-test target is the small but non-zero "
+      "GAP between CardOnly and StrategyAware, which establishes that the "
+      "model is closer to CardOnly.")
 PY
 
 cat "$SUMMARY"

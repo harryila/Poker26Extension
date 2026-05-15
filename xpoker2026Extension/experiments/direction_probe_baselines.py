@@ -56,6 +56,33 @@ def main():
     parser.add_argument("--l2-c", type=float, default=0.01)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--out-md", required=True)
+    parser.add_argument(
+        "--cross-task-feature",
+        default="bet_to_call",
+        choices=["bet_to_call", "position", "street_preflop", "pot_size",
+                 "is_first_decision"],
+        help=(
+            "Which feature to use as the cross-task baseline label. "
+            "`bet_to_call` (legacy default) is correlated with verb (FOLD "
+            "decisions almost always have bet_to_call > 0), so cross-task "
+            "accuracy will be high for spurious reasons. `position` "
+            "(BB vs SB) is essentially a coin flip and uncorrelated with "
+            "verb — preferred for the writeup. `street_preflop`, "
+            "`pot_size` (binary above-median), `is_first_decision` are "
+            "additional independent options."
+        ),
+    )
+    parser.add_argument(
+        "--balance-classes",
+        action="store_true",
+        help=(
+            "Upsample the minority class to match the majority before CV. "
+            "Use for models with extreme verb-class imbalance (e.g. "
+            "Ministral non-CoT where CHECK is ~10% of decisions) — without "
+            "this, permuted-label and random-direction baselines achieve "
+            "majority-class accuracy and become uninformative."
+        ),
+    )
     args = parser.parse_args()
 
     out_path = Path(args.out_md)
@@ -77,6 +104,36 @@ def main():
                         np.zeros(len(Xf), dtype=int)])
     hidden = X.shape[1]
     rng = np.random.default_rng(args.seed)
+
+    # Class-imbalance upsampling, if requested. Mirrors the same indices for
+    # the cross-task label later, since cross-task labels are derived from
+    # the same per-record key list as the residual rows.
+    upsample_indices = None
+    if args.balance_classes:
+        n_pos = int((y == 1).sum())
+        n_neg = int((y == 0).sum())
+        if min(n_pos, n_neg) < max(n_pos, n_neg):
+            minority_class = 1 if n_pos < n_neg else 0
+            majority_class = 1 - minority_class
+            n_minority = (y == minority_class).sum()
+            n_majority = (y == majority_class).sum()
+            n_extra = int(n_majority - n_minority)
+            minority_idx = np.where(y == minority_class)[0]
+            picks = rng.integers(0, len(minority_idx), size=n_extra)
+            extra_idx = minority_idx[picks]
+            keep_idx = np.concatenate([np.arange(len(y)), extra_idx])
+            upsample_indices = keep_idx
+            X = X[keep_idx]
+            y = y[keep_idx]
+            print(
+                f"[balance] upsampled minority class {minority_class}: "
+                f"original (pos={n_pos}, neg={n_neg}) -> "
+                f"balanced n={len(y)} ({(y == 1).sum()} pos, "
+                f"{(y == 0).sum()} neg)"
+            )
+        else:
+            print("[balance] classes already balanced, no upsampling")
+
     skf = StratifiedKFold(n_splits=args.cv_folds, shuffle=True, random_state=args.seed)
 
     def _cv(model, X_local, y_local):
@@ -171,36 +228,88 @@ def main():
             if len(cc_keys) >= n_cc_target and len(lf_keys) >= n_lf_target:
                 break
 
+    # Cross-task feature definitions. Each takes a record dict and returns
+    # an int label. `bet_to_call` is the legacy choice but is highly
+    # correlated with verb (all FOLD decisions have bet_to_call > 0); the
+    # other choices are intended to be roughly independent of verb.
+    def _bet_to_call(rec):
+        obs = rec.get("obs") or {}
+        return int(obs.get("bet_to_call", 0) > 0)
+
+    def _position(rec):
+        # Heads-up: BB vs SB. Roughly 50/50, uncorrelated with verb.
+        obs = rec.get("obs") or {}
+        pos = obs.get("position") or rec.get("position")
+        if isinstance(pos, str):
+            return int(pos.upper() in ("BB", "BIG_BLIND"))
+        return int(bool(pos))
+
+    def _street_preflop(rec):
+        s = rec.get("street") or (rec.get("obs") or {}).get("street")
+        if isinstance(s, str):
+            return int(s.upper() == "PREFLOP")
+        return 0
+
+    def _pot_size(rec):
+        # Binary above-median split computed from the bucket later; here
+        # we just emit the raw pot. The wrapper computes the median.
+        obs = rec.get("obs") or {}
+        return float(obs.get("pot", 0))
+
+    def _is_first_decision(rec):
+        return int(int(rec.get("decision_idx", 0)) == 1)
+
+    cross_task_feature_map = {
+        "bet_to_call": ("bet_to_call > 0", _bet_to_call),
+        "position": ("position == BB", _position),
+        "street_preflop": ("street == PREFLOP", _street_preflop),
+        "pot_size": ("pot > median", _pot_size),
+        "is_first_decision": ("decision_idx == 1", _is_first_decision),
+    }
+
     cross_task_summary = None
     if len(cc_keys) == n_cc_target and len(lf_keys) == n_lf_target:
-        # Cross-task: predict "is the pot empty?" or "is the bet_to_call > 0?"
-        # The latter is a real situational feature that doesn't directly
-        # determine the verb but correlates loosely.
-        def _bet_to_call(rec):
-            obs = rec.get("obs") or {}
-            return int(obs.get("bet_to_call", 0) > 0)
         all_keys = cc_keys + lf_keys
+        feat_label, feat_fn = cross_task_feature_map[args.cross_task_feature]
         try:
-            y_cross = np.array(
-                [_bet_to_call(rec_index[k]) for k in all_keys],
-                dtype=int,
+            raw_vals = np.array(
+                [feat_fn(rec_index[k]) for k in all_keys], dtype=np.float64
             )
-            # Need at least 2 classes for CV.
-            if len(set(y_cross.tolist())) >= 2:
+            if args.cross_task_feature == "pot_size":
+                med = float(np.median(raw_vals))
+                y_cross_orig = (raw_vals > med).astype(int)
+            else:
+                y_cross_orig = raw_vals.astype(int)
+
+            # If we upsampled the residual matrix above, mirror the same
+            # row indices into the cross-task label vector so they align.
+            if upsample_indices is not None:
+                y_cross = y_cross_orig[upsample_indices]
+            else:
+                y_cross = y_cross_orig
+
+            n_pos_cross = int((y_cross == 1).sum())
+            n_neg_cross = int((y_cross == 0).sum())
+            if len(set(y_cross.tolist())) < 2:
+                print(
+                    f"[cross-task] {feat_label}: degenerate single-class "
+                    f"(n_pos={n_pos_cross}, n_neg={n_neg_cross}) — skipping"
+                )
+            else:
                 cross_mean, cross_std = _cv(clf, X, y_cross)
                 cross_task_summary = {
-                    "task": "bet_to_call > 0",
-                    "n_pos": int((y_cross == 1).sum()),
-                    "n_neg": int((y_cross == 0).sum()),
+                    "task": feat_label,
+                    "n_pos": n_pos_cross,
+                    "n_neg": n_neg_cross,
                     "cv_acc_mean": cross_mean,
                     "cv_acc_std": cross_std,
                 }
-                print(f"[cross-task] bet_to_call>0: "
-                      f"n_pos={cross_task_summary['n_pos']} "
-                      f"n_neg={cross_task_summary['n_neg']} "
-                      f"CV={cross_mean:.3f} ± {cross_std:.3f}")
+                print(
+                    f"[cross-task] {feat_label}: n_pos={n_pos_cross} "
+                    f"n_neg={n_neg_cross} CV={cross_mean:.3f} ± {cross_std:.3f}"
+                )
         except Exception as e:
-            print(f"[cross-task] failed: {e}")
+            print(f"[cross-task] failed ({feat_label}): {e}")
     else:
         print(f"[cross-task] sample order mismatch — skipping (cc {len(cc_keys)}/{n_cc_target}, lf {len(lf_keys)}/{n_lf_target})")
 
@@ -209,6 +318,8 @@ def main():
         "probe_npz": args.probe_npz,
         "n_samples": int(len(X)),
         "hidden_dim": int(hidden),
+        "balanced_classes": bool(args.balance_classes),
+        "cross_task_feature": args.cross_task_feature,
         "learned_probe_cv_acc": {"mean": learned_mean, "std": learned_std},
         "permuted_label_cv_acc": {"mean": perm_mean, "std": perm_std},
         "random_direction_best_threshold_acc": {
@@ -223,6 +334,8 @@ def main():
     md = ["# Direction-probe baselines", ""]
     md.append(f"- Probe: `{args.probe_npz}`")
     md.append(f"- Samples: {len(X)}, hidden_dim: {hidden}")
+    md.append(f"- Class balancing: `{'upsampled' if args.balance_classes else 'as-is (no balancing)'}`")
+    md.append(f"- Cross-task feature: `{args.cross_task_feature}`")
     md.append("")
     md.append("## Probe accuracy comparison")
     md.append("")

@@ -1,0 +1,39 @@
+{
+  "enriched_log": "logs/opp_default_ministral-8b_t00_s42_enriched.jsonl",
+  "n_enriched_logs": 1,
+  "model_id": "mistralai/Ministral-8B-Instruct-2410",
+  "source_bucket": "clean_check_or_call",
+  "target_bucket": "clean_legal_fold",
+  "n_source": 10,
+  "n_target": 30,
+  "layers": [
+    16
+  ],
+  "n_pairs_total": 300,
+  "controls": {
+    "baseline_top1_match_rate": 1.0,
+    "self_patch_max_logit_drift": 0.0,
+    "random_source_per_layer": {
+      "16": {
+        "mean_delta": 0.6637810512828402,
+        "n": 5
+      }
+    },
+    "random_source_n": 5,
+    "random_source_mean_delta": 0.6637810512828402,
+    "random_source_test_layer": 16
+  },
+  "zero_ablation": false,
+  "per_layer": {
+    "16": {
+      "n": 300,
+      "mean_delta_check_minus_fold": 1.1160776666666672,
+      "frac_top1_check_call": 0.47,
+      "frac_top1_fold": 0.37666666666666665,
+      "frac_top1_bet_raise": 0.15333333333333332,
+      "frac_top1_other": 0.0,
+      "random_null_delta": 0.6637810512828402,
+      "specificity_adjusted_delta": 0.45229661538382704
+    }
+  }
+}

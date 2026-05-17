@@ -1,0 +1,39 @@
+{
+  "enriched_log": "logs/opp_tight_aggressive_ministral-8b_t00_s42_enriched.jsonl",
+  "n_enriched_logs": 1,
+  "model_id": "mistralai/Ministral-8B-Instruct-2410",
+  "source_bucket": "clean_check_or_call",
+  "target_bucket": "clean_legal_fold",
+  "n_source": 10,
+  "n_target": 30,
+  "layers": [
+    16
+  ],
+  "n_pairs_total": 300,
+  "controls": {
+    "baseline_top1_match_rate": 1.0,
+    "self_patch_max_logit_drift": 0.0,
+    "random_source_per_layer": {
+      "16": {
+        "mean_delta": 0.7648335885603096,
+        "n": 5
+      }
+    },
+    "random_source_n": 5,
+    "random_source_mean_delta": 0.7648335885603096,
+    "random_source_test_layer": 16
+  },
+  "zero_ablation": false,
+  "per_layer": {
+    "16": {
+      "n": 300,
+      "mean_delta_check_minus_fold": 0.920979,
+      "frac_top1_check_call": 0.12666666666666668,
+      "frac_top1_fold": 0.49,
+      "frac_top1_bet_raise": 0.38333333333333336,
+      "frac_top1_other": 0.0,
+      "random_null_delta": 0.7648335885603096,
+      "specificity_adjusted_delta": 0.1561454114396904
+    }
+  }
+}

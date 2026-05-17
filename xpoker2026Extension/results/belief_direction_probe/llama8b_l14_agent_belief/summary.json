@@ -1,0 +1,82 @@
+{
+  "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+  "layer": 14,
+  "belief_source": "agent_belief",
+  "n_decisions": 300,
+  "n_belief_skipped": 0,
+  "ridge_alpha": 1.0,
+  "in_sample_overall_R2": 0.6408230662345886,
+  "in_sample_per_bucket_R2": {
+    "premium_pairs": 0.46497178077697754,
+    "strong_pairs": 0.6133276224136353,
+    "medium_pairs": 0.7309168577194214,
+    "small_pairs": 0.7323407530784607,
+    "premium_broadway": 0.5927064418792725,
+    "strong_broadway": 0.552037239074707,
+    "medium_broadway": 0.6945834159851074,
+    "weak_broadway": 0.6319202780723572,
+    "suited_connectors": 0.676836371421814,
+    "suited_aces": 0.5555706024169922,
+    "suited_gappers": 0.6839195489883423,
+    "speculative_suited": 0.710752010345459,
+    "offsuit_connectors": 0.6395375728607178,
+    "trash": 0.6921029090881348
+  },
+  "cv_folds": 5,
+  "held_out_overall_R2_mean": 0.1367587387561798,
+  "held_out_overall_R2_std": 0.026272418891251276,
+  "held_out_per_bucket_R2": {
+    "premium_pairs": 0.02800203487277031,
+    "strong_pairs": 0.1780816614627838,
+    "medium_pairs": 0.4231564998626709,
+    "small_pairs": 0.39113134145736694,
+    "premium_broadway": 0.014744222164154053,
+    "strong_broadway": -0.03214191272854805,
+    "medium_broadway": 0.2234228104352951,
+    "weak_broadway": -0.3004763722419739,
+    "suited_connectors": 0.1365528702735901,
+    "suited_aces": 0.07545129954814911,
+    "suited_gappers": 0.18444830179214478,
+    "speculative_suited": 0.10916560888290405,
+    "offsuit_connectors": 0.15725162625312805,
+    "trash": 0.3258323669433594
+  },
+  "singular_values_top5": [
+    2.122109889984131,
+    0.6709045767784119,
+    0.5153617858886719,
+    0.41553813219070435,
+    0.33175233006477356
+  ],
+  "explained_variance_ratios_top5": [
+    0.7696752548217773,
+    0.07692956924438477,
+    0.04539376497268677,
+    0.029511654749512672,
+    0.01881047524511814
+  ],
+  "cos_verb_principal_belief_direction": -0.028269371017813683,
+  "cos_verb_top5_principals": [
+    -0.028269371017813683,
+    0.01633850298821926,
+    0.008132592774927616,
+    -0.006462144665420055,
+    -0.021032676100730896
+  ],
+  "cos_verb_per_bucket": {
+    "premium_pairs": -0.005405033472925425,
+    "strong_pairs": 0.0074138636700809,
+    "medium_pairs": 0.023595070466399193,
+    "small_pairs": 0.025964656844735146,
+    "premium_broadway": 0.012285668402910233,
+    "strong_broadway": 0.00995531864464283,
+    "medium_broadway": 0.02034040354192257,
+    "weak_broadway": 0.022029967978596687,
+    "suited_connectors": 0.017575828358530998,
+    "suited_aces": 0.0017504963325336576,
+    "suited_gappers": 0.01914934068918228,
+    "speculative_suited": 0.02678689919412136,
+    "offsuit_connectors": 0.020970430225133896,
+    "trash": -0.028851745650172234
+  }
+}

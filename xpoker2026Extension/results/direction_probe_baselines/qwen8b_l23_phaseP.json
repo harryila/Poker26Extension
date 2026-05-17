@@ -1,0 +1,21 @@
+{
+  "probe_npz": "results/direction_probe/qwen8b_l23/raw_residuals.npz",
+  "n_samples": 600,
+  "hidden_dim": 4096,
+  "balanced_classes": true,
+  "cross_task_feature": "position",
+  "learned_probe_cv_acc": {
+    "mean": 0.9983333333333334,
+    "std": 0.003333333333333322
+  },
+  "permuted_label_cv_acc": {
+    "mean": 0.4883333333333333,
+    "std": 0.01870828693386969
+  },
+  "random_direction_best_threshold_acc": {
+    "mean": 0.7719166666666667,
+    "std": 0.12539191339334624,
+    "n_trials": 20
+  },
+  "cross_task": null
+}

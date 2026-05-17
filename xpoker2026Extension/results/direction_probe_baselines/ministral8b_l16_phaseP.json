@@ -1,0 +1,21 @@
+{
+  "probe_npz": "results/direction_probe/ministral8b_l16/raw_residuals.npz",
+  "n_samples": 596,
+  "hidden_dim": 4096,
+  "balanced_classes": true,
+  "cross_task_feature": "position",
+  "learned_probe_cv_acc": {
+    "mean": 1.0,
+    "std": 0.0
+  },
+  "permuted_label_cv_acc": {
+    "mean": 0.47815126050420165,
+    "std": 0.0125769996194082
+  },
+  "random_direction_best_threshold_acc": {
+    "mean": 0.8828020134228188,
+    "std": 0.10211254870281844,
+    "n_trials": 20
+  },
+  "cross_task": null
+}

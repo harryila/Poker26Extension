@@ -1,0 +1,21 @@
+{
+  "probe_npz": "results/direction_probe/llama8b_l14/raw_residuals.npz",
+  "n_samples": 600,
+  "hidden_dim": 4096,
+  "balanced_classes": true,
+  "cross_task_feature": "position",
+  "learned_probe_cv_acc": {
+    "mean": 0.9883333333333333,
+    "std": 0.008498365855987991
+  },
+  "permuted_label_cv_acc": {
+    "mean": 0.4966666666666667,
+    "std": 0.02614064523559688
+  },
+  "random_direction_best_threshold_acc": {
+    "mean": 0.75875,
+    "std": 0.11480523966943128,
+    "n_trials": 20
+  },
+  "cross_task": null
+}

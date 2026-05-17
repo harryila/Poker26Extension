@@ -1,0 +1,82 @@
+{
+  "model_id": "mistralai/Ministral-8B-Instruct-2410",
+  "layer": 16,
+  "belief_source": "agent_belief",
+  "n_decisions": 300,
+  "n_belief_skipped": 2,
+  "ridge_alpha": 1.0,
+  "in_sample_overall_R2": 0.3314564526081085,
+  "in_sample_per_bucket_R2": {
+    "premium_pairs": 0.41044968366622925,
+    "strong_pairs": 0.4285326600074768,
+    "medium_pairs": 0.4003399610519409,
+    "small_pairs": 0.35297340154647827,
+    "premium_broadway": 0.3973538279533386,
+    "strong_broadway": 0.31127268075942993,
+    "medium_broadway": 0.26884907484054565,
+    "weak_broadway": 0.22462016344070435,
+    "suited_connectors": 0.429388165473938,
+    "suited_aces": 0.4383845925331116,
+    "suited_gappers": 0.4121891260147095,
+    "speculative_suited": 0.1348196268081665,
+    "offsuit_connectors": 0.29639774560928345,
+    "trash": 0.13481974601745605
+  },
+  "cv_folds": 5,
+  "held_out_overall_R2_mean": -0.17978435531258583,
+  "held_out_overall_R2_std": 0.5395785948804392,
+  "held_out_per_bucket_R2": {
+    "premium_pairs": 0.18018464744091034,
+    "strong_pairs": 0.19320115447044373,
+    "medium_pairs": 0.20812062919139862,
+    "small_pairs": 0.11313140392303467,
+    "premium_broadway": 0.18054410815238953,
+    "strong_broadway": 0.060179222375154495,
+    "medium_broadway": -0.07925740629434586,
+    "weak_broadway": 0.06266337633132935,
+    "suited_connectors": 0.16141308844089508,
+    "suited_aces": 0.16851724684238434,
+    "suited_gappers": 0.1577460765838623,
+    "speculative_suited": -1.9999158382415771,
+    "offsuit_connectors": 0.07643751055002213,
+    "trash": -1.999945878982544
+  },
+  "singular_values_top5": [
+    0.25105518102645874,
+    0.09549233317375183,
+    0.061511192470788956,
+    0.052006907761096954,
+    0.03494150936603546
+  ],
+  "explained_variance_ratios_top5": [
+    0.7578125,
+    0.10963782668113708,
+    0.045491646975278854,
+    0.0325196199119091,
+    0.014679346233606339
+  ],
+  "cos_verb_principal_belief_direction": 0.04459363594651222,
+  "cos_verb_top5_principals": [
+    0.04459363594651222,
+    0.0008049837779253721,
+    0.022407833486795425,
+    -0.012543417513370514,
+    0.0239297803491354
+  ],
+  "cos_verb_per_bucket": {
+    "premium_pairs": -0.03565100207924843,
+    "strong_pairs": -0.04233931005001068,
+    "medium_pairs": -0.046662330627441406,
+    "small_pairs": 0.04233575239777565,
+    "premium_broadway": -0.03609349951148033,
+    "strong_broadway": -0.030573736876249313,
+    "medium_broadway": -0.02453003264963627,
+    "weak_broadway": -0.04045075550675392,
+    "suited_connectors": 0.03770812228322029,
+    "suited_aces": 0.04673716798424721,
+    "suited_gappers": 0.05088082700967789,
+    "speculative_suited": -0.009250661358237267,
+    "offsuit_connectors": 0.03161626681685448,
+    "trash": -0.009250661358237267
+  }
+}

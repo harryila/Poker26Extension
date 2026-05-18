@@ -14,23 +14,46 @@ Pipeline per run:
   3. Sample N source decisions from --source-bucket and N target decisions
      from --target-bucket (random with --seed).
   4. Capture: one forward per source -> per_layer_last_pos[layer_idx].
-  5. Controls (run FIRST, halt if any fail):
-        - no-patch baseline: per target, run forward; top-1 must match
-          recorded raw_response's first verb token.
-        - self-patch identity: take a target, capture its own residual,
-          patch it back at every test layer; logits must equal baseline
-          within 1e-4.
-        - random-source null: patch each target with a residual drawn from
-          a randomly chosen DIFFERENT-bucket source; mean
-          delta_logit_check_minus_fold should be near 0.
+  5. Controls (run FIRST, halt baseline match below --baseline-tolerance-frac;
+     log-and-continue on self-patch and random-null deviations):
+        - no-patch baseline: per target, run forward; top-1 token id must
+          match recorded raw_response's first verb token. Aggregate fraction
+          of matches is reported as `baseline_top1_match_rate` and gated
+          against `--baseline-tolerance-frac` (default 0.95).
+        - self-patch identity: capture the first target's residual, patch
+          it back at every test layer; max |Δ logit| is reported as
+          `self_patch_max_logit_drift`. A WARN is emitted if drift > 1e-2
+          (sub-bf16-ULP tolerance — earlier docstrings claimed 1e-4 but the
+          code uses 1e-2 to absorb bf16 nondeterminism). Drifts in our
+          runs are typically 0.000.
+        - random-source null: for each test layer, patch the FIRST target
+          (targets_prep[0]) with residuals from N alt-bucket sources
+          (clean buckets only since Phase N §C1); report mean
+          delta_logit_check_minus_fold. NOTE: the null is evaluated against
+          a SINGLE target index, not the full target set, for cost reasons.
+          This is fine for high-signal cells (Qwen Tier 4 spec-adj +20 nats
+          dwarfs any null noise) but introduces noise comparable to signal
+          in low-effect cells (Ministral Tier 4 spec-adj +0.16 to +0.70).
+          Disclose in methods.
   6. Main experiment: for each (source, target, layer L), run forward with
      HiddenStatePatch using source.per_layer_last_pos[L]. Record:
         - top-1 token id + decoded
-        - logits for the action-verb-token-set (FOLD-family, CHECK-CALL-
-          family, BET-RAISE-family) -> compute log-prob for each family
-        - delta_logit_check_minus_fold = (CHECK_logsumexp - FOLD_logsumexp)
-          patched - same baseline
+        - per-verb-family logit aggregate via `score_logits` — see that
+          function for exact definition (LSE on raw logits, NOT a
+          softmax-normalized log-probability; the Δ is interpretable as a
+          logit-aggregate shift, not a true log-prob).
+        - delta_check_minus_fold = score_logits['GROUP_CHECK_CALL']
+          - score_logits['GROUP_FOLD'] (i.e. CHECK_CALL_LSE - FOLD_LSE),
+          reported PATCHED MINUS BASELINE.
   7. Write summary.json + by_pair.csv + SUMMARY.md.
+
+Headline metric — `specificity-adjusted Δ`:
+    spec_adj[L] = mean_over_(src,tgt)_pairs(Δ_pairs[L])
+                  - mean_over_random_sources(Δ_random[L, target=targets[0]])
+    The first term averages over n_source × n_target patched forwards.
+    The second term averages over n_random_control random-bucket sources
+    evaluated against ONE target. See bullet above on the cost-driven
+    asymmetry between these two means.
 
 Usage::
 
@@ -193,9 +216,29 @@ def score_logits(
     logits_last_pos,
     family_token_ids: dict[str, list[int]],
 ) -> dict[str, float]:
-    """Given a 1D logits tensor at the next-token position, return per-family
-    logsumexp (log-prob aggregate). Higher = model puts more probability on
-    that family."""
+    """Given a 1D logits tensor at the next-token position, return a per-family
+    LOGIT AGGREGATE: log-sum-exp over the raw logits of the tokens in each
+    family.
+
+    IMPORTANT — this is NOT a softmax-normalized log-probability. The values
+    are unnormalized (the full-vocabulary partition function is not divided
+    out). What's valid:
+
+      * DIFFERENCES between two states (e.g. patched − baseline) on the SAME
+        position cancel the partition function and ARE interpretable as a
+        true log-likelihood-ratio shift on that family. This is what the
+        downstream `delta_check_minus_fold` metric uses, and what every Δ
+        reported in by_pair.csv / SUMMARY.md represents.
+      * RANKINGS between families at the same position (which family has the
+        higher aggregate logit) are likewise valid.
+
+    What's NOT valid: treating an absolute `out[family]` value as a
+    probability or as comparable across positions/runs. Use Δ metrics.
+
+    Higher Δ = patched residual pushes the model toward CHECK_CALL relative
+    to FOLD. Lower (negative) Δ = pushes toward FOLD. Sign convention is
+    documented at every SUMMARY.md row.
+    """
     out = {}
     logits_list = logits_last_pos.tolist()
     for family, ids in family_token_ids.items():

@@ -52,21 +52,31 @@ Outputs:
   - ``SUMMARY_components.md``: writeup-ready markdown table
 
 The headline reading on the resulting SUMMARY_components.md is the
-specificity-adjusted Δ side-by-side across modes. The strongest version of
-the result is something like:
+RATIO-TO-RESIDUAL Δ for each mode (component mode Δ / residual mode Δ at
+the same layer), side-by-side across modes — NOT the same as the
+specificity-adjusted Δ that `causal_patching.py` reports. This driver
+does NOT compute a random-source null per component; the comparison
+denominator is the residual-mode patching effect at the same layer
+on the same (source, target) pairs, which serves as the cell's own
+upper-bound reference.
 
-    | Mode      | Δ (CHECK − FOLD) | top-1 → CHECK |
-    |-----------|------------------|---------------|
-    | residual  | +13.4            | 100%          |  <- existing result
-    | attn      | +12.8 (96%)      |  98%          |  <- attention dominates
-    | mlp       | +0.7             |   3%          |  <- MLP irrelevant
-    | head_07   | +6.3 (47%)       |  60%          |  <- a sparse head story
-    | head_12   | +4.8 (36%)       |  45%          |
-    | head_03   | +0.2             |   2%          |
+    | Mode      | Δ (CHECK − FOLD) | ratio-to-residual | top-1 → CHECK |
+    |-----------|------------------|------------------:|---------------|
+    | residual  | +13.4            |             100%  | 100%          |
+    | attn      | +12.8            |              96%  |  98%          |
+    | mlp       | +0.7             |               5%  |   3%          |
+    | head_07   | +6.3             |              47%  |  60%          |
+    | head_12   | +4.8             |              36%  |  45%          |
+    | head_03   | +0.2             |               1%  |   2%          |
     | ...
 
-If attention dominates and a small set of heads carry most of the effect,
-that's the paper-banner mech-interp result.
+If attention dominates and a small set of heads carry most of the
+residual-mode effect, that's the paper-banner mech-interp result.
+
+Note: prior versions of this docstring and several wrapper scripts
+described the metric as "specificity-adjusted Δ". That wording was
+incorrect — the metric is `ratio_to_residual` (or its raw Δ value).
+Use that terminology in writeups.
 """
 
 from __future__ import annotations

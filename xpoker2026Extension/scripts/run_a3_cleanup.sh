@@ -20,7 +20,19 @@
 #      uninformative. With balanced classes both baselines collapse to
 #      ~0.50 (true chance) which is the comparison we want.
 #
-# Pure analysis on cached `raw_residuals.npz` — no GPU needed. ~5 min total.
+#   3. --n-permutation-trials 20
+#      Replaces the original 1-shuffle permuted-label null with a 20-trial
+#      average + std. Tightens the null distribution; addresses audit
+#      item M7.
+#
+#   4. --also-fixed-threshold-random
+#      Adds a SECOND random-direction row: instead of picking the
+#      accuracy-maximizing threshold per random unit vector (which is
+#      an UPPER BOUND on what random projections can achieve), threshold
+#      at the median of each projection. This is the conservative null
+#      a reviewer will accept. Addresses audit item M8.
+#
+# Pure analysis on cached `raw_residuals.npz` — no GPU needed. ~5-10 min total.
 #
 # Outputs (separate dirs from the legacy A3 run so we don't clobber):
 #   results/direction_probe_baselines/llama8b_l14_phaseP.md
@@ -53,12 +65,14 @@ run_one() {
     mkdir -p "$(dirname "$out_md")"
 
     echo
-    echo "## A3 cleanup: $short L=$layer (cross-task=position, balanced)"
+    echo "## A3 cleanup: $short L=$layer (cross-task=position, balanced, multi-perm + fixed-threshold rand)"
     python -m experiments.direction_probe_baselines \
         --probe-npz "$probe_npz" \
         --enriched-log $logs \
         --cross-task-feature position \
         --balance-classes \
+        --n-permutation-trials 20 \
+        --also-fixed-threshold-random \
         --out-md "$out_md"
 }
 

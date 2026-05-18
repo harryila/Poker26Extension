@@ -2395,16 +2395,114 @@ Triggers for un-shelving:
 
 Until then, `results/mode_balanced_probe/` will not exist and the probe wrapper auto-skips. The §18b unmatched-cosine result is the published number.
 
-### 22h. Combined claims after Phase P (replacing §19k)
+### 22h. Combined claims after Phase P (replacing §19k) — paper-grade wording
 
-1. At L\* in each 8B model, an attention-mediated sub-circuit sufficiently encodes the verb decision — patching residuals from a clean source flips the verb (Phase H–K) — while ablating the same dominant heads on both saturated CHECK baselines AND near-threshold illegal-FOLD targets leaves the top-1 prediction unchanged. The encoding is therefore SUFFICIENT at specific heads, BIDIRECTIONAL (ablation magnitude ~3× random control with sign flipped according to the target's leaning), and REDUNDANT (no single-path necessity).
-2. The verb-decision direction is real, model-specific, and cross-validated at 99% accuracy (clean ≫ permuted ≫ random across all three models with proper class-balanced controls).
-3. **Belief is moderately decodable from L\* in Llama and Ministral (held-out R² ~ 0.30) and only at chance in Qwen (0.09).** The earlier in-sample "highly decodable" reading in Qwen was a high-dim regularization artifact.
-4. **The model's own verbalized belief is essentially decoupled from the L\* residual** (held-out R² ≤ 0.14, dropping to negative for Ministral and Qwen). The original paper's "belief inertia" thus has a precise residual-level correlate: the language-layer belief and the action-decision-layer state operate on different (or absent) belief representations.
-5. The verb-decision direction is orthogonal to whatever belief subspace exists, across both oracle and agent_belief sources and all three models (cos ≤ 0.05).
-6. The compute-then-commit two-stage circuit (compute at L\*, commit at L\*+1 with residual flow-through) is confirmed across all three models.
-7. CoT mode produces a verb-axis ~3× more separated than non-CoT mode at the residual level (Phase O §19e).
-8. **Qwen's L=23 verb-pair circuit is opponent-invariant** across 4 opponent presets ranging from `default` to `informative_v2` and the two `_aggressive` variants (spec-adj Δ = +20.10 ± 0.07 nats, top-1 → CHECK = 92–100%). Llama and Ministral cross-preset patching pending after the verify_prompt_reconstruction tolerance fix.
+These are the exact claim formulations to use in the paper. Each was checked
+against its backing SUMMARY in the codebase audit (AUDIT.md §3.1) and the
+wording is constrained to what the evidence actually supports — no
+cross-model or cross-construct generalization unless explicitly tested.
+
+1. **Sufficiency + redundancy of the L\* sub-circuit.** At each model's L\*,
+   an attention-mediated sub-circuit sufficiently encodes the verb decision:
+   patching the residual of a clean CHECK source into a clean-legal-FOLD or
+   illegal-FOLD target flips the verb (Phase H–K). Zero-ablating the
+   dominant heads on both saturated CHECK baselines AND near-threshold
+   illegal-FOLD targets leaves the model's top-1 prediction unchanged in
+   98–100% of decisions, with ablation Δ magnitudes ~3× the random-head
+   control but with sign matching the target's pre-patch leaning. The
+   encoding is therefore (i) **sufficient** at specific heads (head
+   decomposition), (ii) **bidirectional** in target-conditional sign of
+   contribution (Llama h5/h23/h24 push CHECK on CHECK-leaning targets and
+   FOLD on FOLD-leaning targets), and (iii) **redundant**: the verb
+   prediction is robust to removing the heads we identified, indicating
+   the L\* signal is computed across multiple parallel paths.
+
+2. **A real, model-specific, balanced-baselined verb-decision direction.**
+   A linear logistic-regression probe trained on L\* residuals separates
+   CHECK from legal-FOLD decisions at cross-validated accuracy 0.99 in
+   Llama, 1.00 in Ministral, 0.998 in Qwen. With class balancing (Phase P
+   §22b), permuted-label baseline collapses to ~0.49 in all three models
+   and random-direction (best-threshold) baseline is 0.76–0.88. Cross-task
+   accuracy with the `position` (BB vs SB) feature was attempted but the
+   probe driver's sample-order join failed for this batch; the headline
+   probe-credibility claim does not depend on it.
+
+3. **Oracle belief is partially-decodable from the L\* residual.**
+   Multi-output ridge regression from L\* residual to the 14-dimensional
+   strategy-aware-oracle hand-strength distribution gives **held-out**
+   R² (5-fold CV) of **0.337 (Llama L=14)**, **0.297 (Ministral L=16)**,
+   and **0.089 (Qwen L=23)**. The earlier in-sample R² of 0.999 reported
+   for Qwen (§19a) was an overfitting artifact at hidden_dim=4096 ≫
+   n_samples=300; the writeup uses only held-out R² going forward.
+
+4. **The model's own verbalized belief is NOT linearly decodable at L\***
+   from the same residual stream. Held-out R² for `agent_belief` (parsed
+   from CoT) is **0.137 (Llama)**, **−0.180 (Ministral)** and
+   **−2.007 (Qwen)** — negative R² means the regression generalizes worse
+   than a constant. This is a linear-probing claim about a single residual
+   position at one layer; we do not rule out nonlinear or multi-layer
+   encodings. The mechanistic correlate of the original paper's
+   "belief-inertia" observation is therefore: at the action-decision
+   layer, the language-layer verbalized belief and the residual-state
+   representation are decoupled under linear readout.
+
+5. **Verb direction is orthogonal to the linearly-decodable belief subspace
+   where one exists.** Cos(w_verb, principal belief direction) is ≤ 0.05
+   across all six (model × belief-source) cells. The orthogonality claim is
+   at full strength for Llama and Ministral × oracle_strategy_aware
+   (where held-out R² ~ 0.30, so the belief subspace is well-defined).
+   For Qwen × agent_belief (and to a lesser extent Ministral × agent_belief),
+   held-out R² is at or below zero, so the "belief subspace" extracted by
+   SVD on the ridge weight matrix is essentially undefined and the
+   orthogonality there is uninformative. Paper claim is restricted to
+   "cells where the belief subspace is well-defined."
+
+6. **Compute-then-commit two-stage circuit** (compute at L\*, commit at L\*+1
+   with residual flow-through dominating attention/MLP contribution at
+   L\*+1) is confirmed across all three models (§15c Llama; §19f Ministral
+   L=17 and Qwen L=24). Qwen's "compute" phase is more distributed than
+   Llama's localized triplet, but the two-stage *pattern* holds in all
+   three.
+
+7. **CoT vs non-CoT verb-axis compression — Llama-specific data.**
+   In Llama, the centroid distance between mean CHECK residual and mean
+   FOLD residual at L\*=14 is 3.32 in CoT mode and 1.12 in non-CoT mode
+   (3× compression; §19e). We have analogous magnitude data only for
+   Llama and Qwen; the §19e numbers are reported for Llama with Qwen as
+   an additional reference point, and we do not generalize "3× across all
+   models" without Ministral data.
+
+8. **Cross-preset opponent-invariance is established for Qwen 8B only.**
+   In Qwen at L=23, the verb-pair patching effect is constant across 4
+   opponent presets — spec-adj Δ ranges from +19.91 (default) to +20.10
+   (informative_v2, tight_aggressive, loose_aggressive), top-1 → CHECK
+   is 92–100% — with a range of 0.19 nats across the 4 cells (sample sd
+   ≈ 0.08). For **Ministral at L=16**, the patching effect is weaker
+   (spec-adj Δ +0.16 to +0.70 nats) and varies qualitatively between
+   `default` (47% top-1 → CHECK) and the aggressive-cluster presets
+   (13–14%), with a small-sample confound (n=16–18 clean_CC sources for
+   aggressive cells). For **Llama at L=14**, the existing PromptReconstructor
+   does not byte-identically reproduce the opp-preset chat-template enriched
+   logs (baseline_top1_match_rate drops to 0.57–0.81 vs the canonical
+   ≥0.95); the 3 of 4 cells that ran with relaxed gates are documented
+   in §22f but are **not interpretable as opponent-stability evidence**
+   and are not used in paper conclusions. Llama × informative_v2 did not
+   complete even at the relaxed gate. The cross-model opponent-stability
+   story is therefore: bulletproof in Qwen, weak-and-conditional in
+   Ministral, unmeasured-due-to-reconstructor-mismatch in Llama.
+
+**Important framing distinctions** (audited in §22h):
+
+- "Failure mode is CoT-conditional" (§15a A3 audit: zero illegal_FOLD across
+  18 non-CoT cells) is NOT the same claim as "the L\* circuit is
+  CoT-conditional." Phase L §17c shows Qwen's non-CoT clean→clean patching
+  works (intrinsic circuit), so the circuit in Qwen at least is not
+  CoT-induced. The paper should use the failure-mode wording for the A3
+  finding and the circuit wording only where supported per model.
+
+- "Cross-model" claims in the paper should explicitly list which 2-of-3 or
+  3-of-3 models the claim is supported in. Where evidence is single-model
+  (Qwen Tier 4, Llama CoT-magnitude), say so in-line.
 
 ### 22i. Files added / changed in §22
 
@@ -2413,3 +2511,45 @@ Until then, `results/mode_balanced_probe/` will not exist and the probe wrapper 
 | `experiments/verify_prompt_reconstruction.py` | NEW CLI flags `--tie-tolerance-nats`, `--tie-top-k`, `--max-failures` (defaults unchanged so existing callers are unaffected). |
 | `scripts/run_tier4_patching.sh` | Pre-flight 2 now uses `--tie-tolerance-nats 0.50 --max-failures 2 --n-samples 10` for opp-preset enriched logs. |
 | `updates.md` | This section (§22). |
+
+### 22j. Naming clarification — Phase H per-seed cells
+
+The §14 Phase H prose refers to "per-seed L\* replicates" for all three
+seeds (s42, s123, s456) of each model, but the directory names differ
+slightly between models. Specifically for Llama:
+
+- `results/causal_patching/llama8b_t0_s42_layer_sweep/` is the s42 replicate
+- `results/causal_patching/llama8b_t0_s123_replicate/`
+- `results/causal_patching/llama8b_t0_s456_replicate/`
+
+The s42 cell was named `_layer_sweep` because it was the first to run; the
+two later seeds got `_replicate` once we knew we wanted parity. The three
+cells use the same script, the same n_source × n_target × layer grid, and
+the same patching protocol — they are per-seed replicates of each other.
+
+For Qwen and Ministral the per-seed cells are all named `*_replicate`:
+- `qwen8b_t0_{s42,s123,s456}_replicate/`
+- `ministral8b_t02_s42_replicate/`, `ministral8b_t0_s{123,456}_replicate/`
+
+No data interpretation issue — just a naming hiccup we should call out so
+a reader who lists the directories doesn't think the s42 Llama cell is a
+different experiment.
+
+### 22k. Code-fix sweep (post-audit, post-paper-prep)
+
+Following the codebase audit in `AUDIT.md`, the following non-result-
+affecting code/docstring fixes were applied. None of these change any
+published number; they only tighten the methods section and remove
+misleading wording. Source: `AUDIT.md` items M1–M8 + R1–R8.
+
+| Audit item | Fix applied |
+|---|---|
+| R1 / R3 / R4 | §22h rewritten to scope each claim to the models/conditions it was actually tested in (Qwen-only for Tier 4 invariance; Llama-specific for centroid 3× compression; "failure mode" vs "circuit" CoT-conditionality distinction). |
+| M2 | `score_logits` docstring in `causal_patching.py` clarified: returns logit aggregate (LSE on raw logits), NOT softmax-normalized log-probability. Δ between two states is still a valid log-likelihood-ratio shift since the partition function cancels. |
+| M3 | `component_patching.py` module docstring + `run_causal_patching_component_l14.sh` corrected: the component decomposition metric is `ratio_to_residual` (component Δ / residual-mode Δ on the same pairs), NOT `specificity-adjusted Δ` (which requires a random-source null this driver does not compute). |
+| M1 | `causal_patching.py` module docstring now explicitly discloses the random-null asymmetry: spec-adj Δ subtracts a null computed against `targets_prep[0]` only, while the source-effect mean is computed over all (source × target) pairs. Disclosed in the paper methods section. |
+| M4 | `direction_probe_baselines._pot_size` now tries `pot_total` (the actual enriched-log field) before falling back to `pot` / `pot_size`. Previously returned 0.0 for every record (degenerate single-class). Unused option, but no longer silently broken. |
+| M5 | `causal_patching.py` module docstring corrected: self-patch tolerance is 1e-2 WARN-only (not 1e-4 hard fail). All observed drifts in our runs are 0.000. |
+| M7 | `direction_probe_baselines.py` gains `--n-permutation-trials` flag (default 1 for back-compat); `run_a3_cleanup.sh` now uses 20 trials. |
+| M8 | `direction_probe_baselines.py` gains `--also-fixed-threshold-random` flag — adds a conservative random-direction baseline using the median of each random projection as the threshold (not the per-trial accuracy-maximizing threshold). The original "best-threshold" remains for back-compat as an UPPER BOUND on what random projections can achieve; the new row is the conservative comparison. `run_a3_cleanup.sh` enables it. |
+| Naming hiccup | §22j above documents `llama8b_t0_s42_layer_sweep` vs `_s{123,456}_replicate`. |

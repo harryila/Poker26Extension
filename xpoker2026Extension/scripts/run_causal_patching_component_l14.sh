@@ -22,8 +22,11 @@
 #   - per-head: for each of the 32 attention heads, replace ONLY that
 #     head's pre-o_proj contribution; other heads pass through.
 #
-# Compares each mode's specificity-adjusted delta against the residual-mode
-# baseline. The strongest possible version of the result:
+# Compares each mode's RATIO-TO-RESIDUAL (mode Δ / residual-mode Δ on the
+# same (source, target) pairs). NOTE: this is NOT a specificity-adjusted Δ
+# in the sense of `causal_patching.py` — the component driver does not
+# compute a random-source null per component; the comparison denominator is
+# the residual-mode Δ. The strongest possible version of the result:
 #   "attention contribution alone explains ~95% of the residual-patch
 #    effect at L=14, and three heads (h7, h12, h19) each carry >25% of
 #    the attention effect."

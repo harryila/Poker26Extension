@@ -52,6 +52,31 @@ def main():
                              "labels keyed by hand_id). Must be the same logs.")
     parser.add_argument("--n-random-trials", type=int, default=20,
                         help="Number of random-direction trials to average.")
+    parser.add_argument(
+        "--n-permutation-trials",
+        type=int,
+        default=1,
+        help=(
+            "Number of independent label permutations to run for the "
+            "permuted-label control. Default 1 (one shuffle) matches the "
+            "original behavior. Audit recommends 20+ for tight nulls, "
+            "though for a typical learned-vs-permuted gap of 0.49pp the "
+            "single-shuffle estimate is already well-separated."
+        ),
+    )
+    parser.add_argument(
+        "--also-fixed-threshold-random",
+        action="store_true",
+        help=(
+            "In addition to the legacy `--random-direction` best-threshold "
+            "metric (which uses an oracle threshold per trial and therefore "
+            "reports an UPPER BOUND on what random projections can achieve), "
+            "also compute a FIXED-THRESHOLD random-direction control: for "
+            "each random unit vector, threshold the projection at the median "
+            "of the projections (no per-trial threshold optimization). This "
+            "is the more conservative null."
+        ),
+    )
     parser.add_argument("--cv-folds", type=int, default=5)
     parser.add_argument("--l2-c", type=float, default=0.01)
     parser.add_argument("--seed", type=int, default=42)
@@ -147,10 +172,23 @@ def main():
     print(f"[learned] CV accuracy: {learned_mean:.3f} ± {learned_std:.3f}")
 
     # ---- (2) Permuted-label probe ----------------------------------------
-    y_shuffled = y.copy()
-    rng.shuffle(y_shuffled)
-    perm_mean, perm_std = _cv(clf, X, y_shuffled)
-    print(f"[permuted-label] CV accuracy: {perm_mean:.3f} ± {perm_std:.3f}")
+    # Multi-trial permutation null: shuffle labels --n-permutation-trials
+    # times, fit fresh probe each time, average. Default n_trials=1 matches
+    # the original behavior (single shuffle); audit recommends 20+ for
+    # tight nulls.
+    n_perm = max(1, int(args.n_permutation_trials))
+    perm_means = []
+    for trial in range(n_perm):
+        y_shuf = y.copy()
+        rng.shuffle(y_shuf)
+        m, _ = _cv(clf, X, y_shuf)
+        perm_means.append(m)
+    perm_mean = float(np.mean(perm_means))
+    perm_std = float(np.std(perm_means)) if n_perm > 1 else 0.0
+    print(
+        f"[permuted-label] CV accuracy (n_trials={n_perm}): "
+        f"{perm_mean:.3f} ± {perm_std:.3f}"
+    )
 
     # ---- (3) Random-direction projections + threshold classifier ---------
     # For each random unit vector, compute the projection threshold that
@@ -188,8 +226,36 @@ def main():
         random_accs.append(best)
     rand_mean = float(np.mean(random_accs))
     rand_std = float(np.std(random_accs))
-    print(f"[random-direction] best-threshold accuracy "
+    print(f"[random-direction-best-threshold] (upper bound) accuracy "
           f"({args.n_random_trials} trials): {rand_mean:.3f} ± {rand_std:.3f}")
+
+    # ---- (3b) Fixed-threshold random-direction (conservative null) -------
+    # Thresholds each random projection at its OWN median (not at the
+    # accuracy-maximizing threshold). This is the more honest "what does
+    # a random axis achieve" baseline. Only computed if --also-fixed-
+    # threshold-random is set, so we don't change default outputs.
+    rand_fixed_mean = None
+    rand_fixed_std = None
+    if args.also_fixed_threshold_random:
+        random_accs_fixed = []
+        for trial in range(args.n_random_trials):
+            w = rng.normal(size=hidden).astype(np.float32)
+            w = w / (np.linalg.norm(w) + 1e-9)
+            proj = X @ w
+            thr = float(np.median(proj))
+            pred = (proj > thr).astype(int)
+            # Try both class orientations and take max (still a 1-bit
+            # choice, not a continuous threshold optimization).
+            a1 = float(np.mean(pred == y))
+            a2 = float(np.mean(pred == (1 - y)))
+            random_accs_fixed.append(max(a1, a2))
+        rand_fixed_mean = float(np.mean(random_accs_fixed))
+        rand_fixed_std = float(np.std(random_accs_fixed))
+        print(
+            f"[random-direction-fixed-threshold] (conservative) accuracy "
+            f"({args.n_random_trials} trials): "
+            f"{rand_fixed_mean:.3f} ± {rand_fixed_std:.3f}"
+        )
 
     # ---- (4) Cross-task probe: train on a non-verb label -----------------
     # Build hand-keyed dict of records to derive cross-task labels.
@@ -253,8 +319,20 @@ def main():
     def _pot_size(rec):
         # Binary above-median split computed from the bucket later; here
         # we just emit the raw pot. The wrapper computes the median.
+        # NOTE: enriched-log obs schema uses `pot_total` (per
+        # poker_env/obs.py); `pot` is not a field and previously returned
+        # 0 for every record (degenerate single-class). Audit fix:
+        # try `pot_total` first, fall back to `pot` and `pot_size` for
+        # legacy log compatibility, default 0 only if all are missing.
         obs = rec.get("obs") or {}
-        return float(obs.get("pot", 0))
+        for key in ("pot_total", "pot", "pot_size"):
+            v = obs.get(key)
+            if v is not None:
+                try:
+                    return float(v)
+                except (TypeError, ValueError):
+                    continue
+        return 0.0
 
     def _is_first_decision(rec):
         return int(int(rec.get("decision_idx", 0)) == 1)
@@ -321,11 +399,24 @@ def main():
         "balanced_classes": bool(args.balance_classes),
         "cross_task_feature": args.cross_task_feature,
         "learned_probe_cv_acc": {"mean": learned_mean, "std": learned_std},
-        "permuted_label_cv_acc": {"mean": perm_mean, "std": perm_std},
+        "permuted_label_cv_acc": {
+            "mean": perm_mean, "std": perm_std,
+            "n_trials": int(args.n_permutation_trials),
+        },
         "random_direction_best_threshold_acc": {
             "mean": rand_mean, "std": rand_std,
             "n_trials": args.n_random_trials,
+            "interpretation": "upper bound — oracle threshold per trial",
         },
+        "random_direction_fixed_threshold_acc": (
+            {
+                "mean": rand_fixed_mean, "std": rand_fixed_std,
+                "n_trials": args.n_random_trials,
+                "interpretation": "conservative — fixed median threshold per trial",
+            }
+            if rand_fixed_mean is not None
+            else None
+        ),
         "cross_task": cross_task_summary,
     }
     with open(out_path.with_suffix(".json"), "w") as f:
@@ -343,11 +434,18 @@ def main():
     md.append("|---|---:|---|")
     md.append(f"| **Learned probe** (verb labels) | "
               f"**{learned_mean:.3f} ± {learned_std:.3f}** | the actual probe |")
-    md.append(f"| Permuted-label control | {perm_mean:.3f} ± {perm_std:.3f} | "
+    md.append(f"| Permuted-label control ({args.n_permutation_trials} shuffle{'s' if args.n_permutation_trials != 1 else ''}) "
+              f"| {perm_mean:.3f} ± {perm_std:.3f} | "
               "shuffled labels — chance (~0.50) expected |")
-    md.append(f"| Random-direction (best threshold, {args.n_random_trials} trials) | "
+    md.append(f"| Random-direction (BEST threshold, {args.n_random_trials} trials) | "
               f"{rand_mean:.3f} ± {rand_std:.3f} | "
-              "1-D classification on a random axis |")
+              "upper bound: oracle threshold per trial |")
+    if rand_fixed_mean is not None:
+        md.append(
+            f"| Random-direction (FIXED median threshold, {args.n_random_trials} trials) "
+            f"| {rand_fixed_mean:.3f} ± {rand_fixed_std:.3f} | "
+            "conservative: no per-trial threshold optimization |"
+        )
     if cross_task_summary is not None:
         md.append(f"| Cross-task (`{cross_task_summary['task']}`) | "
                   f"{cross_task_summary['cv_acc_mean']:.3f} ± "

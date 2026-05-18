@@ -2535,6 +2535,52 @@ No data interpretation issue — just a naming hiccup we should call out so
 a reader who lists the directories doesn't think the s42 Llama cell is a
 different experiment.
 
+### 22j-bis. Mode-balanced probe is NOT infeasible — `hand_id` is a random UUID
+
+> **Date:** 2026-05-18, found during the post-audit code-fix sweep.
+
+When checking the `mode_balanced_direction_probe.py` driver to understand
+why CoT and non-CoT logs share zero matched keys (§22g), I traced the
+`hand_id` field back through the env code and found this in
+`poker_env/env.py` line 188:
+
+```python
+self.hand_id = str(uuid.uuid4())[:8]
+```
+
+**`hand_id` is a random UUID assigned per `env.reset()`, NOT derived
+from the seed.** So even when CoT and non-CoT runs use the SAME `--seed`
+and produce the SAME dealt hands, the `hand_id` strings never match
+across runs.
+
+The per-hand `seed` value IS deterministic (base_seed + i * 1000, set in
+`run_experiment.run_multi_hand`) and IS stored on every decision record
+in the enriched log. Switching the match key from `(hand_id, decision_idx)`
+to `(seed, decision_idx)` recovers all the matching that the previous
+analysis missed.
+
+**Implication: the §22g shelving was a key-bug, not an infeasibility.**
+The 9-12 h GPU re-run of inference is not required. The fix is a 5-line
+code change to the matching key, plus a re-run of the mode-balanced
+probe itself (~30 min).
+
+Caveat — game-state divergence at later decision indices: `(seed,
+decision_idx)` guarantees identical hole cards / deck state but only
+guarantees identical GAME STATE at decision_idx=1 (no prior actions).
+At later decisions, CoT and non-CoT may have taken different prior
+actions and the game state diverges. The driver now (after the fix)
+computes a `_game_state_signature` from `(seed, decision_idx, board,
+pot_total, bet_to_call, position, hole_cards)` and reports the count
+of strictly-matched (identical-game-state) pairs alongside the broader
+(seed, decision_idx) match count. The wrapper
+`run_mode_balanced_direction_probe.sh` defaults to the strict variant
+(`REQUIRE_IDENTICAL_STATE=1`) so the published number will be the
+publication-grade matched-cosine.
+
+**Result trigger: §22g un-shelved.** Mode-balanced probe goes from
+"infeasible without 9-12 h GPU re-run" to "ready to re-run with current
+code, expected wall-clock ~30 min."
+
 ### 22k. Code-fix sweep (post-audit, post-paper-prep)
 
 Following the codebase audit in `AUDIT.md`, the following non-result-
@@ -2553,3 +2599,7 @@ misleading wording. Source: `AUDIT.md` items M1–M8 + R1–R8.
 | M7 | `direction_probe_baselines.py` gains `--n-permutation-trials` flag (default 1 for back-compat); `run_a3_cleanup.sh` now uses 20 trials. |
 | M8 | `direction_probe_baselines.py` gains `--also-fixed-threshold-random` flag — adds a conservative random-direction baseline using the median of each random projection as the threshold (not the per-trial accuracy-maximizing threshold). The original "best-threshold" remains for back-compat as an UPPER BOUND on what random projections can achieve; the new row is the conservative comparison. `run_a3_cleanup.sh` enables it. |
 | Naming hiccup | §22j above documents `llama8b_t0_s42_layer_sweep` vs `_s{123,456}_replicate`. |
+| 1A re-run prep | `run_a3_cleanup.sh` now honors `FORCE_RERUN=1` so the new multi-permutation + fixed-threshold-random baselines can re-populate the existing `*_phaseP.md` files without manual deletion. |
+| 1B diagnostic | NEW `experiments/diagnose_opp_preset_reconstruction.py`: CPU-only script that recomputes the `prompt_hash` for opp-preset enriched logs and reports per-cell match rate plus the reconstructed prompt for the first mismatch. Lets us diagnose the Llama Tier 4 baseline_top1_match_rate ≈ 0.57-0.81 problem from §22f. |
+| 2A code | `causal_patching.py` gains `--n-random-target N` flag (default 1 for back-compat) that averages the random-null Δ over N target indices instead of only `targets_prep[0]`. Reports per-layer `std_delta` alongside `mean_delta`. Closes audit M1. `run_tier4_patching.sh` defaults `N_RANDOM_TARGET=10` and adds a `FORCE_RERUN=1` override. |
+| 2B fix | `mode_balanced_direction_probe.py` now keys on `(seed, decision_idx)` not `(hand_id, decision_idx)` because `hand_id` is a random UUID; added `--require-identical-game-state` flag for strict-matching publication-grade pairs. `run_mode_balanced_direction_probe.sh` defaults `REQUIRE_IDENTICAL_STATE=1` and supports `FORCE_RERUN=1`. See §22j-bis for the full discovery. |

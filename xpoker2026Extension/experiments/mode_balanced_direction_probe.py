@@ -66,15 +66,58 @@ from experiments.causal_patching import (  # noqa: E402
 
 
 def _load_records_keyed(path: str) -> dict[str, dict]:
-    """Load decisions keyed by '{hand_id}:{decision_idx}'."""
+    """Load decisions keyed by '{seed}:{decision_idx}'.
+
+    NOTE: previously used `(hand_id, decision_idx)` as the key, but
+    `hand_id` is a random UUID assigned per `env.reset()` (see
+    `poker_env/env.py` line 188: `self.hand_id = str(uuid.uuid4())[:8]`),
+    so it never matches across runs even when the SAME seed produced the
+    SAME dealt hand. The per-hand `seed` field IS deterministic
+    (base_seed + i * 1000, see `run_experiment.run_multi_hand`), so
+    `(seed, decision_idx)` is the correct match key for cross-run
+    pairing of decisions on the same dealt hand.
+
+    Caveat: `(seed, decision_idx)` guarantees identical hole cards / deck
+    state, AND guarantees identical game state at decision_idx=1 (no prior
+    actions). At later decision indices, the game state can diverge if
+    CoT and non-CoT modes took different prior actions. Downstream code
+    should compute a game-state-identity check (board + pot + bet_to_call)
+    to report how many matched pairs are on IDENTICAL game states vs
+    merely on the same dealt hand.
+    """
     out = {}
     for rec in _iter_decisions(path):
         am = rec.get("action_metadata")
         if am is None or not am.get("raw_response"):
             continue
-        key = f"{rec.get('hand_id', '?')}:{rec.get('decision_idx', '?')}"
+        key = f"{rec.get('seed', '?')}:{rec.get('decision_idx', '?')}"
         out[key] = rec
     return out
+
+
+def _game_state_signature(rec: dict) -> tuple:
+    """Compute a tuple that identifies the GAME STATE at the time of
+    this decision (independent of agent stochasticity / belief
+    elicitation choices). Used to verify that two matched (seed,
+    decision_idx) records from different modes are on identical game
+    states (not just the same dealt hand).
+    """
+    obs = rec.get("obs") or {}
+    board = tuple(obs.get("board") or [])
+    holes = obs.get("hole_cards")
+    if isinstance(holes, list):
+        holes = tuple(holes)
+    return (
+        rec.get("seed"),
+        rec.get("decision_idx"),
+        rec.get("player_to_act"),
+        rec.get("street"),
+        obs.get("pot_total"),
+        obs.get("bet_to_call"),
+        obs.get("position"),
+        board,
+        holes,
+    )
 
 
 def _capture_residual_at_layer(
@@ -119,9 +162,23 @@ def main():
                         help="Path to a single non-CoT enriched log.")
     parser.add_argument("--layer", type=int, required=True)
     parser.add_argument("--max-pairs", type=int, default=200,
-                        help="Cap matched (hand_id × decision_idx) pairs to "
+                        help="Cap matched (seed × decision_idx) pairs to "
                              "this number, balanced across CHECK and FOLD "
                              "buckets where possible.")
+    parser.add_argument(
+        "--require-identical-game-state",
+        action="store_true",
+        help=(
+            "Restrict matched pairs to those where the obs (board, pot, "
+            "bet_to_call, position, hole_cards) is byte-identical across "
+            "CoT and non-CoT — guaranteeing the modes saw the exact same "
+            "game state, not just the same dealt hand. Recommended for "
+            "publication-grade matched-cosine claims. Without this flag, "
+            "later decisions in a hand can diverge across modes if CoT "
+            "and non-CoT took different prior actions, in which case the "
+            "'matched' residuals are on slightly different inputs."
+        ),
+    )
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--dtype", default="bfloat16",
@@ -143,10 +200,27 @@ def main():
     print(f"[init] CoT decisions: {len(cot_recs)}; non-CoT: {len(nocot_recs)}")
 
     common_keys = set(cot_recs.keys()) & set(nocot_recs.keys())
-    print(f"[init] matched keys (hand_id × decision_idx): {len(common_keys)}")
+    print(f"[init] matched keys (seed × decision_idx): {len(common_keys)}")
+
+    # Diagnostic: how many of those have IDENTICAL game-state signatures
+    # (board, pot, position, etc.) — these are the strict matches; the
+    # rest match only on the dealt hand, not on the resulting game state
+    # (e.g. CoT and non-CoT took different prior actions in this hand).
+    identical_keys = set()
+    for k in common_keys:
+        if _game_state_signature(cot_recs[k]) == _game_state_signature(nocot_recs[k]):
+            identical_keys.add(k)
+    print(f"[init] of those, identical game-state signature: {len(identical_keys)} / {len(common_keys)}")
+
+    if args.require_identical_game_state:
+        before = len(common_keys)
+        common_keys = identical_keys
+        print(f"[init] --require-identical-game-state: kept {len(common_keys)} / {before}")
+
     if not common_keys:
         print("[abort] no matched keys; the CoT and non-CoT logs share no "
-              "(hand_id, decision_idx) pairs.", file=sys.stderr)
+              "(seed, decision_idx) pairs satisfying the matching criterion.",
+              file=sys.stderr)
         sys.exit(2)
 
     # Per-mode classification (recorded action -> bucket family).

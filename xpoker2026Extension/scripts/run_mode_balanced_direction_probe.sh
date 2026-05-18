@@ -29,6 +29,15 @@ cd "$(dirname "$0")/.."
 DEVICE="${DEVICE:-cuda}"
 DTYPE="${DTYPE:-bfloat16}"
 MAX_PAIRS="${MAX_PAIRS:-200}"
+# Set REQUIRE_IDENTICAL_STATE=1 to restrict matched pairs to those with
+# byte-identical game state (board, pot, position, hole_cards) across
+# CoT and non-CoT. Recommended for publication-grade matched-cosine
+# claims. Default 0 = match on (seed, decision_idx) only, which
+# guarantees identical dealt hand but allows divergent prior actions.
+REQUIRE_IDENTICAL_STATE="${REQUIRE_IDENTICAL_STATE:-1}"
+# Set FORCE_RERUN=1 to ignore existing SUMMARY.md and re-run (e.g.
+# after switching match key from hand_id to seed).
+FORCE_RERUN="${FORCE_RERUN:-0}"
 
 run_one() {
     local short="$1"
@@ -37,8 +46,8 @@ run_one() {
     local nocot_log="$4"
 
     local out_dir="results/mode_balanced_probe/${short}8b_l${layer}"
-    if [[ -d "$out_dir" ]] && [[ -f "$out_dir/SUMMARY.md" ]]; then
-        echo "[skip] $out_dir already populated"
+    if [[ -d "$out_dir" ]] && [[ -f "$out_dir/SUMMARY.md" ]] && [[ "$FORCE_RERUN" != "1" ]]; then
+        echo "[skip] $out_dir already populated (set FORCE_RERUN=1 to override)"
         return 0
     fi
     if [[ ! -f "$cot_log" ]]; then
@@ -68,11 +77,16 @@ run_one() {
     echo "##   out: $out_dir"
     echo "############################################################"
 
+    local strict_flag=""
+    if [[ "$REQUIRE_IDENTICAL_STATE" == "1" ]]; then
+        strict_flag="--require-identical-game-state"
+    fi
     python -m experiments.mode_balanced_direction_probe \
         --cot-log "$cot_log" \
         --nocot-log "$nocot_log" \
         --layer "$layer" \
         --max-pairs "$MAX_PAIRS" \
+        $strict_flag \
         --out-dir "$out_dir" \
         --device "$DEVICE" --dtype "$DTYPE"
 }

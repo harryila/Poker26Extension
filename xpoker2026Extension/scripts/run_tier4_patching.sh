@@ -52,9 +52,19 @@ DEVICE="${DEVICE:-cuda}"
 DTYPE="${DTYPE:-bfloat16}"
 N_SOURCE="${N_SOURCE:-10}"
 N_RANDOM_CONTROL="${N_RANDOM_CONTROL:-5}"
+# AUDIT M1 fix: average the random-null Δ over the first N_RANDOM_TARGET
+# target indices rather than only targets_prep[0]. For single-layer Tier 4
+# cells with n_random=5 and N_RANDOM_TARGET=10, this adds ~45 forwards/cell
+# (~2 sec) but tightens the null by ~√10 — important for Ministral where
+# signal ≈ noise (spec-adj Δ 0.16-0.70 vs random null variance ~±0.5).
+N_RANDOM_TARGET="${N_RANDOM_TARGET:-10}"
 SEED="${SEED:-42}"
 PRESETS="${PRESETS:-default informative_v2 tight_aggressive loose_aggressive loose_passive}"
 MODELS="${MODELS:-llama-8b qwen-8b ministral-8b}"
+# Set FORCE_RERUN=1 to ignore existing tier4_*_l*/SUMMARY.md outputs and
+# re-run with the current code (e.g. after the audit M1 fix above changed
+# the random-null computation). Otherwise the per-cell skip kicks in.
+FORCE_RERUN="${FORCE_RERUN:-0}"
 # Relax causal_patching's internal baseline_top1_match_rate gate (default
 # 0.95) for Tier 4 opp-preset cells where bf16/tokenization recon noise
 # brings the no-patch baseline below 0.95 on small target sets even when
@@ -107,8 +117,8 @@ run_cell() {
     local enriched="logs/opp_${preset}_${model}_t00_s42_enriched.jsonl"
     local out_dir="results/causal_patching/tier4_${preset}_${short}_l${layer}"
 
-    if [[ -d "$out_dir" ]] && [[ -f "$out_dir/SUMMARY.md" ]]; then
-        echo "[skip] $out_dir already populated"
+    if [[ -d "$out_dir" ]] && [[ -f "$out_dir/SUMMARY.md" ]] && [[ "$FORCE_RERUN" != "1" ]]; then
+        echo "[skip] $out_dir already populated (set FORCE_RERUN=1 to override)"
         return 0
     fi
     if [[ ! -f "$enriched" ]]; then
@@ -168,6 +178,7 @@ run_cell() {
         --n-source "$N_SOURCE" \
         --n-target "$n_target" \
         --n-random-control "$N_RANDOM_CONTROL" \
+        --n-random-target "$N_RANDOM_TARGET" \
         --seed "$SEED" \
         --baseline-tolerance-frac "$BASELINE_TOLERANCE_FRAC" \
         --out-dir "$out_dir" \

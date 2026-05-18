@@ -291,6 +291,20 @@ def main():
                         help="Number of random alt-bucket sources to use as "
                              "the per-layer null baseline. 5 is a tight pilot, "
                              "10-15 gives a cleaner null at <1 min per layer.")
+    parser.add_argument(
+        "--n-random-target", type=int, default=1,
+        help=(
+            "Number of target indices to evaluate the random-null Δ on per "
+            "layer. Default 1 (the FIRST target) for back-compat with all "
+            "existing SUMMARYs and for cost reasons on long layer sweeps. "
+            "When > 1, the random-null is averaged over min(N, n_target) "
+            "targets, which tightens the null estimate considerably for "
+            "low-effect cells (Ministral Tier 4) where signal ≈ noise. "
+            "Cost: extra forwards = n_random_control × (N - 1) × n_layers. "
+            "For single-layer Tier 4 cells, N=10 adds ~9 × 5 = 45 extra "
+            "forwards per cell (~2 seconds). Closes audit item M1."
+        ),
+    )
     parser.add_argument("--zero-ablation", action="store_true",
                         help="Replace the source residual with the all-zeros "
                              "tensor (same shape) instead of a sampled clean "
@@ -665,31 +679,58 @@ def main():
                     states = cap.collect()
                     cap.detach_hooks()
                 random_sources.append(states["per_layer_last_pos"])
-            # Run random control at EVERY test layer, against target_idx 0.
-            # n_random_sources × n_layers extra forwards (small).
+            # Run random control at EVERY test layer.
+            # By default (--n-random-target 1) evaluates only against
+            # targets_prep[0] for cost reasons (legacy behavior, all SUMMARYs
+            # to date use this). For low-effect cells where signal ≈ noise
+            # (e.g. Ministral Tier 4 spec-adj +0.16-+0.70), passing a higher
+            # --n-random-target N tightens the null by averaging across N
+            # target indices.
+            n_rand_targets = max(1, min(args.n_random_target, len(targets_prep)))
+            rand_target_indices = list(range(n_rand_targets))
             random_per_layer: dict[int, dict] = {}
             ctl_t0 = time.time()
             for test_layer in args.layers:
                 deltas = []
                 for r_residuals in random_sources:
-                    patch = HiddenStatePatch(model, test_layer,
-                                              r_residuals[test_layer])
-                    with patch:
-                        res = run_forward_at_last_position(
-                            model, tokenizer, targets_prep[0]["input_text"],
-                            device=args.device,
-                        )
-                    scored = score_logits(res["logits_last_pos"], family_ids)
-                    d = scored["delta_check_minus_fold"] - \
-                        baseline_cache[0]["scored"]["delta_check_minus_fold"]
-                    deltas.append(d)
-                mean_d = sum(deltas) / len(deltas) if deltas else None
+                    for ti_r in rand_target_indices:
+                        patch = HiddenStatePatch(model, test_layer,
+                                                  r_residuals[test_layer])
+                        with patch:
+                            res = run_forward_at_last_position(
+                                model, tokenizer,
+                                targets_prep[ti_r]["input_text"],
+                                device=args.device,
+                            )
+                        scored = score_logits(res["logits_last_pos"], family_ids)
+                        d = scored["delta_check_minus_fold"] - \
+                            baseline_cache[ti_r]["scored"]["delta_check_minus_fold"]
+                        deltas.append(d)
+                if deltas:
+                    mean_d = sum(deltas) / len(deltas)
+                    # Sample std (Bessel-corrected when n >= 2) for the
+                    # random-null distribution; useful when reporting spec-adj
+                    # Δ alongside a null uncertainty.
+                    if len(deltas) >= 2:
+                        m = mean_d
+                        var = sum((d - m) ** 2 for d in deltas) / (len(deltas) - 1)
+                        std_d = var ** 0.5
+                    else:
+                        std_d = None
+                else:
+                    mean_d, std_d = None, None
                 random_per_layer[test_layer] = {
                     "mean_delta": mean_d,
+                    "std_delta": std_d,
                     "n": len(deltas),
+                    "n_random_sources": len(random_sources),
+                    "n_random_targets": n_rand_targets,
                 }
+                std_str = f" std={std_d:+.4f}" if std_d is not None else ""
                 print(f"  layer {test_layer:>3}: random mean delta = "
-                      f"{mean_d:+.4f} (n={len(deltas)})")
+                      f"{mean_d:+.4f}{std_str} "
+                      f"(n={len(deltas)} = {len(random_sources)} sources × "
+                      f"{n_rand_targets} targets)")
             ctl_elapsed = time.time() - ctl_t0
             print(f"  [random control done in {ctl_elapsed:.0f}s]")
             controls["random_source_per_layer"] = {

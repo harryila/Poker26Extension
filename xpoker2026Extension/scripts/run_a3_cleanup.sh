@@ -45,6 +45,12 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
+# Set FORCE_RERUN=1 to ignore existing *_phaseP.md outputs and re-run.
+# Useful after we change the baselines (e.g. multi-permutation null or
+# fixed-threshold random-direction control) and want to regenerate the
+# SUMMARYs without manually deleting them.
+FORCE_RERUN="${FORCE_RERUN:-0}"
+
 run_one() {
     local short="$1"
     local layer="$2"
@@ -54,8 +60,8 @@ run_one() {
     local probe_npz="results/direction_probe/${short}8b_l${layer}/raw_residuals.npz"
     local out_md="results/direction_probe_baselines/${short}8b_l${layer}_phaseP.md"
 
-    if [[ -f "$out_md" ]]; then
-        echo "[skip] $out_md exists"
+    if [[ -f "$out_md" ]] && [[ "$FORCE_RERUN" != "1" ]]; then
+        echo "[skip] $out_md exists (set FORCE_RERUN=1 to override)"
         return 0
     fi
     if [[ ! -f "$probe_npz" ]]; then

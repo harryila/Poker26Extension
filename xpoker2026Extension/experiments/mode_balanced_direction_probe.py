@@ -199,27 +199,53 @@ def main():
     nocot_recs = _load_records_keyed(args.nocot_log)
     print(f"[init] CoT decisions: {len(cot_recs)}; non-CoT: {len(nocot_recs)}")
 
-    common_keys = set(cot_recs.keys()) & set(nocot_recs.keys())
-    print(f"[init] matched keys (seed × decision_idx): {len(common_keys)}")
+    common_keys_loose = set(cot_recs.keys()) & set(nocot_recs.keys())
+    print(f"[init] matched keys (seed × decision_idx): {len(common_keys_loose)}")
 
     # Diagnostic: how many of those have IDENTICAL game-state signatures
     # (board, pot, position, etc.) — these are the strict matches; the
     # rest match only on the dealt hand, not on the resulting game state
     # (e.g. CoT and non-CoT took different prior actions in this hand).
     identical_keys = set()
-    for k in common_keys:
+    for k in common_keys_loose:
         if _game_state_signature(cot_recs[k]) == _game_state_signature(nocot_recs[k]):
             identical_keys.add(k)
-    print(f"[init] of those, identical game-state signature: {len(identical_keys)} / {len(common_keys)}")
+    print(f"[init] of those, identical game-state signature: "
+          f"{len(identical_keys)} / {len(common_keys_loose)}")
 
+    # Strict-vs-loose decision logic + fallback. If strict matching is
+    # requested but produces no pairs (e.g. CoT and non-CoT took different
+    # actions on every overlapping hand), fall back to loose matching with
+    # a clear WARN rather than aborting. The published claim should still
+    # report whether strict was used and how many strict pairs were
+    # available — that goes into the SUMMARY below.
+    matching_mode = "loose"
+    fell_back = False
     if args.require_identical_game_state:
-        before = len(common_keys)
-        common_keys = identical_keys
-        print(f"[init] --require-identical-game-state: kept {len(common_keys)} / {before}")
+        if identical_keys:
+            common_keys = identical_keys
+            matching_mode = "strict"
+            print(f"[init] --require-identical-game-state: kept "
+                  f"{len(common_keys)} / {len(common_keys_loose)} (STRICT)")
+        elif common_keys_loose:
+            common_keys = common_keys_loose
+            matching_mode = "loose-fallback"
+            fell_back = True
+            print(f"[WARN] --require-identical-game-state requested but "
+                  f"strict matching produced 0 pairs. Falling back to "
+                  f"LOOSE matching with all {len(common_keys_loose)} "
+                  f"(seed, decision_idx) pairs. The matched cosine below "
+                  f"is on pairs that share the dealt hand but may differ "
+                  f"in game state (CoT/non-CoT took different prior "
+                  f"actions). This is documented in the SUMMARY.")
+        else:
+            common_keys = set()
+    else:
+        common_keys = common_keys_loose
 
     if not common_keys:
         print("[abort] no matched keys; the CoT and non-CoT logs share no "
-              "(seed, decision_idx) pairs satisfying the matching criterion.",
+              "(seed, decision_idx) pairs.",
               file=sys.stderr)
         sys.exit(2)
 
@@ -379,6 +405,14 @@ def main():
         "nocot_log": args.nocot_log,
         "model_id": model_id,
         "layer": args.layer,
+        "matching": {
+            "key": "(seed, decision_idx)",
+            "n_loose": len(common_keys_loose),
+            "n_strict_identical_game_state": len(identical_keys),
+            "require_identical_game_state_requested": bool(args.require_identical_game_state),
+            "mode_used": matching_mode,
+            "fell_back_to_loose": bool(fell_back),
+        },
         "matched_pairs_attempted": len(cot_kept),
         "matched_pairs_captured": {"cot": len(X_cot), "nocot": len(X_nocot)},
         "cv_folds": args.cv_folds,
@@ -406,10 +440,36 @@ def main():
     md.append(f"- Layer: **{args.layer}**")
     md.append(f"- CoT log:    `{args.cot_log}`")
     md.append(f"- non-CoT log: `{args.nocot_log}`")
-    md.append(f"- Matched (hand_id × decision_idx) pairs attempted: {len(cot_kept)}")
-    md.append(f"- Captured: CoT {len(X_cot)}, non-CoT {len(X_nocot)}")
+    md.append(f"- Match key: `(seed, decision_idx)` "
+              f"(NOTE: not `hand_id` — hand_id is a random UUID, see `poker_env/env.py:188`)")
+    md.append(f"- Matched pairs (loose, same dealt hand): "
+              f"**{len(common_keys_loose)}**")
+    md.append(f"- Of those, identical game-state signature (board + pot + "
+              f"position + hole_cards): **{len(identical_keys)}**")
+    md.append(f"- `--require-identical-game-state` requested: "
+              f"`{bool(args.require_identical_game_state)}`")
+    md.append(f"- **Matching mode used: `{matching_mode}`** "
+              + ("(STRICT — game state byte-identical across modes)"
+                 if matching_mode == "strict"
+                 else ("(LOOSE-FALLBACK — strict matching produced 0 pairs; "
+                       "fell back to same-dealt-hand matching. Pairs may "
+                       "differ in game state because CoT and non-CoT took "
+                       "different prior actions.)" if fell_back
+                       else "(LOOSE — same dealt hand, may differ in game state)")))
+    md.append(f"- Pairs attempted in probe (after per-mode classification): "
+              f"{len(cot_kept)}")
+    md.append(f"- Captured residuals: CoT {len(X_cot)}, non-CoT {len(X_nocot)}")
     md.append(f"- Hidden dim: {Xc.shape[1]}")
     md.append("")
+    if fell_back:
+        md.append("> ⚠️ **Note**: this run requested strict (identical-game-state) "
+                  "matching but found zero strict pairs (most likely because "
+                  "CoT and non-CoT took different actions on every overlapping "
+                  "hand, so the game state diverged after decision_idx=1). "
+                  "The probe was trained on the loose-matched pairs instead. "
+                  "Treat the matched cosine below as a SAME-DEALT-HAND cosine, "
+                  "not a SAME-GAME-STATE cosine.")
+        md.append("")
     md.append("## Per-mode probe accuracy (5-fold CV)")
     md.append("")
     md.append(f"- CoT: **{cv_c.mean():.3f} ± {cv_c.std():.3f}**")

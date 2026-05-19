@@ -2472,24 +2472,55 @@ cross-model or cross-construct generalization unless explicitly tested.
    an additional reference point, and we do not generalize "3× across all
    models" without Ministral data.
 
-8. **Cross-preset opponent-invariance is established for Qwen 8B only.**
-   In Qwen at L=23, the verb-pair patching effect is constant across 4
-   opponent presets — spec-adj Δ ranges from +19.91 (default) to +20.10
-   (informative_v2, tight_aggressive, loose_aggressive), top-1 → CHECK
-   is 92–100% — with a range of 0.19 nats across the 4 cells (sample sd
-   ≈ 0.08). For **Ministral at L=16**, the patching effect is weaker
-   (spec-adj Δ +0.16 to +0.70 nats) and varies qualitatively between
-   `default` (47% top-1 → CHECK) and the aggressive-cluster presets
-   (13–14%), with a small-sample confound (n=16–18 clean_CC sources for
-   aggressive cells). For **Llama at L=14**, the existing PromptReconstructor
-   does not byte-identically reproduce the opp-preset chat-template enriched
-   logs (baseline_top1_match_rate drops to 0.57–0.81 vs the canonical
-   ≥0.95); the 3 of 4 cells that ran with relaxed gates are documented
-   in §22f but are **not interpretable as opponent-stability evidence**
-   and are not used in paper conclusions. Llama × informative_v2 did not
-   complete even at the relaxed gate. The cross-model opponent-stability
-   story is therefore: bulletproof in Qwen, weak-and-conditional in
-   Ministral, unmeasured-due-to-reconstructor-mismatch in Llama.
+8. **Cross-preset opponent-invariance is established for Qwen 8B only;
+   Ministral and Llama are at or below the random null.**
+
+   *Qwen at L=23 (4/4 cells)*: spec-adj Δ ranges from +19.27 (default)
+   to +20.26 (informative_v2, tight_aggressive, loose_aggressive),
+   top-1 → CHECK is 92–100%. With the all-target random null
+   (`--n-random-target 10`, audit M1 fix) the per-cell null
+   distribution std is 6.9–8.0 nats; the spec-adj Δ is therefore
+   2.4–2.9 standard deviations of the null distribution across all 4
+   presets. **Within Qwen, the verb-pair circuit at L=23 operates
+   reproducibly across opponent presets at this significance.**
+
+   *Ministral at L=16 (4/4 cells, REVISED)*: spec-adj Δ ranges from
+   +0.13 to +0.73 nats. Per-cell null std is 0.59–0.78 nats. The
+   spec-adj Δ is therefore **0.2–0.9 standard deviations of the null
+   distribution in every cell** — i.e. **at the noise floor of the
+   random source comparison**. Earlier wording (§22e first pass) said
+   "weak but conditional"; with the all-target null we see this was
+   over-reading: the L=16 verb-pair patching effect on opp-preset
+   Tier 4 enriched logs is **not distinguishable from a random
+   alt-bucket source**. We do not claim a Ministral cross-preset
+   circuit. (Caveat: the Ministral CoT pooled-baseline patching at
+   L=16 IS strong — see Phase H/K — so the verb-pair circuit exists
+   in CoT mode on the original 3-seed × 200-hand pooled informative_v2
+   data; what's null on Tier 4 is the cross-preset, single-seed,
+   50-hands version of the same test.)
+
+   *Llama at L=14 (3/4 cells, REVISED)*: spec-adj Δ ranges from
+   −0.28 to −0.34 nats — i.e. **negative**: patching a clean-CC
+   source pushes the residual LESS toward CHECK than a random
+   alt-bucket source does. Per-cell null std is 0.13–0.41 nats, so
+   the spec-adj is roughly −0.7 to −2.2 standard deviations of the
+   null. Combined with the `baseline_top1_match_rate = 0.57–0.81`
+   (vs canonical ≥0.95; §22f), this confirms that the existing
+   `PromptReconstructor` does not byte-identically reproduce
+   Llama's opp-preset enriched logs at the verb position, and the
+   measured residuals are not the residuals the original inference
+   pass actually computed. The Llama Tier 4 cells are not used in
+   paper conclusions; an opp-preset reconstructor diagnostic is
+   queued (`experiments/diagnose_opp_preset_reconstruction.py`) to
+   identify the chat-template divergence so a fix is possible if
+   we want cross-model Tier 4 closure.
+
+   **Cross-model verdict for Tier 4 mech patching**: bulletproof in
+   Qwen (4/4 at 2.5–3σ), null in Ministral (4/4 within 1σ),
+   non-functional in Llama (reconstructor mismatch + sub-null effect).
+   Single-model claim only: "Qwen's L=23 verb-pair circuit is
+   opponent-invariant across 4 presets." Cross-model Tier 4 evidence
+   is not available from this batch.
 
 **Important framing distinctions** (audited in §22h):
 
@@ -2603,3 +2634,14 @@ misleading wording. Source: `AUDIT.md` items M1–M8 + R1–R8.
 | 1B diagnostic | NEW `experiments/diagnose_opp_preset_reconstruction.py`: CPU-only script that recomputes the `prompt_hash` for opp-preset enriched logs and reports per-cell match rate plus the reconstructed prompt for the first mismatch. Lets us diagnose the Llama Tier 4 baseline_top1_match_rate ≈ 0.57-0.81 problem from §22f. |
 | 2A code | `causal_patching.py` gains `--n-random-target N` flag (default 1 for back-compat) that averages the random-null Δ over N target indices instead of only `targets_prep[0]`. Reports per-layer `std_delta` alongside `mean_delta`. Closes audit M1. `run_tier4_patching.sh` defaults `N_RANDOM_TARGET=10` and adds a `FORCE_RERUN=1` override. |
 | 2B fix | `mode_balanced_direction_probe.py` now keys on `(seed, decision_idx)` not `(hand_id, decision_idx)` because `hand_id` is a random UUID; added `--require-identical-game-state` flag for strict-matching publication-grade pairs. `run_mode_balanced_direction_probe.sh` defaults `REQUIRE_IDENTICAL_STATE=1` and supports `FORCE_RERUN=1`. See §22j-bis for the full discovery. |
+
+### 22l. Post-rerun cleanup (after the GPU re-runs landed)
+
+Following the GPU re-runs of Tier 1+2 follow-ups (commit `2c65f38`), three
+issues surfaced that needed fixing:
+
+| Issue | Fix |
+|---|---|
+| `mode_balanced_direction_probe.py` SUMMARY.md still hard-coded "(hand_id × decision_idx)" in its label even though the matching key was correctly switched to `(seed, decision_idx)` in commit `9e2536c`. The strict-vs-loose pair count diagnostic was only printed to stdout, not recorded in summary.json or SUMMARY.md. | Updated SUMMARY rendering to display the actual match key, both `n_loose` and `n_strict_identical_game_state` counts, the `--require-identical-game-state` flag setting, and the matching mode used (`strict` / `loose` / `loose-fallback`). Added a `matching` block to `summary.json` with the same fields. |
+| Mode-balanced run (`2c65f38`) produced output for Qwen but NOT for Llama. Likely cause: with `--require-identical-game-state`, strict matching produced 0 pairs for Llama (CoT and non-CoT took different actions on every overlapping hand → game state diverged at decision_idx ≥ 2). The script then aborted at the strict-match check. | Added a fallback: if `--require-identical-game-state` is set but produces 0 strict pairs, log a `[WARN]` and fall back to LOOSE matching with all `(seed, decision_idx)` pairs. The SUMMARY records `mode_used = "loose-fallback"` and includes a ⚠️ note that the matched cosine is on same-dealt-hand pairs that may differ in game state. The Qwen result (`mode_used = strict` with 110 strict pairs out of ~110 loose) is unaffected. |
+| Reading the new Tier 4 spec-adj Δ values against the new `std_delta` of the null distribution revealed that **Ministral cells are at noise floor in 4/4** (spec-adj 0.2-0.9σ of null) and **Llama cells are at or BELOW the null** (spec-adj −0.7 to −2.2σ of null). The earlier "weak but conditional" wording for Ministral was an over-read of comparing means without null spread. | §22h.8 above rewritten to state the Ministral cross-preset effect is **not distinguishable from random source patches**, and the Llama Tier 4 effect is **negative** (worse than random) consistent with the reconstructor mismatch hypothesis. Single-model paper claim only: Qwen Tier 4 cross-preset invariance. Cross-model Tier 4 evidence not available from this batch. |

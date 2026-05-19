@@ -4,8 +4,13 @@
 - Layer: **23**
 - CoT log:    `logs/cot_qwen8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz`
 - non-CoT log: `logs/scaled_qwen8b_t0_s42_informative_v2_enriched.jsonl.gz`
-- Matched (hand_id × decision_idx) pairs attempted: 110
-- Captured: CoT 110, non-CoT 110
+- Match key: `(seed, decision_idx)` (NOTE: not `hand_id` — hand_id is a random UUID, see `poker_env/env.py:188`)
+- Matched pairs (loose, same dealt hand): **274**
+- Of those, identical game-state signature (board + pot + position + hole_cards): **225**
+- `--require-identical-game-state` requested: `True`
+- **Matching mode used: `strict`** (STRICT — game state byte-identical across modes)
+- Pairs attempted in probe (after per-mode classification): 110
+- Captured residuals: CoT 110, non-CoT 110
 - Hidden dim: 4096
 
 ## Per-mode probe accuracy (5-fold CV)

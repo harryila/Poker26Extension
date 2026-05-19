@@ -279,6 +279,34 @@ def main():
         cot_kept = [(k, l) for k, l in cot_kept if k in keys_kept]
         nocot_kept = [(k, l) for k, l in nocot_kept if k in keys_kept]
 
+    # Second fallback: strict keys exist but none are CHECK/FOLD-classifiable.
+    if (
+        len(cot_kept) == 0
+        and args.require_identical_game_state
+        and matching_mode == "strict"
+        and common_keys_loose
+    ):
+        fell_back = True
+        matching_mode = "loose-fallback"
+        common_keys = common_keys_loose
+        cot_kept = []
+        nocot_kept = []
+        print(
+            "[WARN] strict matching had "
+            f"{len(identical_keys)} identical-state keys but 0 CHECK/FOLD "
+            "classifiable pairs. Falling back to LOOSE matching on all "
+            f"{len(common_keys_loose)} (seed, decision_idx) pairs."
+        )
+        for k in common_keys:
+            cot_b = classify_decision(cot_recs[k])
+            nocot_b = classify_decision(nocot_recs[k])
+            if cot_b not in ("clean_check_or_call", "clean_legal_fold"):
+                continue
+            if nocot_b not in ("clean_check_or_call", "clean_legal_fold"):
+                continue
+            cot_kept.append((k, 1 if cot_b == "clean_check_or_call" else 0))
+            nocot_kept.append((k, 1 if nocot_b == "clean_check_or_call" else 0))
+
     print(f"[init] matched-and-classified pairs: {len(cot_kept)}")
     print(f"  CoT bucket distribution:    "
           f"CHECK={sum(1 for _,l in cot_kept if l==1)} "

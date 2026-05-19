@@ -9,13 +9,21 @@
     "std": 0.008498365855987991
   },
   "permuted_label_cv_acc": {
-    "mean": 0.4966666666666667,
-    "std": 0.02614064523559688
+    "mean": 0.492,
+    "std": 0.02632911358595694,
+    "n_trials": 20
   },
   "random_direction_best_threshold_acc": {
-    "mean": 0.75875,
-    "std": 0.11480523966943128,
-    "n_trials": 20
+    "mean": 0.8055000000000001,
+    "std": 0.10339796365929498,
+    "n_trials": 20,
+    "interpretation": "upper bound \u2014 oracle threshold per trial"
+  },
+  "random_direction_fixed_threshold_acc": {
+    "mean": 0.7004166666666667,
+    "std": 0.12739252005775953,
+    "n_trials": 20,
+    "interpretation": "conservative \u2014 fixed median threshold per trial"
   },
   "cross_task": null
 }

@@ -1,0 +1,26 @@
+{
+  "cot_log": "logs/cot_qwen8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz",
+  "nocot_log": "logs/scaled_qwen8b_t0_s42_informative_v2_enriched.jsonl.gz",
+  "model_id": "Qwen/Qwen3-8B",
+  "layer": 23,
+  "matched_pairs_attempted": 110,
+  "matched_pairs_captured": {
+    "cot": 110,
+    "nocot": 110
+  },
+  "cv_folds": 5,
+  "cv_accuracy": {
+    "cot": {
+      "mean": 1.0,
+      "std": 0.0
+    },
+    "nocot": {
+      "mean": 1.0,
+      "std": 0.0
+    }
+  },
+  "cos_w_cot_w_nocot": 0.5068569789118985,
+  "cos_centroid_diff": 0.5982886552810669,
+  "diff_nocot_proj_under_wcot": 43.95242785576599,
+  "diff_cot_proj_under_wnocot": 37.847622296110224
+}

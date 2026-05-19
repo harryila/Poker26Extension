@@ -15,12 +15,15 @@
     "self_patch_max_logit_drift": 0.0,
     "random_source_per_layer": {
       "16": {
-        "mean_delta": 0.6637810512828402,
-        "n": 5
+        "mean_delta": 0.558014836948153,
+        "std_delta": 0.593962801113643,
+        "n": 50,
+        "n_random_sources": 5,
+        "n_random_targets": 10
       }
     },
     "random_source_n": 5,
-    "random_source_mean_delta": 0.6637810512828402,
+    "random_source_mean_delta": 0.558014836948153,
     "random_source_test_layer": 16
   },
   "zero_ablation": false,
@@ -32,8 +35,8 @@
       "frac_top1_fold": 0.37666666666666665,
       "frac_top1_bet_raise": 0.15333333333333332,
       "frac_top1_other": 0.0,
-      "random_null_delta": 0.6637810512828402,
-      "specificity_adjusted_delta": 0.45229661538382704
+      "random_null_delta": 0.558014836948153,
+      "specificity_adjusted_delta": 0.5580628297185142
     }
   }
 }

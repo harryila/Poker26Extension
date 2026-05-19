@@ -10,8 +10,9 @@
 | Probe | CV accuracy | Notes |
 |---|---:|---|
 | **Learned probe** (verb labels) | **0.988 ± 0.008** | the actual probe |
-| Permuted-label control | 0.497 ± 0.026 | shuffled labels — chance (~0.50) expected |
-| Random-direction (best threshold, 20 trials) | 0.759 ± 0.115 | 1-D classification on a random axis |
+| Permuted-label control (20 shuffles) | 0.492 ± 0.026 | shuffled labels — chance (~0.50) expected |
+| Random-direction (BEST threshold, 20 trials) | 0.806 ± 0.103 | upper bound: oracle threshold per trial |
+| Random-direction (FIXED median threshold, 20 trials) | 0.700 ± 0.127 | conservative: no per-trial threshold optimization |
 
 ## Reading guide
 

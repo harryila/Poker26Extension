@@ -38,6 +38,21 @@ REQUIRE_IDENTICAL_STATE="${REQUIRE_IDENTICAL_STATE:-1}"
 # Set FORCE_RERUN=1 to ignore existing SUMMARY.md and re-run (e.g.
 # after switching match key from hand_id to seed).
 FORCE_RERUN="${FORCE_RERUN:-0}"
+# LABEL_SOURCE_<short>: per-model label source for the probe.
+#   - `own` (default): each mode labeled by its OWN recorded action.
+#     Cosine question: do mode-specific verb directions agree?
+#   - `cot`: both modes labeled by what CoT did. Use for cells where
+#     one mode (typically non-CoT in Llama) has zero examples of one
+#     class on the matched pairs, blocking probe training. Cosine
+#     question becomes: does the residual at L* in non-CoT separate the
+#     same kind of decisions (CoT-CHECK vs CoT-FOLD) the same way?
+#
+# Default per model: Llama uses `cot` (non-CoT label distribution
+# degenerates to all-CHECK on the 23 matched pairs); Qwen uses `own`
+# (non-CoT has plenty of both classes). Override at the cell level
+# via LABEL_SOURCE_LLAMA / LABEL_SOURCE_QWEN.
+LABEL_SOURCE_LLAMA="${LABEL_SOURCE_LLAMA:-cot}"
+LABEL_SOURCE_QWEN="${LABEL_SOURCE_QWEN:-own}"
 
 run_one() {
     local short="$1"
@@ -81,11 +96,17 @@ run_one() {
     if [[ "$REQUIRE_IDENTICAL_STATE" == "1" ]]; then
         strict_flag="--require-identical-game-state"
     fi
+    local label_source="own"
+    case "$short" in
+        llama) label_source="$LABEL_SOURCE_LLAMA" ;;
+        qwen)  label_source="$LABEL_SOURCE_QWEN" ;;
+    esac
     python -m experiments.mode_balanced_direction_probe \
         --cot-log "$cot_log" \
         --nocot-log "$nocot_log" \
         --layer "$layer" \
         --max-pairs "$MAX_PAIRS" \
+        --label-source "$label_source" \
         $strict_flag \
         --out-dir "$out_dir" \
         --device "$DEVICE" --dtype "$DTYPE"

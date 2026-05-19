@@ -184,6 +184,27 @@ def main():
     parser.add_argument("--dtype", default="bfloat16",
                         choices=["bfloat16", "float16", "float32"])
     parser.add_argument("--model-id", default=None)
+    parser.add_argument(
+        "--label-source",
+        default="own",
+        choices=["own", "cot"],
+        help=(
+            "Where each mode's labels come from. "
+            "`own` (default, original behavior): each mode is labeled by "
+            "its OWN recorded action — CoT residuals labeled by what CoT "
+            "did, non-CoT residuals labeled by what non-CoT did. The "
+            "cosine question is then 'do mode-specific verb directions "
+            "agree?' "
+            "`cot`: BOTH modes' residuals are labeled by what the CoT "
+            "mode recorded for the same dealt hand. The cosine question "
+            "becomes 'does the residual at L* in non-CoT mode separate "
+            "the same kind of decisions (CoT-CHECK vs CoT-FOLD residuals) "
+            "the same way as in CoT mode?' Use this for cells where one "
+            "mode has degenerate label distribution (e.g. Llama non-CoT "
+            "is heavily CHECK-biased and produces zero FOLD examples on "
+            "the matched pairs, so an `own`-label probe can't be trained)."
+        ),
+    )
     parser.add_argument("--cv-folds", type=int, default=5)
     parser.add_argument("--l2-c", type=float, default=0.01)
     parser.add_argument("--seed", type=int, default=42)
@@ -250,21 +271,32 @@ def main():
         sys.exit(2)
 
     # Per-mode classification (recorded action -> bucket family).
+    # If --label-source=cot, both modes use the CoT mode's recorded action
+    # as the label for the matched pair (and we only require the COT side
+    # to be CHECK/FOLD-classifiable; non-CoT residuals are then labeled by
+    # what CoT did on the same dealt hand). This is the workaround for
+    # cells where one mode has a degenerate label distribution.
     cot_kept = []   # list of (key, label) where label in {1=CHECK, 0=FOLD}
     nocot_kept = []
     for k in common_keys:
         cot_b = classify_decision(cot_recs[k])
         nocot_b = classify_decision(nocot_recs[k])
-        # Keep only pairs where each mode's classification is one of the two
-        # binary options (clean_CC or clean_LF). Note: the mode labels can
-        # differ for the same hand — that's fine; each probe trains on its
-        # own mode's labels, which is the correct apples-to-apples test.
-        if cot_b not in ("clean_check_or_call", "clean_legal_fold"):
-            continue
-        if nocot_b not in ("clean_check_or_call", "clean_legal_fold"):
-            continue
-        cot_kept.append((k, 1 if cot_b == "clean_check_or_call" else 0))
-        nocot_kept.append((k, 1 if nocot_b == "clean_check_or_call" else 0))
+
+        if args.label_source == "cot":
+            if cot_b not in ("clean_check_or_call", "clean_legal_fold"):
+                continue
+            label = 1 if cot_b == "clean_check_or_call" else 0
+            cot_kept.append((k, label))
+            nocot_kept.append((k, label))
+        else:
+            # `own`: both sides must be CHECK/FOLD-classifiable in their
+            # own mode (apples-to-apples mode-specific labels).
+            if cot_b not in ("clean_check_or_call", "clean_legal_fold"):
+                continue
+            if nocot_b not in ("clean_check_or_call", "clean_legal_fold"):
+                continue
+            cot_kept.append((k, 1 if cot_b == "clean_check_or_call" else 0))
+            nocot_kept.append((k, 1 if nocot_b == "clean_check_or_call" else 0))
 
     if len(cot_kept) > args.max_pairs:
         # Stratified down-sampling to roughly balance CHECK and FOLD.
@@ -300,12 +332,19 @@ def main():
         for k in common_keys:
             cot_b = classify_decision(cot_recs[k])
             nocot_b = classify_decision(nocot_recs[k])
-            if cot_b not in ("clean_check_or_call", "clean_legal_fold"):
-                continue
-            if nocot_b not in ("clean_check_or_call", "clean_legal_fold"):
-                continue
-            cot_kept.append((k, 1 if cot_b == "clean_check_or_call" else 0))
-            nocot_kept.append((k, 1 if nocot_b == "clean_check_or_call" else 0))
+            if args.label_source == "cot":
+                if cot_b not in ("clean_check_or_call", "clean_legal_fold"):
+                    continue
+                label = 1 if cot_b == "clean_check_or_call" else 0
+                cot_kept.append((k, label))
+                nocot_kept.append((k, label))
+            else:
+                if cot_b not in ("clean_check_or_call", "clean_legal_fold"):
+                    continue
+                if nocot_b not in ("clean_check_or_call", "clean_legal_fold"):
+                    continue
+                cot_kept.append((k, 1 if cot_b == "clean_check_or_call" else 0))
+                nocot_kept.append((k, 1 if nocot_b == "clean_check_or_call" else 0))
 
     print(f"[init] matched-and-classified pairs: {len(cot_kept)}")
     print(f"  CoT bucket distribution:    "
@@ -440,6 +479,7 @@ def main():
             "require_identical_game_state_requested": bool(args.require_identical_game_state),
             "mode_used": matching_mode,
             "fell_back_to_loose": bool(fell_back),
+            "label_source": args.label_source,
         },
         "matched_pairs_attempted": len(cot_kept),
         "matched_pairs_captured": {"cot": len(X_cot), "nocot": len(X_nocot)},
@@ -484,10 +524,15 @@ def main():
                        "differ in game state because CoT and non-CoT took "
                        "different prior actions.)" if fell_back
                        else "(LOOSE — same dealt hand, may differ in game state)")))
-    md.append(f"- Pairs attempted in probe (after per-mode classification): "
+    md.append(f"- Pairs attempted in probe (after classification): "
               f"{len(cot_kept)}")
     md.append(f"- Captured residuals: CoT {len(X_cot)}, non-CoT {len(X_nocot)}")
     md.append(f"- Hidden dim: {Xc.shape[1]}")
+    md.append(f"- Label source: `{args.label_source}` "
+              + ("(both modes labeled by CoT mode's recorded action — "
+                 "use this for cells where one mode has degenerate label "
+                 "distribution)" if args.label_source == "cot"
+                 else "(each mode labeled by its OWN recorded action)"))
     md.append("")
     if fell_back:
         md.append("> ⚠️ **Note**: this run requested strict (identical-game-state) "

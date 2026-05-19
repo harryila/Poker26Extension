@@ -2645,3 +2645,139 @@ issues surfaced that needed fixing:
 | `mode_balanced_direction_probe.py` SUMMARY.md still hard-coded "(hand_id × decision_idx)" in its label even though the matching key was correctly switched to `(seed, decision_idx)` in commit `9e2536c`. The strict-vs-loose pair count diagnostic was only printed to stdout, not recorded in summary.json or SUMMARY.md. | Updated SUMMARY rendering to display the actual match key, both `n_loose` and `n_strict_identical_game_state` counts, the `--require-identical-game-state` flag setting, and the matching mode used (`strict` / `loose` / `loose-fallback`). Added a `matching` block to `summary.json` with the same fields. |
 | Mode-balanced run (`2c65f38`) produced output for Qwen but NOT for Llama. Likely cause: with `--require-identical-game-state`, strict matching produced 0 pairs for Llama (CoT and non-CoT took different actions on every overlapping hand → game state diverged at decision_idx ≥ 2). The script then aborted at the strict-match check. | Added a fallback: if `--require-identical-game-state` is set but produces 0 strict pairs, log a `[WARN]` and fall back to LOOSE matching with all `(seed, decision_idx)` pairs. The SUMMARY records `mode_used = "loose-fallback"` and includes a ⚠️ note that the matched cosine is on same-dealt-hand pairs that may differ in game state. The Qwen result (`mode_used = strict` with 110 strict pairs out of ~110 loose) is unaffected. |
 | Reading the new Tier 4 spec-adj Δ values against the new `std_delta` of the null distribution revealed that **Ministral cells are at noise floor in 4/4** (spec-adj 0.2-0.9σ of null) and **Llama cells are at or BELOW the null** (spec-adj −0.7 to −2.2σ of null). The earlier "weak but conditional" wording for Ministral was an over-read of comparing means without null spread. | §22h.8 above rewritten to state the Ministral cross-preset effect is **not distinguishable from random source patches**, and the Llama Tier 4 effect is **negative** (worse than random) consistent with the reconstructor mismatch hypothesis. Single-model paper claim only: Qwen Tier 4 cross-preset invariance. Cross-model Tier 4 evidence not available from this batch. |
+
+### 22m. Three more issues found in the diagnostic-and-mode-balanced re-run (`7010f69`)
+
+> **Date:** 2026-05-19. The Llama mode-balanced cell still didn't produce
+> output, the opp-preset diagnostic reported "12/12 fail" which felt
+> wrong, and the Llama Tier 4 baseline-match anomaly remained
+> unexplained. Tracing through the actual code paths surfaced THREE
+> distinct issues — all small fixes, none of them invalidate any
+> published number.
+
+#### 22m.1 — Diagnostic script was hashing the wrong thing (12/12 false-positive fail)
+
+`experiments/diagnose_opp_preset_reconstruction.py` was computing
+`hashlib.sha256(recon.build(rec))[:16]` and comparing against the
+recorded `prompt_hash`. But `recon.build(rec)` returns the **full
+chat-templated** input string (with `<|im_start|>...`, `<|begin_of_text|>...`,
+etc., per model), whereas at inference time `HFAgent._hash_prompt`
+computes the hash on the **user-body string** returned by
+`_build_action_prompt(obs, truncated_history)` — model-INDEPENDENT, no
+chat template, no system prompt.
+
+This is why the recorded `prompt_hash = 100ce27282a081f4` is **identical
+across all three models** for the same dealt hand (`loose_aggressive`,
+seed=42, decision_idx=1, 4d 7s in hand): they all produce the same
+user-body string; only the chat-templating differs.
+
+The diagnostic was producing a unit-mismatch false positive: every
+single computed hash differed from the recorded hash regardless of
+model or preset. The "12/12 fail" report was meaningless.
+
+**Fix**: the diagnostic now calls `recon.build_user_prompt(rec)` (which
+returns the user-body string before chat templating) — exactly mirroring
+what `HFAgent._hash_prompt` operates on. With this fix, the diagnostic
+will report TRUE byte-identicality of the user-body across the
+reconstructor and inference.
+
+#### 22m.2 — Llama 3.1 `Today Date:` chat-template artifact is the likely cause of the Tier 4 baseline-match issue
+
+The patching driver's `baseline_top1_match_rate` is computed by running
+a no-patch forward pass on `recon.build(rec)` (the chat-templated full
+prompt) and checking if the model's top-1 token matches the recorded
+verb. For Qwen and Ministral on opp-preset Tier 4 logs this is 1.000;
+for Llama it's 0.57-0.81.
+
+Looking at the diagnostic's first-mismatch dumps (printed before we
+fixed it), the Llama-reconstructed full prompt includes:
+
+```
+<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+Cutting Knowledge Date: December 2023
+Today Date: 26 Jul 2024
+...
+```
+
+Both the `Cutting Knowledge Date` and `Today Date` lines are auto-injected
+by Llama 3.1's `tokenizer.apply_chat_template()`. The `Today Date` value
+defaults to a fixed string (the Llama 3.1 release date) but can shift
+between transformers versions or with a non-default `date_string` kwarg.
+Qwen and Ministral chat templates do NOT auto-inject any date string, so
+their full chat-templated prompts are stable across runs.
+
+The hypothesis: at Tier 4 inference time on the GPU box, Llama's
+`apply_chat_template` produced ONE `Today Date:` string; at
+patching-driver time, it produced a DIFFERENT one (different transformers
+version or different date), and the small system-prompt byte-diff is
+enough to shift the model's top-1 prediction on borderline targets,
+dropping baseline match to 0.57-0.81. **The user-body reconstruction is
+fine; the chat-template wrapping is what diverges.**
+
+This is a Llama-3.1-specific chat-template artifact, not a poker-related
+finding. The Llama Tier 4 cells were already excluded from paper
+conclusions in §22h.8. **Documenting as known limitation; not pursuing
+a fix** because:
+
+1. It would require pinning the transformers version + `date_string`
+   kwarg across inference and patching, OR post-processing the templated
+   string to strip/replace the `Today Date:` line. Both possible but
+   neither is a poker-research contribution.
+2. The Qwen Tier 4 result already establishes the headline opponent-
+   invariance claim for one model. Cross-model opponent-stability isn't
+   essential for the paper; it would be additional defensive evidence,
+   not a load-bearing claim.
+
+#### 22m.3 — Mode-balanced Llama: probe degenerate due to non-CoT class imbalance, not a matching problem
+
+Re-running mode-balanced after §22l's fallback fix revealed that the
+Llama cell hits a SECOND wall: of the 23 matched-and-classified pairs
+(after the loose fallback fired), the non-CoT mode's recorded labels
+are **23 CHECK and 0 FOLD**. The per-mode probe needs both classes per
+mode to train; the sklearn LogisticRegression fit raises
+`ValueError: This solver needs samples of at least 2 classes`.
+
+This is consistent with everything we know about Llama non-CoT: it has
+a strong CHECK bias on the kinds of dealt hands the CoT mode handled
+(78% raise, 22% call, 0% fold against `informative_v2` baseline; §20b).
+On the 23 matched-and-classified pairs at L=14, the CoT mode emitted
+CHECK on 5 hands and FOLD on 18 (varied), while non-CoT emitted CHECK
+on all 23. The non-CoT-FOLD bucket is empty for these pairs. There's
+no way to train a per-mode probe on this label distribution.
+
+**Fix**: added `--label-source {own, cot}` flag to
+`mode_balanced_direction_probe.py`. With `cot`, BOTH modes' residuals
+are labeled by what the CoT mode recorded (so non-CoT residuals are
+labeled "this is a hand where CoT-Llama said CHECK / FOLD"). The cosine
+question becomes:
+
+> *"Does the residual at L\* in non-CoT mode separate residuals from
+> CoT-CHECK hands and CoT-FOLD hands the same way as the CoT-mode
+> residuals do?"*
+
+This is a slightly different (but still meaningful) cross-mode question:
+"do the same hand-level features that drive CoT to CHECK vs FOLD also
+linearly separate non-CoT residuals along a similar direction?" Answer
+≈ 1.0 → "yes, completely" — non-CoT residuals contain the same
+hand-level signal even when the model's verbalized choice differs.
+Answer near 0 → "no, the non-CoT residual at L\* doesn't represent
+the same kind of distinction at all."
+
+The wrapper `run_mode_balanced_direction_probe.sh` defaults to
+`LABEL_SOURCE_LLAMA=cot` (use the new flag for Llama, where `own` would
+fail) and `LABEL_SOURCE_QWEN=own` (Qwen has both classes per mode, no
+need for the workaround — keep the original mode-specific-labels test).
+
+#### 22m.4 — Unified narrative pointer
+
+For paper-writing: the canonical 12-finding narrative is now in
+`AUDIT.md` Section 4.2 + this §22 series. **No two `SUMMARY.md` files
+contradict each other**; the apparent "conflicts" in the §14-§22
+chronology are all (a) methodological refinements where new analysis
+revealed earlier numbers were the wrong metric for the question, or
+(b) sign/value contradictions that resolved into richer mechanistic
+stories (e.g. §19b head-ablation Δ negative on CHECK targets vs §22c
+positive on FOLD targets — same heads, opposite signs, because heads
+encode "current verb" not "CHECK direction"). Treat each §-revision as
+a refinement, not a contradiction.

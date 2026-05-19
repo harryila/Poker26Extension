@@ -13,16 +13,30 @@ between the opp-preset code path in `run_experiment.py` and what
 `PromptReconstructor.build()` produces. This script verifies that
 hypothesis and identifies the specific bytes that differ.
 
-The Tier 4 enriched logs store `prompt_hash` (SHA-256 first-16-hex of
-the user_prompt string at inference time) but NOT the user_prompt itself.
-So we cannot directly diff strings; we can only:
+The Tier 4 enriched logs store `prompt_hash`. Per `HFAgent._hash_prompt`
+in `poker_env/agents/hf_agent.py:832`, this is computed as:
 
-  1. Reconstruct the user_prompt via `PromptReconstructor.build(rec)`,
-     hash it the same way (SHA-256 first 16 hex chars), and report the
-     hash-match rate per (model, preset) cell.
-  2. For the FIRST mismatching record, print the reconstructed prompt +
-     the `agent_config` from the log header, so a human can compare to
-     what `run_experiment.py` would have produced at inference time.
+    hashlib.sha256(prompt.encode()).hexdigest()[:16]
+
+where `prompt` is the OUTPUT of `_build_action_prompt(obs, truncated_history)`
+— the model-INDEPENDENT user-body string starting with "Current poker
+situation:". It is NOT the chat-templated full prompt.
+
+This is mirrored by `PromptReconstructor.build_user_prompt(rec)` in
+`poker_env/interp/forward_helpers.py:237`. The diagnostic therefore:
+
+  1. Calls `PromptReconstructor.build_user_prompt(rec)` (NOT `.build()`)
+     and hashes that — matches the format `prompt_hash` was computed in.
+  2. If the hash matches: the user-body reconstruction is byte-identical
+     and any baseline-match-rate issue downstream (e.g. Llama 0.57-0.81)
+     comes from the CHAT TEMPLATE wrapping, not the user body.
+  3. If the hash doesn't match: prints the reconstructed user_prompt for
+     inspection so the human can identify what's different.
+
+This is the diagnostic-script-bug-fixed version. Earlier versions hashed
+`build()` (the chat-templated full prompt) which never matches the
+recorded `prompt_hash` for any model — a unit mismatch that produced
+spurious "12/12 fail" reports.
 
 CPU-only — no model load. Runs in seconds.
 
@@ -104,8 +118,11 @@ def _load_agent_config(path: str) -> dict:
 
 
 def _short_hash(s: str) -> str:
-    """Mirror the `prompt_hash` format used at inference time:
-    SHA-256 of UTF-8 bytes, first 16 hex chars."""
+    """Mirror the `prompt_hash` format used at inference time
+    (HFAgent._hash_prompt in poker_env/agents/hf_agent.py:832):
+    `hashlib.sha256(prompt.encode()).hexdigest()[:16]`. Note this hashes
+    the user-body string (output of `_build_action_prompt`), NOT the
+    chat-templated full prompt."""
     return hashlib.sha256(s.encode("utf-8")).hexdigest()[:16]
 
 
@@ -121,34 +138,28 @@ def diagnose_log(log_path: str, n_samples: int, print_first_mismatch: bool
         return {"log": log_path, "status": f"agent_config_error: {e}",
                 "match": 0, "checked": 0}
 
-    # PromptReconstructor needs a tokenizer for chat-template assembly in
-    # build(), but for the *user_prompt* portion (which is what's hashed
-    # at inference time per `_short_hash`) we only need the prompt-string
-    # builder. We DON'T load a model; we just need the tokenizer for the
-    # PromptReconstructor's internal book-keeping.
-    #
-    # Workaround: PromptReconstructor in this codebase needs a tokenizer.
-    # On CPU we'd download it; instead, we instantiate with a dummy
-    # tokenizer that exposes only the attributes PromptReconstructor uses
-    # for the user_prompt path (pad_token / eos_token are NOT touched by
-    # build() in the user_prompt-string branch).
-    #
-    # If that doesn't work because build() needs the tokenizer for chat-
-    # template wrapping, the user can re-run this on the GPU box where
-    # the tokenizer is cached.
-    tokenizer = None
+    # The diagnostic only needs `PromptReconstructor.build_user_prompt(rec)`
+    # which builds the user-body string — model-independent, NO chat
+    # template, NO tokenizer required. We pass a None tokenizer; the
+    # constructor's tokenizer field is only used by `.build()` (which we
+    # don't call), `.template_id()`, and the chat-template assembly path.
+    # If a future refactor makes the constructor itself touch the
+    # tokenizer, the user can re-run on the GPU box where it's cached.
     try:
-        from transformers import AutoTokenizer
-        tokenizer = AutoTokenizer.from_pretrained(agent_config["model_id"])
+        recon = PromptReconstructor(tokenizer=None, agent_config=agent_config)
     except Exception as e:
-        return {
-            "log": log_path,
-            "status": f"tokenizer_load_failed (run on GPU box where it's cached): {e}",
-            "match": 0,
-            "checked": 0,
-        }
-
-    recon = PromptReconstructor(tokenizer, agent_config)
+        # Fall back to loading the tokenizer if the constructor needs it.
+        try:
+            from transformers import AutoTokenizer
+            tokenizer = AutoTokenizer.from_pretrained(agent_config["model_id"])
+            recon = PromptReconstructor(tokenizer, agent_config)
+        except Exception as e2:
+            return {
+                "log": log_path,
+                "status": f"reconstructor_init_failed: {e} / {e2}",
+                "match": 0,
+                "checked": 0,
+            }
 
     n_match = 0
     n_checked = 0
@@ -165,7 +176,9 @@ def diagnose_log(log_path: str, n_samples: int, print_first_mismatch: bool
             continue
 
         try:
-            reconstructed = recon.build(rec)
+            # Hash the USER-BODY string (matching HFAgent._hash_prompt's
+            # input), NOT the chat-templated full prompt.
+            reconstructed = recon.build_user_prompt(rec)
         except Exception as e:
             return {
                 "log": log_path,
@@ -276,27 +289,30 @@ def main():
                 print(f"\n  agent_config (from log run_config):")
                 for k, v in fm["agent_config"].items():
                     print(f"    {k}: {repr(v)[:200]}")
-                print(f"\n  reconstructed user_prompt (first 4000 chars):")
+                print(f"\n  reconstructed USER-BODY string (NO chat template; "
+                      f"this is the string `_hash_prompt` is computed on at "
+                      f"inference time):")
                 print("  " + "-" * 100)
                 rp = fm["reconstructed_user_prompt"]
-                # Indent and truncate for readability.
                 for line in rp[:4000].splitlines():
                     print(f"  | {line}")
                 if len(rp) > 4000:
                     print(f"  ... ({len(rp) - 4000} more chars truncated)")
                 print("  " + "-" * 100)
                 print(
-                    "\n  Action: compare the reconstructed prompt above to what "
-                    "`run_experiment.py` produces for this preset+model. The "
-                    "divergence is most likely in (a) the opponent-description "
-                    "sentence (different presets serialize differently), (b) the "
-                    "history-bullets format, or (c) a trailing newline / whitespace."
+                    "\n  Action: compare the user-body string above to what "
+                    "`HFAgent._build_action_prompt(obs, truncated_history)` "
+                    "would produce for this record. Likely divergences: "
+                    "(a) `_format_history_brief` event-name mapping — opp "
+                    "presets emit different event names than informative_v2; "
+                    "(b) `obs.legal_actions` formatting differences; "
+                    "(c) `obs.bet_to_call` rounding or type."
                 )
                 print(
                     "  After identifying the diff, patch "
-                    "`poker_env/interp/forward_helpers.PromptReconstructor` "
-                    "OR `run_experiment.py`'s prompt builder to bring them into "
-                    "byte-identicality."
+                    "`poker_env/interp/forward_helpers.build_action_prompt` "
+                    "to bring it into byte-identicality with "
+                    "`HFAgent._build_action_prompt`."
                 )
 
     n_fail = sum(

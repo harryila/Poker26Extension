@@ -9,7 +9,8 @@
     "n_strict_identical_game_state": 225,
     "require_identical_game_state_requested": true,
     "mode_used": "strict",
-    "fell_back_to_loose": false
+    "fell_back_to_loose": false,
+    "label_source": "own"
   },
   "matched_pairs_attempted": 110,
   "matched_pairs_captured": {
@@ -29,6 +30,6 @@
   },
   "cos_w_cot_w_nocot": 0.5068569789118983,
   "cos_centroid_diff": 0.5982886552810669,
-  "diff_nocot_proj_under_wcot": 43.95242785576598,
+  "diff_nocot_proj_under_wcot": 43.952427855765976,
   "diff_cot_proj_under_wnocot": 37.847622296110224
 }

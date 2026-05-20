@@ -1,0 +1,35 @@
+{
+  "cot_log": "logs/cot_llama8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz",
+  "nocot_log": "logs/scaled_llama8b_t0_s42_informative_v2_enriched.jsonl.gz",
+  "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+  "layer": 14,
+  "matching": {
+    "key": "(seed, decision_idx)",
+    "n_loose": 214,
+    "n_strict_identical_game_state": 140,
+    "require_identical_game_state_requested": true,
+    "mode_used": "strict",
+    "fell_back_to_loose": false,
+    "label_source": "cot"
+  },
+  "matched_pairs_attempted": 99,
+  "matched_pairs_captured": {
+    "cot": 99,
+    "nocot": 99
+  },
+  "cv_folds": 5,
+  "cv_accuracy": {
+    "cot": {
+      "mean": 0.99,
+      "std": 0.020000000000000018
+    },
+    "nocot": {
+      "mean": 0.97,
+      "std": 0.039999999999999994
+    }
+  },
+  "cos_w_cot_w_nocot": 0.32962077352242564,
+  "cos_centroid_diff": 0.3186444640159607,
+  "diff_nocot_proj_under_wcot": 1.1284276745114463,
+  "diff_cot_proj_under_wnocot": 1.277933703969706
+}

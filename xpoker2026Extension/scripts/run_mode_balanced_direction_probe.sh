@@ -98,8 +98,9 @@ run_one() {
     fi
     local label_source="own"
     case "$short" in
-        llama) label_source="$LABEL_SOURCE_LLAMA" ;;
-        qwen)  label_source="$LABEL_SOURCE_QWEN" ;;
+        llama)     label_source="$LABEL_SOURCE_LLAMA" ;;
+        qwen)      label_source="$LABEL_SOURCE_QWEN" ;;
+        ministral) label_source="${LABEL_SOURCE_MINISTRAL:-own}" ;;
     esac
     python -m experiments.mode_balanced_direction_probe \
         --cot-log "$cot_log" \
@@ -119,6 +120,10 @@ run_one llama 14 \
 run_one qwen 23 \
     "logs/cot_qwen8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz" \
     "logs/scaled_qwen8b_t0_s42_informative_v2_enriched.jsonl"
+
+run_one ministral 16 \
+    "logs/cot_ministral8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz" \
+    "logs/scaled_ministral8b_t0_s42_informative_v2_enriched.jsonl"
 
 echo
 echo "============================================================"

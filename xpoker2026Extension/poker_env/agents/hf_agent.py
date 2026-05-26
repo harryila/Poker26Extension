@@ -529,10 +529,21 @@ class HFAgent(BaseAgent):
             self._attention_extractor.attach_hooks()
             gen_kwargs["output_attentions"] = True
 
+        # Optional mech-interp hooks (e.g. AttnHeadZeroAblation during generate).
+        extra_gen_hooks = getattr(self, "_extra_generation_hooks", None) or []
+        hook_ctx = None
+        if extra_gen_hooks:
+            from poker_env.interp.forward_helpers import attached_hooks
+            hook_ctx = attached_hooks(extra_gen_hooks)
+
         try:
+            if hook_ctx is not None:
+                hook_ctx.__enter__()
             with torch.no_grad():
                 outputs = self.model.generate(**inputs, **gen_kwargs)
         finally:
+            if hook_ctx is not None:
+                hook_ctx.__exit__(None, None, None)
             if collect_interp and self._logit_lens_extractor:
                 self._last_logit_lens_data = self._logit_lens_extractor.collect()
                 self._logit_lens_extractor.detach_hooks()

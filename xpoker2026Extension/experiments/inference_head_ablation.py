@@ -216,7 +216,11 @@ def main():
         "# Inference-time head ablation (behavioral)",
         "",
         f"- Model: `{model_id}`",
-        f"- Layer: **{layer}** (heads zeroed at last position each generate step)",
+        f"- Layer: **{layer}**",
+        f"- **Ablation scope:** zeros triplet/control heads at the **last "
+        f"sequence position on every forward pass during action `generate()`** "
+        f"(full CoT reasoning + JSON). This is **more aggressive** than "
+        f"single-position verb patching at L*.",
         f"- n_decisions: {len(sample)} (seed={args.seed})",
         f"- Triplet heads: `{triplet_heads}`",
         f"- Control heads: `{control_heads}`",
@@ -255,6 +259,18 @@ def main():
                 "- Mixed or increased illegal_FOLD rate; interpret with per-row "
                 "JSONL and recorded vs replay bucket columns."
             )
+    md.append("")
+    md.append("## Interpreting necessity vs general generation damage")
+    md.append(
+        "- If **parse_success** and **fallback_rate** stay stable under triplet "
+        "ablation but **illegal_FOLD** drops → circuit-specific behavioral "
+        "necessity for the failure mode."
+    )
+    md.append(
+        "- If **parse_success** / **fallback** degrade together with "
+        "**illegal_FOLD** → heads matter for coherent generation broadly "
+        "(true but less surgical than verb-position ablation)."
+    )
     md.append("")
     md.append("## Reading guide")
     md.append(

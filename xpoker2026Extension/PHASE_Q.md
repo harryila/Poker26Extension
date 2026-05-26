@@ -41,3 +41,9 @@ Or run individually:
   `Today Date:` drift (§22m.2).
 - **Reverse / verb matrix** from Phase L remain valid; scripts here add named
   `*_reverse_fold_to_check_*` and `*_bet_to_illegal_fold_*` dirs for citation.
+- **Inference ablation** defaults to `POOLED=1` (3 seeds). Ablation zeros heads at
+  the last position on **every** `generate()` step (full CoT+JSON), not verb-only.
+- **Continuation** loops all `n_source` residuals (`source_idx` in JSONL).
+  `CONTINUE_TOKENS=80` default; use `180` for paper figure.
+- **BET→illegal_FOLD**: run `analyze_patching_top1_groups` after patching for
+  `patched_top1_group` → BET_RAISE rates (`SUMMARY_bet_to_illegal_fold_top1.md`).

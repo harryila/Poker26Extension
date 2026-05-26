@@ -5,11 +5,11 @@ cd "$(dirname "$0")/.."
 
 DEVICE="${DEVICE:-cuda}"
 DTYPE="${DTYPE:-bfloat16}"
-N_DECISIONS="${N_DECISIONS:-150}"
+N_DECISIONS="${N_DECISIONS:-200}"
 SEED="${SEED:-42}"
 
-# Pooled CoT logitlens logs (3 seeds) — use s42 only for speed unless POOLED=1
-if [[ "${POOLED:-0}" == "1" ]]; then
+# Paper figure: POOLED=1 (default). Quick iteration: POOLED=0 N_DECISIONS=50
+if [[ "${POOLED:-1}" == "1" ]]; then
   LOGS=(
     logs/cot_ministral8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz
     logs/cot_ministral8b_t0_s123_informative_v2_logitlens_enriched.jsonl.gz

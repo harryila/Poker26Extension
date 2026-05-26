@@ -5,6 +5,8 @@ cd "$(dirname "$0")/.."
 
 DEVICE="${DEVICE:-cuda}"
 DTYPE="${DTYPE:-bfloat16}"
+# Default 80 for iteration; paper figure: CONTINUE_TOKENS=180
+CONTINUE_TOKENS="${CONTINUE_TOKENS:-80}"
 MODEL="${MODEL:-ministral}"
 
 case "$MODEL" in
@@ -49,6 +51,7 @@ python -m experiments.continuation_after_patch \
   --target-bucket illegal_fold \
   --n-target 25 \
   --n-source 5 \
+  --continue-tokens "$CONTINUE_TOKENS" \
   --out-dir "$OUT" \
   --device "$DEVICE" --dtype "$DTYPE"
 

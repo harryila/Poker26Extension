@@ -8,8 +8,9 @@ For each target decision (default: ``illegal_fold``), compares:
   3. **regenerate_ablated** — full ``generate()`` with L* head zero-ablation
      on every forward pass (behavioral necessity during decoding).
   4. **patch_verb_then_continue** — single forward at the action-verb prefix
-     with a CHECK source residual patched at L*, argmax-sample the verb
-     token(s), then greedy-decode the remainder **without** further patching.
+     with each sampled CHECK source residual patched at L*, argmax-sample the
+     verb, then greedy-decode the remainder **without** further patching.
+     One row per (source, target) pair.
 
 Classifies each output: ``coherent_cot_json``, ``valid_json_no_reasoning``,
 ``broken_json``, ``empty``.
@@ -73,7 +74,7 @@ def _greedy_continue(
     max_new_tokens: int,
     device,
 ) -> list[int]:
-    """Greedy decode from prefix_ids (no KV cache — small n)."""
+    """Greedy decode from prefix_ids (no KV cache — fine for small n)."""
     ids = list(prefix_ids)
     for _ in range(max_new_tokens):
         enc = torch.tensor([ids], device=device)
@@ -84,6 +85,30 @@ def _greedy_continue(
         if next_id == tokenizer.eos_token_id:
             break
     return ids[len(prefix_ids):]
+
+
+def _capture_residual_at_layer(
+    model,
+    tokenizer,
+    recon: PromptReconstructor,
+    src_rec: dict,
+    layer: int,
+    device: str,
+) -> torch.Tensor:
+    src_prompt = recon.build(src_rec)
+    src_inp = build_input_text_for_action_verb_position(
+        src_prompt, src_rec["action_metadata"]["raw_response"], tokenizer,
+    )
+    if src_inp is None:
+        raise ValueError("cannot locate source verb")
+    src_text, _ = src_inp
+    cap = HiddenStateCapture(model)
+    cap.attach_hooks()
+    with torch.no_grad():
+        model(tokenizer(src_text, return_tensors="pt").input_ids.to(device))
+    res = cap.collect()["per_layer_last_pos"][layer]
+    cap.detach_hooks()
+    return res
 
 
 def main():
@@ -97,7 +122,11 @@ def main():
     parser.add_argument("--head-indices", nargs="+", type=int, default=None,
                         help="Heads to zero during regenerate_ablated "
                              "(default: model triplet)")
-    parser.add_argument("--continue-tokens", type=int, default=180)
+    parser.add_argument(
+        "--continue-tokens", type=int, default=80,
+        help="Greedy continuation length after patched verb (default 80; "
+             "use 180 for paper figure)",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--device", default="cuda")
@@ -152,23 +181,21 @@ def main():
     sources = rng.sample(sources, min(args.n_source, len(sources)))
     targets = rng.sample(targets, min(args.n_target, len(targets)))
 
-    # Capture one source residual at L*.
-    src_rec = sources[0]
-    src_prompt = recon.build(src_rec)
-    src_inp = build_input_text_for_action_verb_position(
-        src_prompt, src_rec["action_metadata"]["raw_response"], tokenizer,
-    )
-    if src_inp is None:
-        print("[abort] cannot locate source verb", file=sys.stderr)
+    # Capture ALL sampled source residuals at L*.
+    source_residuals: list[torch.Tensor] = []
+    for si, src_rec in enumerate(sources):
+        try:
+            res = _capture_residual_at_layer(
+                model, tokenizer, recon, src_rec, args.layer, args.device,
+            )
+        except ValueError as e:
+            print(f"[warn] skip source {si}: {e}")
+            continue
+        source_residuals.append(res)
+    if not source_residuals:
+        print("[abort] no valid source residuals", file=sys.stderr)
         sys.exit(2)
-    src_text, _ = src_inp
-    cap = HiddenStateCapture(model)
-    cap.attach_hooks()
-    with torch.no_grad():
-        model(tokenizer(src_text, return_tensors="pt").input_ids.to(args.device))
-    cap_states = cap.collect()["per_layer_last_pos"]
-    cap.detach_hooks()
-    src_res = cap_states[args.layer]
+    print(f"[init] captured {len(source_residuals)} source residuals at L={args.layer}")
 
     system_message = get_action_system_message(cot=cot_mode)
     examples = []
@@ -199,29 +226,47 @@ def main():
 
     for ti, tgt in enumerate(targets):
         recorded = tgt["action_metadata"]["raw_response"]
-        chat_prompt = recon.build(tgt)
         user_prompt = recon.build_user_prompt(tgt)
-
-        # Full chat templates for generate
         full_chat = assemble_chat_prompt(
             user_prompt, system_message, tokenizer=tokenizer,
             supports_system_role=recon.supports_system_role,
             has_thinking_mode=recon.has_thinking_mode,
         )
+        chat_prompt = recon.build(tgt)
 
         regen_base = _full_generate(full_chat, None)
         regen_abl = _full_generate(full_chat, [ablation])
 
-        # Patch verb then continue
-        tgt_prompt = chat_prompt
+        rec_class = _classify_response(recorded, cot_mode=cot_mode)
+        base_class = _classify_response(regen_base, cot_mode=cot_mode)
+        abl_class = _classify_response(regen_abl, cot_mode=cot_mode)
+        mode_counts["recorded"][rec_class] += 1
+        mode_counts["regenerate_baseline"][base_class] += 1
+        mode_counts["regenerate_ablated"][abl_class] += 1
+
         verb_inp = build_input_text_for_action_verb_position(
-            tgt_prompt, recorded, tokenizer,
+            chat_prompt, recorded, tokenizer,
         )
-        patch_cont = ""
-        patch_class = "broken_json"
-        if verb_inp is not None:
-            prefix_text, _verb_idx = verb_inp
-            prefix_ids = tokenizer(prefix_text, add_special_tokens=False)["input_ids"]
+        if verb_inp is None:
+            for si in range(len(source_residuals)):
+                examples.append({
+                    "target_idx": ti,
+                    "source_idx": si,
+                    "hand_id": tgt.get("hand_id"),
+                    "seed": tgt.get("seed"),
+                    "recorded_class": rec_class,
+                    "regenerate_baseline_class": base_class,
+                    "regenerate_ablated_class": abl_class,
+                    "patch_continue_class": "broken_json",
+                    "patch_continue_error": "verb_not_found",
+                })
+                mode_counts["patch_verb_then_continue"]["broken_json"] += 1
+            continue
+
+        prefix_text, _verb_idx = verb_inp
+        prefix_ids = tokenizer(prefix_text, add_special_tokens=False)["input_ids"]
+
+        for si, src_res in enumerate(source_residuals):
             with HiddenStatePatch(model, args.layer, src_res):
                 fwd = run_forward_at_last_position(
                     model, tokenizer, prefix_text, device=args.device,
@@ -240,85 +285,92 @@ def main():
                 else full_decoded
             )
             patch_class = _classify_response(patch_cont, cot_mode=cot_mode)
+            mode_counts["patch_verb_then_continue"][patch_class] += 1
 
-        row = {
-            "target_idx": ti,
-            "hand_id": tgt.get("hand_id"),
-            "seed": tgt.get("seed"),
-            "recorded_class": _classify_response(recorded, cot_mode=cot_mode),
-            "regenerate_baseline_class": _classify_response(regen_base, cot_mode=cot_mode),
-            "regenerate_ablated_class": _classify_response(regen_abl, cot_mode=cot_mode),
-            "patch_continue_class": patch_class,
-            "recorded_snippet": recorded[:400],
-            "regenerate_baseline_snippet": regen_base[:400],
-            "regenerate_ablated_snippet": regen_abl[:400],
-            "patch_continue_snippet": patch_cont[:400],
-        }
-        examples.append(row)
-        mode_counts["recorded"][row["recorded_class"]] += 1
-        mode_counts["regenerate_baseline"][row["regenerate_baseline_class"]] += 1
-        mode_counts["regenerate_ablated"][row["regenerate_ablated_class"]] += 1
-        mode_counts["patch_verb_then_continue"][row["patch_continue_class"]] += 1
+            examples.append({
+                "target_idx": ti,
+                "source_idx": si,
+                "hand_id": tgt.get("hand_id"),
+                "seed": tgt.get("seed"),
+                "recorded_class": rec_class,
+                "regenerate_baseline_class": base_class,
+                "regenerate_ablated_class": abl_class,
+                "patch_continue_class": patch_class,
+                "recorded_snippet": recorded[:400],
+                "regenerate_baseline_snippet": regen_base[:400],
+                "regenerate_ablated_snippet": regen_abl[:400],
+                "patch_continue_snippet": patch_cont[:400],
+            })
 
     with open(out_dir / "examples.jsonl", "w") as f:
         for ex in examples:
             f.write(json.dumps(ex) + "\n")
 
+    n_tgt = len(targets)
+    n_patch = len(source_residuals) * n_tgt
     summary = {
         "model_id": model_id,
         "layer": args.layer,
         "source_bucket": args.source_bucket,
         "target_bucket": args.target_bucket,
-        "n_target": len(targets),
+        "n_target": n_tgt,
+        "n_source": len(source_residuals),
+        "n_patch_pairs": n_patch,
+        "continue_tokens": args.continue_tokens,
         "head_indices_ablated": head_idxs,
         "class_counts": {k: dict(v) for k, v in mode_counts.items()},
     }
     with open(out_dir / "summary.json", "w") as f:
         json.dump(summary, f, indent=2)
 
-    n = len(examples) or 1
+    def _pct(c: Counter, denom: int) -> dict[str, float]:
+        if denom <= 0:
+            return {}
+        return {k: v / denom for k, v in c.items()}
+
     md = [
         "# Continuation after L* patch",
         "",
         f"- Model: `{model_id}`",
         f"- Layer: **{args.layer}**",
         f"- Source bucket: `{args.source_bucket}` → target: `{args.target_bucket}`",
-        f"- n_targets: {len(targets)}",
+        f"- n_targets: {n_tgt} | n_sources: {len(source_residuals)} | "
+        f"patch pairs: {n_patch}",
         f"- Ablated heads (regenerate_ablated): `{head_idxs}`",
+        f"- Continue tokens (greedy after verb): {args.continue_tokens}",
         "",
-        "## Response quality (fraction of targets)",
+        "## Response quality",
         "",
-        "| Mode | coherent CoT+JSON | valid JSON only | broken | empty |",
-        "|---|---:|---:|---:|---:|",
+        "| Mode | denominator | coherent CoT+JSON | valid JSON only | broken | empty |",
+        "|---|---:|---:|---:|---:|---:|",
     ]
-    for mode, label in [
-        ("recorded", "Recorded log"),
-        ("regenerate_baseline", "Full regenerate"),
-        ("regenerate_ablated", "Full regenerate + head ablation"),
-        ("patch_verb_then_continue", "Patch verb + greedy continue"),
+    for mode, label, denom in [
+        ("recorded", "Recorded log", n_tgt),
+        ("regenerate_baseline", "Full regenerate", n_tgt),
+        ("regenerate_ablated", "Full regenerate + ablation", n_tgt),
+        ("patch_verb_then_continue", "Patch verb + continue (× sources)", n_patch),
     ]:
         c = mode_counts[mode]
         md.append(
-            f"| {label} | {c.get('coherent_cot_json',0)/n*100:.0f}% "
-            f"| {c.get('valid_json_no_reasoning',0)/n*100:.0f}% "
-            f"| {c.get('broken_json',0)/n*100:.0f}% "
-            f"| {c.get('empty',0)/n*100:.0f}% |"
+            f"| {label} | {denom} | "
+            f"{c.get('coherent_cot_json', 0) / denom * 100:.0f}% "
+            f"| {c.get('valid_json_no_reasoning', 0) / denom * 100:.0f}% "
+            f"| {c.get('broken_json', 0) / denom * 100:.0f}% "
+            f"| {c.get('empty', 0) / denom * 100:.0f}% |"
         )
     md.append("")
     md.append("## Interpretation")
     md.append(
-        "- If **patch_verb_then_continue** is mostly `broken_json` but "
-        "**regenerate_ablated** is `coherent_cot_json`, the patch at the verb "
-        "position alone does not sustain global coherence — the circuit acts "
-        "during full decoding, not as a one-token logit hack."
+        "- **patch_verb_then_continue** aggregates over every (source × target) "
+        "pair — not a single source residual."
     )
     md.append(
-        "- If **regenerate_ablated** shifts illegal_FOLD targets toward "
-        "coherent CHECK JSON vs baseline, head ablation changes the full "
-        "decision process, not only the verb token."
+        "- If patch-continue is mostly `broken_json` but regenerate_ablated is "
+        "`coherent_cot_json`, the one-forward patch does not sustain global "
+        "coherence (circuit acts during full decoding)."
     )
     md.append("")
-    md.append("See `examples.jsonl` for side-by-side snippets.")
+    md.append("See `examples.jsonl` (one row per source×target for patch mode).")
     with open(out_dir / "SUMMARY.md", "w") as f:
         f.write("\n".join(md) + "\n")
     print(f"[done] {out_dir / 'SUMMARY.md'}")

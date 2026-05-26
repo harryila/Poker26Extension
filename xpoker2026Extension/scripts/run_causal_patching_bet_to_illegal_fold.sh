@@ -52,4 +52,10 @@ run_cell llama 14 "${LLAMA_LOGS[@]}"
 run_cell ministral 16 "${MINI_LOGS[@]}"
 run_cell qwen 23 "${QWEN_LOGS[@]}"
 
-echo "[done] bet→illegal_fold cells"
+echo "[analyze] patched top-1 families (BET-generality readout) ..."
+python -m experiments.analyze_patching_top1_groups \
+  --results-dir results/causal_patching \
+  --glob '*bet_to_illegal_fold*' \
+  --out results/causal_patching/SUMMARY_bet_to_illegal_fold_top1.md
+
+echo "[done] bet→illegal_fold cells + SUMMARY_bet_to_illegal_fold_top1.md"

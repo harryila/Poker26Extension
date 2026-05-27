@@ -1,0 +1,31 @@
+{
+  "model_id": "mistralai/Ministral-8B-Instruct-2410",
+  "layer": 16,
+  "source_bucket": "clean_check_or_call",
+  "target_bucket": "illegal_fold",
+  "n_target": 25,
+  "n_source": 5,
+  "n_patch_pairs": 125,
+  "continue_tokens": 80,
+  "head_indices_ablated": [
+    22,
+    9,
+    15
+  ],
+  "class_counts": {
+    "recorded": {
+      "coherent_cot_json": 25
+    },
+    "regenerate_baseline": {
+      "coherent_cot_json": 22,
+      "broken_json": 3
+    },
+    "regenerate_ablated": {
+      "coherent_cot_json": 18,
+      "broken_json": 7
+    },
+    "patch_verb_then_continue": {
+      "coherent_cot_json": 125
+    }
+  }
+}

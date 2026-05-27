@@ -16,8 +16,33 @@
 #   SKIP_TIER4=1                    skip tier 4
 #   RUN_LLAMA_TIER4=0               default skip Llama tier4 (template drift)
 #   FORCE_RERUN=1                   re-run even if SUMMARY exists
+#
+# tmux (recommended on GPU box):
+#   bash scripts/run_phase_q_all.sh
+#   Ctrl-B then D to detach;  tmux attach -t poker_phase_q
+#   NO_TMUX=1 to run in foreground/nohup without tmux.
 # =============================================================================
 set -uo pipefail
+
+SESSION_NAME="poker_phase_q"
+
+if [[ -z "${TMUX:-}" ]] && [[ -z "${NO_TMUX:-}" ]]; then
+    if ! command -v tmux >/dev/null 2>&1; then
+        echo "ERROR: tmux not installed (apt install tmux), or set NO_TMUX=1"
+        exit 1
+    fi
+    if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+        echo "tmux session '$SESSION_NAME' already exists."
+        echo "  Attach:  tmux attach -t $SESSION_NAME"
+        echo "  Kill:    tmux kill-session -t $SESSION_NAME"
+        exit 1
+    fi
+    SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+    echo "Creating tmux session '$SESSION_NAME' (detach: Ctrl-B D)"
+    exec tmux new-session -s "$SESSION_NAME" \
+        "NO_TMUX=1 bash '$SCRIPT_PATH'; echo; echo '[phase_q finished — press any key]'; read -n1 -s"
+fi
+
 cd "$(dirname "$0")/.."
 
 DEVICE="${DEVICE:-cuda}"

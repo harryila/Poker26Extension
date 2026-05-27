@@ -1,0 +1,62 @@
+{
+  "model_id": "mistralai/Ministral-8B-Instruct-2410",
+  "layer": 16,
+  "conditions": {
+    "baseline": {
+      "n": 200,
+      "recorded_bucket_frac": {
+        "illegal_fold": 0.4,
+        "clean_legal_fold": 0.555,
+        "clean_check_or_call": 0.035,
+        "clean_bet_or_raise": 0.01
+      },
+      "replay_bucket_frac": {
+        "illegal_fold": 0.38,
+        "clean_legal_fold": 0.555,
+        "clean_check_or_call": 0.05,
+        "clean_bet_or_raise": 0.015
+      },
+      "illegal_fold_rate": 0.38,
+      "clean_check_rate": 0.05,
+      "parse_success_rate": 0.62,
+      "fallback_rate": 0.38
+    },
+    "triplet": {
+      "n": 200,
+      "recorded_bucket_frac": {
+        "illegal_fold": 0.4,
+        "clean_legal_fold": 0.555,
+        "clean_check_or_call": 0.035,
+        "clean_bet_or_raise": 0.01
+      },
+      "replay_bucket_frac": {
+        "illegal_fold": 0.425,
+        "clean_legal_fold": 0.545,
+        "clean_check_or_call": 0.03
+      },
+      "illegal_fold_rate": 0.425,
+      "clean_check_rate": 0.03,
+      "parse_success_rate": 0.575,
+      "fallback_rate": 0.425
+    },
+    "control": {
+      "n": 200,
+      "recorded_bucket_frac": {
+        "illegal_fold": 0.4,
+        "clean_legal_fold": 0.555,
+        "clean_check_or_call": 0.035,
+        "clean_bet_or_raise": 0.01
+      },
+      "replay_bucket_frac": {
+        "illegal_fold": 0.345,
+        "clean_legal_fold": 0.56,
+        "clean_check_or_call": 0.08,
+        "clean_bet_or_raise": 0.015
+      },
+      "illegal_fold_rate": 0.345,
+      "clean_check_rate": 0.08,
+      "parse_success_rate": 0.655,
+      "fallback_rate": 0.345
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "model_id": "mistralai/Ministral-8B-Instruct-2410",
+  "layer": 16,
+  "source_bucket": "clean_check_or_call",
+  "target_bucket": "illegal_fold",
+  "quartile_edges": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.25
+  ],
+  "strata": {
+    "Q4": {
+      "n_sources": 5,
+      "n_pairs": 100,
+      "mean_delta": 8.322702490980062,
+      "spec_adj_delta": 5.901195472150865,
+      "frac_top1_flip": 1.0,
+      "pot_odds_range": [
+        0.0,
+        0.0
+      ]
+    }
+  }
+}

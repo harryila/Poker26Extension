@@ -1,0 +1,35 @@
+{
+  "cot_log": "logs/cot_ministral8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz",
+  "nocot_log": "logs/scaled_ministral8b_t0_s42_informative_v2_enriched.jsonl.gz",
+  "model_id": "mistralai/Ministral-8B-Instruct-2410",
+  "layer": 16,
+  "matching": {
+    "key": "(seed, decision_idx)",
+    "n_loose": 130,
+    "n_strict_identical_game_state": 130,
+    "require_identical_game_state_requested": true,
+    "mode_used": "strict",
+    "fell_back_to_loose": false,
+    "label_source": "own"
+  },
+  "matched_pairs_attempted": 16,
+  "matched_pairs_captured": {
+    "cot": 16,
+    "nocot": 16
+  },
+  "cv_folds": 5,
+  "cv_accuracy": {
+    "cot": {
+      "mean": NaN,
+      "std": NaN
+    },
+    "nocot": {
+      "mean": NaN,
+      "std": NaN
+    }
+  },
+  "cos_w_cot_w_nocot": 0.09504913090663844,
+  "cos_centroid_diff": 0.09510871767997742,
+  "diff_nocot_proj_under_wcot": 0.2182016745445114,
+  "diff_cot_proj_under_wnocot": 0.34748180944680446
+}

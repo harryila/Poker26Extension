@@ -1351,7 +1351,7 @@ python -m analysis.plot_paper_figures \
 
 5. **Analysis > Data:** After replicating the effect, deeper analysis (L1 metrics, update coherence) yields more insight than more data.
 
-6. **Parse rate ~50% is acceptable:** LLM belief elicitation will have failures. Filter and proceed — sufficient valid samples remain.
+6. **Parse rate ~50% is acceptable:** LLM belief elicitation will have failures. Filter and proceed; sufficient valid samples remain.
 
 ---
 

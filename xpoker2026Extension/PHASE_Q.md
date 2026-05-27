@@ -9,6 +9,17 @@ cd xpoker2026Extension
 bash scripts/run_phase_q_all.sh
 ```
 
+**After first run (disk fix + code fixes):** re-run only broken/missing cells:
+
+```bash
+export HF_HOME=/workspace/huggingface HF_TOKEN=...
+FORCE_RERUN=1 CONTINUE_TOKENS=180 bash scripts/run_phase_q_gpu_followup.sh
+```
+
+This runs reverse + BET patching (Llama/Qwen if missing), then **re-runs**
+continuation + context-stratified for all `MODELS` (default: ministral llama qwen).
+Skips inference ablation and tier4 (already valid or redundant).
+
 Or run individually:
 
 | # | Experiment | Script |
@@ -26,7 +37,7 @@ Or run individually:
 - `poker_env/interp/generation_ablation.py` — `AttnHeadZeroAblation` hook for `generate()`
 - `experiments/inference_head_ablation.py` — behavioral illegal_FOLD rate under ablation
 - `experiments/continuation_after_patch.py` — qualitative full-response comparison
-- `experiments/context_stratified_patching.py` — pot-odds quartile patching
+- `experiments/context_stratified_patching.py` — stratified patching (`--stratify-by street` default)
 
 ## HFAgent change
 
@@ -47,3 +58,10 @@ Or run individually:
   `CONTINUE_TOKENS=80` default; use `180` for paper figure.
 - **BET→illegal_FOLD**: run `analyze_patching_top1_groups` after patching for
   `patched_top1_group` → BET_RAISE rates (`SUMMARY_bet_to_illegal_fold_top1.md`).
+- **Context-stratified**: default `STRATIFY_BY=street` (pot-odds quartiles collapse
+  when most CHECK spots have `bet_to_call=0`). Use `pot_odds_quartile` only on
+  facing-bet subsample.
+- **Continuation**: patch continuation is scored on **assistant response suffix only**
+  (not full chat decode); prompt-leak strings → `broken_json`.
+- **Inference ablation (exp 1)**: negative result is real — heads are **redundant**,
+  not necessary; do not re-run unless you change head set.

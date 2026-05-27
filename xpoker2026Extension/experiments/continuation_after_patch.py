@@ -39,6 +39,7 @@ from poker_env.interp.forward_helpers import (  # noqa: E402
     PromptReconstructor,
     assemble_chat_prompt,
     build_input_text_for_action_verb_position,
+    find_action_verb_response_offset,
     run_forward_at_last_position,
     attached_hooks,
 )
@@ -54,6 +55,16 @@ from experiments.causal_patching import (  # noqa: E402
 def _classify_response(raw: str, *, cot_mode: bool) -> str:
     if not raw or not raw.strip():
         return "empty"
+    # Reject prompt-template leakage misclassified as model output.
+    leak_markers = (
+        "You are a poker player",
+        "Analyze the situation step-by-step",
+        'Format: {"action":',
+        "Example:",
+        "First write REASONING:",
+    )
+    if any(m in raw for m in leak_markers):
+        return "broken_json"
     if cot_mode:
         reasoning, parsed = parse_cot_response(raw)
         if parsed and "action" in parsed:
@@ -244,10 +255,11 @@ def main():
         mode_counts["regenerate_baseline"][base_class] += 1
         mode_counts["regenerate_ablated"][abl_class] += 1
 
+        verb_found = find_action_verb_response_offset(recorded, tokenizer)
         verb_inp = build_input_text_for_action_verb_position(
             chat_prompt, recorded, tokenizer,
         )
-        if verb_inp is None:
+        if verb_inp is None or verb_found is None:
             for si in range(len(source_residuals)):
                 examples.append({
                     "target_idx": ti,
@@ -264,6 +276,8 @@ def main():
             continue
 
         prefix_text, _verb_idx = verb_inp
+        verb_char_offset, _ = verb_found
+        response_before_verb = recorded[:verb_char_offset]
         prefix_ids = tokenizer(prefix_text, add_special_tokens=False)["input_ids"]
 
         for si, src_res in enumerate(source_residuals):
@@ -276,14 +290,12 @@ def main():
                 model, tokenizer, prefix_ids + [verb_id],
                 args.continue_tokens, args.device,
             )
-            full_decoded = tokenizer.decode(
-                prefix_ids + [verb_id] + cont_ids, skip_special_tokens=True,
+            # Classify assistant response only: recorded reasoning prefix +
+            # model-predicted verb + greedy continuation (NOT full chat prompt).
+            suffix = tokenizer.decode(
+                [verb_id] + cont_ids, skip_special_tokens=True,
             )
-            patch_cont = (
-                full_decoded[len(prefix_text):]
-                if full_decoded.startswith(prefix_text)
-                else full_decoded
-            )
+            patch_cont = response_before_verb + suffix
             patch_class = _classify_response(patch_cont, cot_mode=cot_mode)
             mode_counts["patch_verb_then_continue"][patch_class] += 1
 

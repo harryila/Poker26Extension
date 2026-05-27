@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 DEVICE="${DEVICE:-cuda}"
 DTYPE="${DTYPE:-bfloat16}"
 MODEL="${MODEL:-ministral}"
+STRATIFY_BY="${STRATIFY_BY:-street}"
 
 case "$MODEL" in
   ministral)
@@ -41,10 +42,16 @@ case "$MODEL" in
     ;;
 esac
 
+if [[ -f "$OUT/SUMMARY.md" ]] && [[ "${FORCE_RERUN:-0}" != "1" ]]; then
+  echo "[skip] $OUT (set FORCE_RERUN=1 to override)"
+  exit 0
+fi
+
 mkdir -p "$OUT"
 python -m experiments.context_stratified_patching \
   --enriched-log "${LOGS[@]}" \
   --layer "$LAYER" \
+  --stratify-by "$STRATIFY_BY" \
   --source-bucket clean_check_or_call \
   --target-bucket illegal_fold \
   --n-source-per-stratum 5 \

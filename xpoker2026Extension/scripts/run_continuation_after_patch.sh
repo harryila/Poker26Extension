@@ -43,6 +43,11 @@ case "$MODEL" in
     ;;
 esac
 
+if [[ -f "$OUT/SUMMARY.md" ]] && [[ "${FORCE_RERUN:-0}" != "1" ]]; then
+  echo "[skip] $OUT (set FORCE_RERUN=1 to override)"
+  exit 0
+fi
+
 mkdir -p "$OUT"
 python -m experiments.continuation_after_patch \
   --enriched-log "${LOGS[@]}" \

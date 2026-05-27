@@ -1,6 +1,6 @@
 {
-  "model_id": "mistralai/Ministral-8B-Instruct-2410",
-  "layer": 16,
+  "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+  "layer": 14,
   "source_bucket": "clean_check_or_call",
   "target_bucket": "illegal_fold",
   "n_target": 25,
@@ -8,9 +8,9 @@
   "n_patch_pairs": 125,
   "continue_tokens": 180,
   "head_indices_ablated": [
-    22,
-    9,
-    15
+    5,
+    23,
+    24
   ],
   "class_counts": {
     "recorded": {

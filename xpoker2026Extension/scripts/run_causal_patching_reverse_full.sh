@@ -49,8 +49,20 @@ QWEN_LOGS=(
   logs/cot_qwen8b_t0_s456_informative_v2_logitlens_enriched.jsonl.gz
 )
 
-run_cell llama 14 "${LLAMA_LOGS[@]}"
-run_cell ministral 16 "${MINI_LOGS[@]}"
-run_cell qwen 23 "${QWEN_LOGS[@]}"
+_want_model() {
+  local m="$1"
+  local list="${PATCHING_MODELS:-ministral llama qwen}"
+  [[ " $list " == *" $m "* ]]
+}
 
-echo "[done] reverse fold→check cells"
+if _want_model llama; then
+  run_cell llama 14 "${LLAMA_LOGS[@]}"
+fi
+if _want_model ministral; then
+  run_cell ministral 16 "${MINI_LOGS[@]}"
+fi
+if _want_model qwen; then
+  run_cell qwen 23 "${QWEN_LOGS[@]}"
+fi
+
+echo "[done] reverse fold→check cells (PATCHING_MODELS=${PATCHING_MODELS:-ministral llama qwen})"

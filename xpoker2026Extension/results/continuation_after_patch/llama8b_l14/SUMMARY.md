@@ -1,10 +1,10 @@
 # Continuation after L* patch
 
-- Model: `mistralai/Ministral-8B-Instruct-2410`
-- Layer: **16**
+- Model: `meta-llama/Llama-3.1-8B-Instruct`
+- Layer: **14**
 - Source bucket: `clean_check_or_call` → target: `illegal_fold`
 - n_targets: 25 | n_sources: 5 | patch pairs: 125
-- Ablated heads (regenerate_ablated): `[22, 9, 15]`
+- Ablated heads (regenerate_ablated): `[5, 23, 24]`
 - Continue tokens (greedy after verb): 180
 
 ## Response quality

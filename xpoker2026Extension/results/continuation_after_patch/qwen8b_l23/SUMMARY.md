@@ -1,20 +1,20 @@
 # Continuation after L* patch
 
-- Model: `mistralai/Ministral-8B-Instruct-2410`
-- Layer: **16**
+- Model: `Qwen/Qwen3-8B`
+- Layer: **23**
 - Source bucket: `clean_check_or_call` → target: `illegal_fold`
-- n_targets: 25 | n_sources: 5 | patch pairs: 125
-- Ablated heads (regenerate_ablated): `[22, 9, 15]`
+- n_targets: 24 | n_sources: 5 | patch pairs: 120
+- Ablated heads (regenerate_ablated): `[26, 28, 30]`
 - Continue tokens (greedy after verb): 180
 
 ## Response quality
 
 | Mode | denominator | coherent CoT+JSON | valid JSON only | broken | empty |
 |---|---:|---:|---:|---:|---:|
-| Recorded log | 25 | 100% | 0% | 0% | 0% |
-| Full regenerate | 25 | 100% | 0% | 0% | 0% |
-| Full regenerate + ablation | 25 | 100% | 0% | 0% | 0% |
-| Patch verb + continue (× sources) | 125 | 100% | 0% | 0% | 0% |
+| Recorded log | 24 | 100% | 0% | 0% | 0% |
+| Full regenerate | 24 | 100% | 0% | 0% | 0% |
+| Full regenerate + ablation | 24 | 100% | 0% | 0% | 0% |
+| Patch verb + continue (× sources) | 120 | 100% | 0% | 0% | 0% |
 
 ## Interpretation
 - **patch_verb_then_continue** aggregates over every (source × target) pair — not a single source residual.

@@ -1,0 +1,45 @@
+{
+  "model_id": "Qwen/Qwen3-8B",
+  "layer": 23,
+  "source_bucket": "clean_check_or_call",
+  "target_bucket": "illegal_fold",
+  "stratify_by": "street",
+  "stratify_meta": {
+    "method": "street"
+  },
+  "strata": {
+    "FLOP": {
+      "n_sources": 5,
+      "n_pairs": 100,
+      "mean_delta": 29.287482926289343,
+      "spec_adj_delta": 18.01215095711854,
+      "frac_top1_flip": 1.0,
+      "stratum_size": 176
+    },
+    "PREFLOP": {
+      "n_sources": 5,
+      "n_pairs": 100,
+      "mean_delta": 32.87748287538877,
+      "spec_adj_delta": 36.777218934716,
+      "frac_top1_flip": 1.0,
+      "stratum_size": 207
+    },
+    "RIVER": {
+      "n_sources": 5,
+      "n_pairs": 100,
+      "mean_delta": 27.587482891401493,
+      "spec_adj_delta": 12.037391860677877,
+      "frac_top1_flip": 1.0,
+      "stratum_size": 82
+    },
+    "TURN": {
+      "n_sources": 5,
+      "n_pairs": 100,
+      "mean_delta": 28.164982880369884,
+      "spec_adj_delta": 21.264911236671697,
+      "frac_top1_flip": 1.0,
+      "stratum_size": 95
+    }
+  },
+  "n_strata_run": 4
+}

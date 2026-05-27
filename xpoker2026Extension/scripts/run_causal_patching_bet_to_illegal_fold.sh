@@ -48,14 +48,28 @@ QWEN_LOGS=(
   logs/cot_qwen8b_t0_s456_informative_v2_logitlens_enriched.jsonl.gz
 )
 
-run_cell llama 14 "${LLAMA_LOGS[@]}"
-run_cell ministral 16 "${MINI_LOGS[@]}"
-run_cell qwen 23 "${QWEN_LOGS[@]}"
+_want_model() {
+  local m="$1"
+  local list="${PATCHING_MODELS:-ministral llama qwen}"
+  [[ " $list " == *" $m "* ]]
+}
 
-echo "[analyze] patched top-1 families (BET-generality readout) ..."
-python -m experiments.analyze_patching_top1_groups \
-  --results-dir results/causal_patching \
-  --glob '*bet_to_illegal_fold*' \
-  --out results/causal_patching/SUMMARY_bet_to_illegal_fold_top1.md
+if _want_model llama; then
+  run_cell llama 14 "${LLAMA_LOGS[@]}"
+fi
+if _want_model ministral; then
+  run_cell ministral 16 "${MINI_LOGS[@]}"
+fi
+if _want_model qwen; then
+  run_cell qwen 23 "${QWEN_LOGS[@]}"
+fi
 
-echo "[done] bet→illegal_fold cells + SUMMARY_bet_to_illegal_fold_top1.md"
+if [[ "${SKIP_TOP1_ANALYZE:-0}" != "1" ]]; then
+  echo "[analyze] patched top-1 families (BET-generality readout) ..."
+  python -m experiments.analyze_patching_top1_groups \
+    --results-dir results/causal_patching \
+    --glob '*bet_to_illegal_fold*' \
+    --out results/causal_patching/SUMMARY_bet_to_illegal_fold_top1.md
+fi
+
+echo "[done] bet→illegal_fold cells (PATCHING_MODELS=${PATCHING_MODELS:-ministral llama qwen})"

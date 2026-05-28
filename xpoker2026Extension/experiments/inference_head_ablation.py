@@ -55,11 +55,38 @@ from experiments.causal_patching import (  # noqa: E402
     _load_agent_config,
 )
 
-# Default sufficient-head sets from Phase K (updates.md §16).
+# Default head sets per model. The "triplet" entry is the historical Phase K
+# choice; "extended" is the larger set that actually crosses the verb-flip
+# threshold under sufficiency patching at the same layer (only meaningful for
+# Ministral L=16 where the triplet is sub-circuit). See updates.md §16, §17g
+# and AUDIT_FINDINGS.md "Head set choice per model" for derivation.
+#
+# - Llama L=14: sparse triplet (h5, h23, h24) — joint patch 49% top-1 → CHECK.
+#   The ONLY model/layer pair with a clean sparse head story.
+# - Ministral L=16: sextet (h9, h15, h22, h24, h30, h31) — joint patch 37%
+#   top-1 → CHECK; triplet (h22, h9, h15) is only 3% (`heads_09_15_22`) and
+#   should be treated as a sub-circuit cell, not the canonical necessity test.
+# - Qwen L=23: triplet (h26, h28, h30) is somewhat arbitrary — Qwen's L=23 has
+#   no sparse head story (residual flow-through carries 82% of the signal).
+#   Reported for cross-model consistency only; head ablation here is an upper
+#   bound on "necessity in this layer's heads", not "necessity of the
+#   compute".
 DEFAULT_HEAD_SETS: dict[str, dict] = {
-    "llama": {"layer": 14, "triplet": [5, 23, 24], "control": [0, 1, 2]},
-    "ministral": {"layer": 16, "triplet": [22, 9, 15], "control": [0, 1, 2]},
-    "qwen": {"layer": 23, "triplet": [26, 28, 30], "control": [0, 1, 2]},
+    "llama": {
+        "layer": 14, "triplet": [5, 23, 24], "control": [0, 1, 2],
+        "extended": [5, 23, 24],
+        "head_story": "sparse_triplet",
+    },
+    "ministral": {
+        "layer": 16, "triplet": [22, 9, 15], "control": [0, 1, 2],
+        "extended": [9, 15, 22, 24, 30, 31],
+        "head_story": "long_tail_sextet",
+    },
+    "qwen": {
+        "layer": 23, "triplet": [26, 28, 30], "control": [0, 1, 2],
+        "extended": [26, 28, 30],
+        "head_story": "no_sparse_residual_arrival",
+    },
 }
 
 
@@ -265,7 +292,10 @@ def main():
     parser.add_argument(
         "--conditions", nargs="+",
         default=["baseline", "triplet", "control"],
-        choices=["baseline", "triplet", "control"],
+        choices=["baseline", "triplet", "control", "extended"],
+        help="`extended` uses the model's sextet/quartet/etc. head set if "
+             "different from triplet (Ministral: sextet that flips 37%% of "
+             "verbs vs triplet's 3%%).",
     )
     parser.add_argument(
         "--pipeline", choices=["hfagent", "recon"], default="recon",
@@ -300,6 +330,8 @@ def main():
     layer = args.layer if args.layer is not None else defaults["layer"]
     triplet_heads = defaults["triplet"]
     control_heads = defaults["control"]
+    extended_heads = defaults.get("extended", triplet_heads)
+    head_story = defaults.get("head_story", "unknown")
 
     pool = []
     for log_path in enriched_logs:
@@ -402,6 +434,18 @@ def main():
             for r in rows:
                 f.write(json.dumps(r) + "\n")
 
+    if "extended" in args.conditions and extended_heads != triplet_heads:
+        print(f"[run] extended ablation heads={extended_heads} ...")
+        abl = AttnHeadZeroAblation(model, layer, extended_heads)
+        rows = _run("extended", abl)
+        results["conditions"]["extended"] = {
+            **_aggregate(rows),
+            "fold_target_flips": _flip_rates(rows),
+        }
+        with open(out_dir / "extended_rows.jsonl", "w") as f:
+            for r in rows:
+                f.write(json.dumps(r) + "\n")
+
     with open(out_dir / "summary.json", "w") as f:
         json.dump(results, f, indent=2)
 
@@ -425,6 +469,7 @@ def main():
         f"- n_decisions: {len(sample)} (seed={args.seed})",
         f"- Triplet heads: `{triplet_heads}`",
         f"- Control heads: `{control_heads}`",
+        f"- Extended head set: `{extended_heads}` (head story: `{head_story}`)",
         "",
         "## Aggregate replay rates",
         "",
@@ -432,7 +477,7 @@ def main():
         "verb=FOLD | verb=CHECK | verb=BET | verb=UNK |",
         "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
-    for name in ("baseline", "triplet", "control"):
+    for name in ("baseline", "triplet", "extended", "control"):
         if name not in results["conditions"]:
             continue
         a = results["conditions"][name]
@@ -456,7 +501,7 @@ def main():
         "| Condition | n | FOLD→CHECK | FOLD→BET | any flip | parse fail |",
         "|---|---:|---:|---:|---:|---:|",
     ]
-    for name in ("baseline", "triplet", "control"):
+    for name in ("baseline", "triplet", "extended", "control"):
         cond = results["conditions"].get(name)
         if not cond:
             continue

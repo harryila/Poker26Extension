@@ -8,6 +8,10 @@ This file documents (a) what is **defensible** as-is, (b) what was **broken or
 mis-framed** in the original post-run write-up, and (c) the **fixes and
 follow-up reruns** queued for the next GPU session.
 
+> **See also:** [`REDO_PLAN.md`](REDO_PLAN.md) for the prioritized rerun
+> list (P0/P1/P2), the disciplined layer/head choice per cell, and the
+> archive/keep/delete decisions.
+
 ---
 
 ## TL;DR — what to claim in the paper
@@ -47,7 +51,7 @@ every Phase Q cell.
 
 ## Major issues uncovered
 
-### 1. Llama L\*=14 is one layer BEFORE saturation (was: not flagged)
+### 1. Llama L\*=14 is one layer BEFORE saturation, BUT it's the correct head-discovery layer
 
 From `results/causal_patching/llama8b_t0_pooled_layer_sweep/SUMMARY.md`:
 
@@ -58,17 +62,33 @@ From `results/causal_patching/llama8b_t0_pooled_layer_sweep/SUMMARY.md`:
 | 15    | 100%          | +10.24     |
 | 16    | 100%          | +11.30     |
 
-Every Phase Q cell that uses `LAYER=14` for Llama (continuation, context-
-stratified, BET→illegal_FOLD, reverse, head-ablation triplet) is being
-evaluated at the transition layer, not at full saturation. This explains the
-softer Llama numbers vs Qwen and Ministral and the patch-flip rate of only
-46% in continuation.
+Every Phase Q **patching cell** that uses `LAYER=14` for Llama is being
+evaluated at the transition layer. The continuation patch flip rate of 46%
+comes from this.
 
-**Action:** keep L=14 as the canonical L\* (Phase K choice), but document the
-saturation-layer asymmetry in methods. **Do not** silently re-pick L=15 only
-for the cells where it improves — that is post-hoc tuning. If we run Llama at
-L=15 we must run it at L=15 across **all** Phase Q cells, then report both
-side-by-side.
+But the project's own component decompositions
+(`results/causal_patching/llama8b_l14_components_*/SUMMARY_components.md` vs
+`llama8b_l15_components/SUMMARY_components.md`) establish that **L=14 is
+where the verb-producing heads live** — `heads_05_23_24` carry 65% of the
+residual effect with 49% top-1 → CHECK at L=14, and **NO sparse head subset
+at L=15 carries any meaningful effect** (best individual head 17%, no
+triplet > 19%). At L=15 the verb signal arrives via residual flow-through
+from L=14's heads.
+
+**Disciplined action (see REDO_PLAN.md P0.3):**
+- **Patching cells** (residual-level sufficiency): run BOTH L=14 and L=15
+  for Llama. Report side-by-side as "transition (L=14) → saturation (L=15)
+  in the residual stream."
+- **Head ablation cells**: keep at L=14. Llama L=15 has no sparse head
+  story; ablating arbitrary heads at L=15 isn't a meaningful necessity
+  test.
+
+This is *not* post-hoc cherry-picking — it's matching layer to question.
+Ministral at L=14 is also "wrong layer" by the same logic
+(`ministral8b_l14_components/SUMMARY_components.md`: residual only 2%
+top-1 → CHECK). Ministral's compute and commit collapse onto the same
+layer (L=16); Qwen's compute is distributed across L=19–22 with commit at
+L=23. See `updates.md` §17g for the full Phase L analysis we already did.
 
 ### 2. Ministral inference ablation was incoherent (`commit 114e7d0` was a partial fix)
 
@@ -195,7 +215,41 @@ the Tier 4 numbers are smaller than Phase K's (different counterfactual,
 different Δ-scale). The Tier 4 conclusion is "Qwen circuit is opponent-
 invariant; Llama and Ministral are not measurable with this setup".
 
-### 7. Mode-balanced probe: Ministral broken, Llama fallback, Qwen clean
+### 7. Head set choice per model — only Llama L=14 has a true sparse circuit
+
+From the existing component decompositions and `updates.md` §17g:
+
+| Model/Layer | Best head set crossing verb-flip threshold | Joint top-1 → CHECK | Status |
+|-------------|-------------------------------------------|----------------------|--------|
+| **Llama L=14**  | sparse triplet `[5, 23, 24]`           | 49% (`heads_05_23_24`) | **Real sparse story** |
+| Llama L=14 quartet | `[2, 5, 23, 24]`                    | 69% (`heads_02_05_23_24`) | Bigger version |
+| Llama L=15      | none                                   | best single head 3% | **No sparse story** |
+| Ministral L=14  | none — residual itself is 2% top-1     | n/a | **Wrong layer** |
+| **Ministral L=16** | sextet `[9, 15, 22, 24, 30, 31]`    | 37% (`heads_09_15_22_24_30_31`) | **Wide-and-shallow** |
+| Ministral L=16  | triplet `[22, 9, 15]`                  | **3%** (`heads_09_15_22`) | **Sub-circuit** |
+| Qwen L=23       | none — residual flow-through 82%       | best single head 11%, includes negative contributors | **No sparse story** |
+
+**The current canonical head sets are NOT all matched to the real circuit:**
+
+- **Llama** triplet `[5, 23, 24]` at L=14 is the genuine sparse circuit. ✅
+- **Ministral** triplet `[22, 9, 15]` at L=16 is **sub-circuit** — it only
+  flips 3% of patched targets. The sextet is the proper Ministral analogue
+  of Llama's triplet. The current Phase Q inference-ablation triplet
+  result (small effect) is therefore not "necessity is weak"; it's "we
+  ablated the wrong subset of heads." We added the **sextet** as a new
+  default condition (see `experiments/inference_head_ablation.py`
+  `DEFAULT_HEAD_SETS["ministral"]["extended"]`).
+- **Qwen** triplet `[26, 28, 30]` at L=23 is **arbitrary** — Qwen has no
+  sparse head story at L=23 (`heads_26+28+30` includes h28 with NEGATIVE
+  contribution). Reported for cross-model surface comparison only. The
+  cleanest Qwen "necessity" test would be either (a) component
+  decomposition at L=22 to find the compute layer's heads (see
+  REDO_PLAN.md P1.2), or (b) layer-level (whole-attention) ablation.
+
+**Disciplined action (see REDO_PLAN.md P0.2):** run Ministral inference
+ablation with the sextet as well as the triplet, and report both.
+
+### 8. Mode-balanced probe: Ministral broken, Llama fallback, Qwen clean
 
 From `results/mode_balanced_probe/`:
 
@@ -233,21 +287,38 @@ should agree. If they don't, we have a residual bug to chase.
 
 ---
 
+## Files marked superseded (kept on disk, do not cite)
+
+- [`results/inference_head_ablation/ministral8b_l16_cot/SUPERSEDED.md`](results/inference_head_ablation/ministral8b_l16_cot/SUPERSEDED.md)
+  — confounded by HFAgent regen-fidelity (5% baseline parse_OK). Replace
+  with P0.1 recon-pipeline rerun.
+- [`results/mode_balanced_probe/ministral8b_l16/SUPERSEDED.md`](results/mode_balanced_probe/ministral8b_l16/SUPERSEDED.md)
+  — n=16 matched-classified pairs, CV NaN. Drop from writeup.
+
+We do NOT delete these directories — they document real findings (regen
+drift, Ministral's bucket-skew) that belong in the limitations section.
+
 ## Code/script changes in this audit
 
 - `experiments/inference_head_ablation.py` — added `--pipeline recon` (default)
   and `--filter-recorded-bucket`; tracks verb regex (FOLD / CHECK_OR_CALL /
   BET_OR_RAISE / UNK) and reports flip rate on recorded-FOLD subset; saves
-  `raw_response` per row.
+  `raw_response` per row. **DEFAULT_HEAD_SETS now also exposes `extended`**
+  (Ministral sextet `[9,15,22,24,30,31]`; Llama and Qwen unchanged), and
+  `--conditions extended` adds a new ablation cell in the same run.
 - `experiments/continuation_after_patch.py` — added per-mode verb counts and
   flip-rate breakdown for recorded-FOLD targets; SUMMARY.md gains a "Verb
   distribution" and "Flip rate on recorded-FOLD targets" section.
 - `scripts/run_inference_head_ablation.sh` — per-model selector
   (`MODEL=ministral|llama|qwen`), pipeline + filter env vars, FORCE_RERUN
   guard.
-- `scripts/run_context_stratified_patching.sh` — `OUT_SUFFIX` env so multiple
-  stratifications can coexist (`_pot_odds`, etc).
+- `scripts/run_context_stratified_patching.sh` — `LAYER` and `OUT_SUFFIX`
+  env so multiple layers/stratifications can coexist (`_pot_odds`,
+  `llama8b_l15_street`, etc).
 - `scripts/run_phase_q_audit_rerun.sh` — orchestrator for items 1, 2, 3 above.
+- `scripts/run_phase_q_llama_l15_parallel.sh` — **new**: runs the Llama
+  patching cells (reverse, BET, context-stratified) at L=15 for the
+  saturation-layer parallel comparison.
 
 ## Code paths NOT changed (deliberately)
 
@@ -261,28 +332,29 @@ should agree. If they don't, we have a residual bug to chase.
 
 ## What to run on the next GPU box
 
-After disk increase (HF cache ≥ 35GB):
+See [`REDO_PLAN.md`](REDO_PLAN.md) for the full prioritized list (P0/P1/P2)
+with GPU-hour estimates. The one-shot orchestrator:
 
 ```bash
 cd xpoker2026Extension
 git pull origin main
 export HF_HOME=/workspace/huggingface HF_TOKEN=...
 
-# Audit rerun: (1) inference ablation recon pipeline, (2) continuation with
-# verb breakdown, (3) context-stratified by pot_odds_quartile.
-FORCE_RERUN=1 CONTINUE_TOKENS=180 \
-  bash scripts/run_phase_q_audit_rerun.sh
+# P0.1 (inference recon) + P0.4 (continuation breakdown) + P1.1 (pot_odds)
+FORCE_RERUN=1 CONTINUE_TOKENS=180 bash scripts/run_phase_q_audit_rerun.sh
+
+# P0.3 (Llama L=15 patching parallel set)
+FORCE_RERUN=1 bash scripts/run_phase_q_llama_l15_parallel.sh
+
+# P0.2 (Ministral sextet ablation condition)
+MODEL=ministral PIPELINE=recon \
+  FILTER_RECORDED_BUCKET=illegal_fold \
+  FORCE_RERUN=1 \
+  bash scripts/run_inference_head_ablation.sh \
+  --conditions baseline triplet extended control
 ```
 
-Expected new artefacts:
-
-```
-results/inference_head_ablation/{ministral,llama,qwen}8b_l*_recon_illegal_fold/
-results/continuation_after_patch/{ministral,llama,qwen}8b_l*/SUMMARY.md  (overwritten)
-results/context_stratified_patching/{ministral,llama,qwen}8b_l*_pot_odds/
-```
-
-Total wall time estimate: ~3 GPU-hours across all 3 models.
+Total P0 wall time: ~5 GPU-hours.
 
 ---
 
@@ -320,6 +392,12 @@ Total wall time estimate: ~3 GPU-hours across all 3 models.
    spectrum.** Qwen has the deepest consolidation (sufficient + necessary +
    opponent-invariant + mode-stable); Llama is intermediate with
    parse-damage confounds at the transition layer; Ministral has clean
-   sufficiency but circuit-redundant necessity.
+   sufficiency but a wider, longer-tailed head circuit.
+
+8. **The smallest head set that crosses the verb-flip threshold scales
+   with model architecture**: Llama 3 heads at L=14 (sparse triplet);
+   Ministral 6 heads at L=16 (long-tail sextet); Qwen >32 heads /
+   distributed across L=19–22 (no sparse story at any single layer). This
+   is a tighter version of the consolidation gradient.
 
 This is the honest cross-model story.

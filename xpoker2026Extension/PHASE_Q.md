@@ -2,11 +2,13 @@
 
 Implements the pre-submission GPU suite discussed in the planning thread.
 
-> **Post-run audit (2026-05-27):** see `AUDIT_FINDINGS.md` for known issues
-> uncovered after the GPU run landed in `c5eb2f2`/`6fe23d4`. The audit reframes
-> the cross-model story as a **circuit-consolidation gradient** (Qwen >
-> Llama > Ministral on necessity / opponent-invariance / mode-stability) and
-> queues a 3-GPU-hour rerun via `scripts/run_phase_q_audit_rerun.sh`.
+> **Post-run audit (2026-05-27):** see [`AUDIT_FINDINGS.md`](AUDIT_FINDINGS.md)
+> for known issues and [`REDO_PLAN.md`](REDO_PLAN.md) for the prioritized
+> rerun list (P0/P1/P2). The audit reframes the cross-model story as a
+> **circuit-consolidation gradient** (Qwen > Llama > Ministral on necessity,
+> opponent-invariance, mode-stability), establishes that **only Llama L=14
+> has a sparse head story** (Ministral needs a sextet, Qwen has none), and
+> queues ~5 GPU-hours of disciplined reruns covering layer/head choices.
 
 ## Quick start (GPU box)
 

@@ -1,0 +1,46 @@
+{
+  "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+  "layer": 14,
+  "source_bucket": "clean_check_or_call",
+  "target_bucket": "illegal_fold",
+  "stratify_by": "pot_odds_quartile",
+  "stratify_meta": {
+    "method": "pot_odds_quartile",
+    "n_sources_total": 557,
+    "n_sources_facing_bet": 254,
+    "quartile_edges": [
+      0.14285714285714285,
+      0.16666666666666666,
+      0.25,
+      0.25,
+      0.25
+    ]
+  },
+  "strata": {
+    "Q1": {
+      "n_sources": 3,
+      "n_pairs": 60,
+      "mean_delta": 7.206264600583571,
+      "spec_adj_delta": 1.553231176844629,
+      "frac_top1_flip": 0.8,
+      "stratum_size": 3
+    },
+    "Q2": {
+      "n_sources": 5,
+      "n_pairs": 100,
+      "mean_delta": 7.609994172270408,
+      "spec_adj_delta": 4.720010218996295,
+      "frac_top1_flip": 0.85,
+      "stratum_size": 98
+    },
+    "Q4": {
+      "n_sources": 5,
+      "n_pairs": 100,
+      "mean_delta": 12.084421949796553,
+      "spec_adj_delta": 12.602892362243134,
+      "frac_top1_flip": 0.95,
+      "stratum_size": 153
+    }
+  },
+  "n_strata_run": 3
+}

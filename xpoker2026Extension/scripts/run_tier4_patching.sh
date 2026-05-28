@@ -71,12 +71,13 @@ FORCE_RERUN="${FORCE_RERUN:-0}"
 # the underlying circuit is fine. Override via BASELINE_TOLERANCE_FRAC env.
 BASELINE_TOLERANCE_FRAC="${BASELINE_TOLERANCE_FRAC:-0.50}"
 
-# Layer per model (each model's L*).
+# Layer per model (each model's L*). Allow env overrides:
+#   LLAMA_LAYER, MINISTRAL_LAYER, QWEN_LAYER  (e.g. LLAMA_LAYER=15 for L=15 sweep).
 layer_for_model() {
     case "$1" in
-        llama-8b)     echo 14 ;;
-        ministral-8b) echo 16 ;;
-        qwen-8b)      echo 23 ;;
+        llama-8b)     echo "${LLAMA_LAYER:-14}" ;;
+        ministral-8b) echo "${MINISTRAL_LAYER:-16}" ;;
+        qwen-8b)      echo "${QWEN_LAYER:-23}" ;;
         *) echo "0" ;;
     esac
 }

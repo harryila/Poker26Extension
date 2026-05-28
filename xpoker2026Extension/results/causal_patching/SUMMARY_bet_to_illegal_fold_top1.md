@@ -17,6 +17,20 @@
 
 ## `by_pair.csv`
 
+- n_pairs: 300
+
+| patched_top1_group | count | fraction |
+|---|---:|---:|
+| BET_RAISE | 300 | 100.0% |
+
+### By layer
+
+- L=15: dominant `BET_RAISE` (100.0% of 300 pairs)
+
+**BET-generality readout**: top-1 → BET_RAISE **100.0%** | CHECK_CALL 0.0% | FOLD 0.0%
+
+## `by_pair.csv`
+
 - n_pairs: 210
 
 | patched_top1_group | count | fraction |

@@ -1,0 +1,46 @@
+{
+  "model_id": "Qwen/Qwen3-8B",
+  "layer": 23,
+  "source_bucket": "clean_check_or_call",
+  "target_bucket": "illegal_fold",
+  "stratify_by": "pot_odds_quartile",
+  "stratify_meta": {
+    "method": "pot_odds_quartile",
+    "n_sources_total": 560,
+    "n_sources_facing_bet": 266,
+    "quartile_edges": [
+      0.05555555555555555,
+      0.125,
+      0.25,
+      0.25,
+      0.25
+    ]
+  },
+  "strata": {
+    "Q1": {
+      "n_sources": 5,
+      "n_pairs": 100,
+      "mean_delta": 25.682482896995122,
+      "spec_adj_delta": 14.407150927824318,
+      "frac_top1_flip": 1.0,
+      "stratum_size": 44
+    },
+    "Q2": {
+      "n_sources": 5,
+      "n_pairs": 100,
+      "mean_delta": 25.197483011883552,
+      "spec_adj_delta": 28.997083472549583,
+      "frac_top1_flip": 1.0,
+      "stratum_size": 85
+    },
+    "Q4": {
+      "n_sources": 5,
+      "n_pairs": 100,
+      "mean_delta": 32.6474832765658,
+      "spec_adj_delta": 18.322360583992324,
+      "frac_top1_flip": 1.0,
+      "stratum_size": 137
+    }
+  },
+  "n_strata_run": 3
+}

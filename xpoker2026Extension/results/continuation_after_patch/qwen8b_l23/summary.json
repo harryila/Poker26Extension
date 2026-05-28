@@ -25,5 +25,47 @@
     "patch_verb_then_continue": {
       "coherent_cot_json": 120
     }
+  },
+  "verb_counts": {
+    "recorded": {
+      "FOLD": 24
+    },
+    "regenerate_baseline": {
+      "BET_OR_RAISE": 2,
+      "CHECK_OR_CALL": 6,
+      "FOLD": 16
+    },
+    "regenerate_ablated": {
+      "CHECK_OR_CALL": 20,
+      "FOLD": 2,
+      "BET_OR_RAISE": 2
+    },
+    "patch_verb_then_continue": {
+      "CHECK_OR_CALL": 120
+    }
+  },
+  "fold_target_flips": {
+    "n_recorded_fold_targets": 24,
+    "regen_baseline_to_check": {
+      "n": 6,
+      "rate": 0.25
+    },
+    "regen_ablated_to_check": {
+      "n": 20,
+      "rate": 0.8333333333333334
+    },
+    "regen_baseline_parse_fail": {
+      "n": 0,
+      "rate": 0.0
+    },
+    "regen_ablated_parse_fail": {
+      "n": 0,
+      "rate": 0.0
+    },
+    "patch_to_check_over_pairs": {
+      "n_patch_pairs": 120,
+      "n_patch_to_check": 120,
+      "rate": 1.0
+    }
   }
 }

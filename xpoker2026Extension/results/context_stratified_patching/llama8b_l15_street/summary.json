@@ -1,0 +1,45 @@
+{
+  "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+  "layer": 15,
+  "source_bucket": "clean_check_or_call",
+  "target_bucket": "illegal_fold",
+  "stratify_by": "street",
+  "stratify_meta": {
+    "method": "street"
+  },
+  "strata": {
+    "FLOP": {
+      "n_sources": 5,
+      "n_pairs": 100,
+      "mean_delta": 12.43457444884371,
+      "spec_adj_delta": 4.783508778355265,
+      "frac_top1_flip": 0.95,
+      "stratum_size": 247
+    },
+    "PREFLOP": {
+      "n_sources": 5,
+      "n_pairs": 100,
+      "mean_delta": 13.4452869697373,
+      "spec_adj_delta": 9.12553609173382,
+      "frac_top1_flip": 0.95,
+      "stratum_size": 190
+    },
+    "RIVER": {
+      "n_sources": 5,
+      "n_pairs": 100,
+      "mean_delta": 12.2789289505979,
+      "spec_adj_delta": 13.052831510328865,
+      "frac_top1_flip": 0.95,
+      "stratum_size": 34
+    },
+    "TURN": {
+      "n_sources": 5,
+      "n_pairs": 100,
+      "mean_delta": 12.322564654387813,
+      "spec_adj_delta": 11.111327433819273,
+      "frac_top1_flip": 0.95,
+      "stratum_size": 86
+    }
+  },
+  "n_strata_run": 4
+}

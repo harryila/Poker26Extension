@@ -17,7 +17,7 @@ MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-512}"
 
 case "$MODEL" in
   ministral)
-    LAYER=16
+    LAYER="${LAYER:-16}"
     LOGS=(
       logs/cot_ministral8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz
       logs/cot_ministral8b_t0_s123_informative_v2_logitlens_enriched.jsonl.gz
@@ -26,7 +26,7 @@ case "$MODEL" in
     SHORT="ministral8b"
     ;;
   llama)
-    LAYER=14
+    LAYER="${LAYER:-14}"
     LOGS=(
       logs/cot_llama8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz
       logs/cot_llama8b_t0_s123_informative_v2_logitlens_enriched.jsonl.gz
@@ -35,7 +35,7 @@ case "$MODEL" in
     SHORT="llama8b"
     ;;
   qwen)
-    LAYER=23
+    LAYER="${LAYER:-23}"
     LOGS=(
       logs/cot_qwen8b_t0_s42_informative_v2_logitlens_enriched.jsonl.gz
       logs/cot_qwen8b_t0_s123_informative_v2_logitlens_enriched.jsonl.gz
@@ -49,8 +49,14 @@ case "$MODEL" in
     ;;
 esac
 
+# Space-separated condition list: e.g. CONDITIONS="baseline triplet extended control"
+CONDITIONS="${CONDITIONS:-baseline triplet control}"
+# Optional suffix on out-dir to keep multiple variants (e.g. "_sextet", "_negctrl").
+OUT_SUFFIX="${OUT_SUFFIX:-}"
+
 OUT_BASENAME="${SHORT}_l${LAYER}_${PIPELINE}"
 [[ -n "$FILTER" ]] && OUT_BASENAME="${OUT_BASENAME}_${FILTER}"
+OUT_BASENAME="${OUT_BASENAME}${OUT_SUFFIX}"
 OUT="results/inference_head_ablation/${OUT_BASENAME}"
 
 if [[ -f "$OUT/SUMMARY.md" ]] && [[ "${FORCE_RERUN:-0}" != "1" ]]; then
@@ -69,7 +75,7 @@ ARGS=(
   --dtype "$DTYPE"
   --pipeline "$PIPELINE"
   --max-new-tokens "$MAX_NEW_TOKENS"
-  --conditions baseline triplet control
+  --conditions $CONDITIONS
 )
 if [[ -n "$FILTER" ]]; then
   ARGS+=( --filter-recorded-bucket "$FILTER" )

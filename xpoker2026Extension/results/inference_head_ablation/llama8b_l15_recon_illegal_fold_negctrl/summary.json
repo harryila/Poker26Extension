@@ -1,0 +1,92 @@
+{
+  "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+  "layer": 15,
+  "pipeline": "recon",
+  "filter_recorded_bucket": "illegal_fold",
+  "conditions": {
+    "baseline": {
+      "n": 68,
+      "recorded_bucket_frac": {
+        "illegal_fold": 1.0
+      },
+      "replay_bucket_frac": {
+        "clean_check_or_call": 0.5,
+        "clean_bet_or_raise": 0.23529411764705882,
+        "illegal_fold": 0.2647058823529412
+      },
+      "replay_verb_frac": {
+        "CHECK_OR_CALL": 0.5,
+        "BET_OR_RAISE": 0.23529411764705882,
+        "FOLD": 0.2647058823529412
+      },
+      "illegal_fold_rate": 0.2647058823529412,
+      "clean_check_rate": 0.5,
+      "parse_success_rate": 1.0,
+      "fallback_rate": 0.0,
+      "parseable_json_rate": 1.0,
+      "fold_target_flips": {
+        "n_recorded_fold": 68,
+        "flip_to_check_rate": 0.5,
+        "flip_to_bet_rate": 0.23529411764705882,
+        "any_flip_rate": 0.7352941176470589,
+        "parse_fail_rate": 0.0
+      }
+    },
+    "triplet": {
+      "n": 68,
+      "recorded_bucket_frac": {
+        "illegal_fold": 1.0
+      },
+      "replay_bucket_frac": {
+        "clean_check_or_call": 0.36764705882352944,
+        "illegal_fold": 0.25,
+        "clean_bet_or_raise": 0.38235294117647056
+      },
+      "replay_verb_frac": {
+        "CHECK_OR_CALL": 0.36764705882352944,
+        "FOLD": 0.25,
+        "BET_OR_RAISE": 0.38235294117647056
+      },
+      "illegal_fold_rate": 0.25,
+      "clean_check_rate": 0.36764705882352944,
+      "parse_success_rate": 1.0,
+      "fallback_rate": 0.0,
+      "parseable_json_rate": 1.0,
+      "fold_target_flips": {
+        "n_recorded_fold": 68,
+        "flip_to_check_rate": 0.36764705882352944,
+        "flip_to_bet_rate": 0.38235294117647056,
+        "any_flip_rate": 0.75,
+        "parse_fail_rate": 0.0
+      }
+    },
+    "control": {
+      "n": 68,
+      "recorded_bucket_frac": {
+        "illegal_fold": 1.0
+      },
+      "replay_bucket_frac": {
+        "clean_check_or_call": 0.5441176470588235,
+        "illegal_fold": 0.25,
+        "clean_bet_or_raise": 0.20588235294117646
+      },
+      "replay_verb_frac": {
+        "CHECK_OR_CALL": 0.5441176470588235,
+        "FOLD": 0.25,
+        "BET_OR_RAISE": 0.20588235294117646
+      },
+      "illegal_fold_rate": 0.25,
+      "clean_check_rate": 0.5441176470588235,
+      "parse_success_rate": 1.0,
+      "fallback_rate": 0.0,
+      "parseable_json_rate": 1.0,
+      "fold_target_flips": {
+        "n_recorded_fold": 68,
+        "flip_to_check_rate": 0.5441176470588235,
+        "flip_to_bet_rate": 0.20588235294117646,
+        "any_flip_rate": 0.75,
+        "parse_fail_rate": 0.0
+      }
+    }
+  }
+}

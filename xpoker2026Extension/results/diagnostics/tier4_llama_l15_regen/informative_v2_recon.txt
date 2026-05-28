@@ -1,0 +1,118 @@
+Loading tokenizer: meta-llama/Llama-3.1-8B-Instruct
+Loading model: meta-llama/Llama-3.1-8B-Instruct (dtype=bfloat16, device=cuda) ...
+Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights:   0%|          | 1/291 [00:00<01:13,  3.97it/s]Loading weights:   5%|▍         | 14/291 [00:00<00:05, 48.83it/s]Loading weights:   8%|▊         | 24/291 [00:00<00:04, 64.54it/s]Loading weights:  14%|█▎        | 40/291 [00:00<00:02, 91.94it/s]Loading weights:  18%|█▊        | 51/291 [00:00<00:02, 85.03it/s]Loading weights:  22%|██▏       | 63/291 [00:00<00:02, 93.38it/s]Loading weights:  25%|██▌       | 74/291 [00:00<00:02, 94.73it/s]Loading weights:  29%|██▉       | 85/291 [00:01<00:02, 93.48it/s]Loading weights:  33%|███▎      | 95/291 [00:01<00:02, 88.49it/s]Loading weights:  36%|███▌      | 105/291 [00:01<00:02, 86.81it/s]Loading weights:  40%|████      | 117/291 [00:01<00:01, 94.16it/s]Loading weights:  44%|████▎     | 127/291 [00:01<00:01, 95.48it/s]Loading weights:  48%|████▊     | 139/291 [00:01<00:01, 96.77it/s]Loading weights:  51%|█████     | 149/291 [00:01<00:01, 94.07it/s]Loading weights:  55%|█████▍    | 159/291 [00:01<00:01, 90.90it/s]Loading weights:  59%|█████▉    | 171/291 [00:01<00:01, 97.63it/s]Loading weights:  62%|██████▏   | 181/291 [00:02<00:01, 97.94it/s]Loading weights:  66%|██████▋   | 193/291 [00:02<00:00, 100.22it/s]Loading weights:  70%|███████   | 204/291 [00:02<00:00, 93.14it/s] Loading weights:  76%|███████▌  | 220/291 [00:02<00:00, 103.05it/s]Loading weights:  79%|███████▉  | 231/291 [00:02<00:00, 95.03it/s] Loading weights:  85%|████████▍ | 247/291 [00:02<00:00, 107.22it/s]Loading weights:  89%|████████▊ | 258/291 [00:02<00:00, 95.86it/s] Loading weights:  92%|█████████▏| 268/291 [00:02<00:00, 95.58it/s]Loading weights:  96%|█████████▌| 278/291 [00:03<00:00, 95.40it/s]Loading weights:  99%|█████████▉| 289/291 [00:03<00:00, 98.06it/s]Loading weights: 100%|██████████| 291/291 [00:03<00:00, 91.59it/s]
+[transformers] Ignoring clean_up_tokenization_spaces=True for BPE tokenizer TokenizersBackend. The clean_up_tokenization post-processing step is designed for WordPiece tokenizers and is destructive for BPE (it strips spaces before punctuation). Set clean_up_tokenization_spaces=False to suppress this warning, or set clean_up_tokenization_spaces_for_bpe_even_though_it_will_corrupt_output=True to force cleanup anyway.
+OK
+
+Verifying on 30 samples
+
+  [OK  ] hand=61c50224 dec=1
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=61c50224 dec=3
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=61c50224 dec=5
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [TIE ] hand=61c50224 dec=7
+         expected: id=35616 tok='CHECK'
+         model   : id=33 tok='B'
+         top-5 alts: 'B'(24.88), 'CHECK'(24.88), 'F'(23.00), 'CHE'(20.62), 'CALL'(20.25)
+         gap to top-1: 0.0000 nats (tolerance 0.50, K=2)
+  [OK  ] hand=61c50224 dec=8
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [TIE ] hand=61c50224 dec=10
+         expected: id=33 tok='B'
+         model   : id=35616 tok='CHECK'
+         top-5 alts: 'CHECK'(24.75), 'B'(24.62), 'F'(23.25), 'CHE'(20.50), 'CALL'(20.25)
+         gap to top-1: 0.1250 nats (tolerance 0.50, K=2)
+  [TIE ] hand=61c50224 dec=12
+         expected: id=35616 tok='CHECK'
+         model   : id=37 tok='F'
+         top-5 alts: 'F'(25.50), 'CHECK'(25.38), 'CALL'(21.75), 'CHE'(20.12), 'B'(18.38)
+         gap to top-1: 0.1250 nats (tolerance 0.50, K=2)
+  [OK  ] hand=61c50224 dec=13
+         expected: id=35616 tok='CHECK'
+         model   : id=35616 tok='CHECK'
+  [TIE ] hand=61c50224 dec=15
+         expected: id=37 tok='F'
+         model   : id=35616 tok='CHECK'
+         top-5 alts: 'CHECK'(24.50), 'F'(24.25), 'B'(22.25), 'CALL'(20.50), 'CHE'(19.88)
+         gap to top-1: 0.2500 nats (tolerance 0.50, K=2)
+  [OK  ] hand=314deeea dec=1
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=314deeea dec=3
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=314deeea dec=5
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=314deeea dec=7
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=314deeea dec=9
+         expected: id=35616 tok='CHECK'
+         model   : id=35616 tok='CHECK'
+  [OK  ] hand=314deeea dec=10
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=314deeea dec=12
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=314deeea dec=14
+         expected: id=37 tok='F'
+         model   : id=37 tok='F'
+  [OK  ] hand=9c1747d6 dec=1
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=9c1747d6 dec=3
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=9c1747d6 dec=5
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [TIE ] hand=9c1747d6 dec=7
+         expected: id=33 tok='B'
+         model   : id=35616 tok='CHECK'
+         top-5 alts: 'CHECK'(24.75), 'B'(24.62), 'F'(23.00), 'CHE'(20.50), 'CALL'(19.88)
+         gap to top-1: 0.1250 nats (tolerance 0.50, K=2)
+  [OK  ] hand=9c1747d6 dec=9
+         expected: id=35616 tok='CHECK'
+         model   : id=35616 tok='CHECK'
+  [OK  ] hand=9c1747d6 dec=10
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [TIE ] hand=9c1747d6 dec=12
+         expected: id=33 tok='B'
+         model   : id=35616 tok='CHECK'
+         top-5 alts: 'CHECK'(24.62), 'B'(24.50), 'F'(23.38), 'CHE'(20.50), 'CALL'(19.88)
+         gap to top-1: 0.1250 nats (tolerance 0.50, K=2)
+  [TIE ] hand=9c1747d6 dec=14
+         expected: id=35616 tok='CHECK'
+         model   : id=37 tok='F'
+         top-5 alts: 'CHECK'(25.50), 'F'(25.50), 'CALL'(21.62), 'CHE'(20.25), 'B'(19.25)
+         gap to top-1: 0.0000 nats (tolerance 0.50, K=2)
+  [OK  ] hand=9c1747d6 dec=15
+         expected: id=35616 tok='CHECK'
+         model   : id=35616 tok='CHECK'
+  [TIE ] hand=9c1747d6 dec=17
+         expected: id=37 tok='F'
+         model   : id=35616 tok='CHECK'
+         top-5 alts: 'CHECK'(24.62), 'F'(24.38), 'B'(22.50), 'CALL'(20.38), 'CHE'(20.12)
+         gap to top-1: 0.2500 nats (tolerance 0.50, K=2)
+  [OK  ] hand=31a32fb5 dec=1
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=31a32fb5 dec=3
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+  [OK  ] hand=31a32fb5 dec=5
+         expected: id=33 tok='B'
+         model   : id=33 tok='B'
+
+========================================================================
+Summary: 30/30 samples passed the pre-flight gate (top-2 within 0.50 nats of top-1; failure budget = 30).
+========================================================================

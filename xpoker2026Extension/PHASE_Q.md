@@ -2,13 +2,22 @@
 
 Implements the pre-submission GPU suite discussed in the planning thread.
 
-> **Post-run audit (2026-05-27):** see [`AUDIT_FINDINGS.md`](AUDIT_FINDINGS.md)
-> for known issues and [`REDO_PLAN.md`](REDO_PLAN.md) for the prioritized
-> rerun list (P0/P1/P2). The audit reframes the cross-model story as a
-> **circuit-consolidation gradient** (Qwen > Llama > Ministral on necessity,
-> opponent-invariance, mode-stability), establishes that **only Llama L=14
-> has a sparse head story** (Ministral needs a sextet, Qwen has none), and
-> queues ~5 GPU-hours of disciplined reruns covering layer/head choices.
+> **Post-run audit (2026-05-27, updated 2026-05-28):** see
+> [`AUDIT_FINDINGS.md`](AUDIT_FINDINGS.md) for known issues and
+> [`REDO_PLAN.md`](REDO_PLAN.md) for the prioritized rerun list (P0/P1/P2).
+> The audit reframes the cross-model story as a **circuit-consolidation
+> gradient** (Qwen > Llama > Ministral on necessity, opponent-invariance,
+> mode-stability) and establishes that **only Llama (L=14) has a localizable
+> sparse head circuit**; Qwen (L=22/23) and Ministral (L=16) commit the verb
+> via residual flow-through.
+>
+> **2026-05-28 reruns landed** (`dd1a534`, `185800a`): recon-pipeline ablation,
+> continuation verb/parse breakdown, pot_odds stratification, Llama L=15
+> cells, **Ministral sextet (clean null — AUDIT §9)**, **Llama L=15 negative
+> control (passes — §10)**, **Qwen L=22 component decomposition (flow-through
+> — §11)**, and **Tier 4 @ L=15**. Two corrections vs the first audit:
+> Llama's continuation parse-damage confound **did not reproduce** (§4), and a
+> **Tier 4 preset-duplication** issue was found (§12, see note below).
 
 ## Quick start (GPU box)
 
@@ -66,8 +75,13 @@ Or run individually:
 
 - **Item 6** does not require 10h re-inference: non-CoT `scaled_*` logs already use
   the same seeds as CoT; pairing is `(seed, decision_idx)` (§22j-bis).
-- **Llama Tier 4** is skipped by default (`RUN_LLAMA_TIER4=0`) due to chat-template
-  `Today Date:` drift (§22m.2).
+- **Llama Tier 4** was historically skipped (`RUN_LLAMA_TIER4=0`) due to
+  chat-template `Today Date:` drift (§22m.2). It was since run at L=15
+  (`results/causal_patching/tier4_*_llama_l15/`); the baseline_top1_match is
+  low (0.23–0.67) from Llama action-token instability, but prompt
+  reconstruction passes 30/30 at 0.50-nat tolerance
+  (`results/diagnostics/tier4_llama_l15_regen/`), so the drift is top-1
+  instability, not a recon bug (AUDIT §12).
 - **Reverse / verb matrix** from Phase L remain valid; scripts here add named
   `*_reverse_fold_to_check_*` and `*_bet_to_illegal_fold_*` dirs for citation.
 - **Inference ablation** defaults to `POOLED=1` (3 seeds). Ablation zeros heads at
@@ -82,7 +96,11 @@ Or run individually:
 - **Continuation**: patch continuation is scored on **assistant response suffix only**
   (not full chat decode); prompt-leak strings → `broken_json`. SUMMARY now
   also reports per-mode verb distribution and flip rate on recorded-FOLD
-  targets (parse-failure column for Llama-damage diagnosis).
+  targets (with a parse-failure column). Under the recon pipeline the
+  suspected Llama parse-damage **did not reproduce** (0% parse-fail, 100%
+  coherent); Llama's real continuation issue is 56% verb drift on plain
+  regeneration, so report Llama necessity from inference ablation, not
+  continuation (AUDIT §4).
 - **Inference ablation (exp 1)**:
   - **Default `--pipeline recon`** (PromptReconstructor + raw `model.generate`)
     matches `continuation_after_patch.regenerate_ablated`. Use
@@ -103,6 +121,19 @@ Or run individually:
   across opponent presets". Δ-magnitudes therefore differ from Phase K's
   illegal_fold cells. Qwen passes (+19–20 nats); Ministral and Llama don't
   (and shouldn't be expected to, given the consolidation gradient).
+- **Tier 4 preset duplication (see AUDIT_FINDINGS.md §12)**: the shared
+  `seed=43` opponent RNG makes several presets produce **byte-identical**
+  opponent action sequences (the whole game tree collapses; only `hand_id`
+  differs). Per the committed diagnostic
+  (`python -m experiments.diagnose_tier4_preset_overlap` →
+  `results/diagnostics/tier4_preset_overlap/SUMMARY.md`), the genuinely
+  distinct opponent distributions are: **Llama 4** (`tight≡loose`),
+  **Qwen 3** (`informative_v2≡tight≡loose`), **Ministral 4**
+  (`informative_v2≡loose_aggressive`) — **no model has 5**. Comparisons within
+  a collapsed group are trivially true and are NOT independent invariance
+  evidence; report each group as one cell. Root-cause fix: opt-in
+  `run_experiment.py --opponent-seed`; **regeneration is recommended** (Qwen
+  is down to 3 distinct) via `scripts/run_tier4_regen_distinct_presets.sh`.
 - **Mode-balanced probe**: Qwen is the only clean cell (n=110, both modes
   own labels, cos +0.51). Llama uses `label_source=cot` fallback (n=99, cos
   +0.33). Ministral n=16, CV NaN — drop from writeup.

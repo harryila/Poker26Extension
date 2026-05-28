@@ -1,8 +1,9 @@
-# Phase Q post-run audit (commit `6fe23d4` + Ministral L16 inference ablation)
+# Phase Q post-run audit (through commits `dd1a534` audit-rerun + `185800a` missing-four)
 
-**Date:** 2026-05-27
+**Date:** 2026-05-27 (updated 2026-05-28 after the recon-pipeline rerun and the
+four missing tasks landed)
 **Scope:** Skeptical re-read of every Phase Q result, code path, and claim that
-landed on `main` after the GPU run.
+landed on `main` after the GPU runs.
 
 This file documents (a) what is **defensible** as-is, (b) what was **broken or
 mis-framed** in the original post-run write-up, and (c) the **fixes and
@@ -11,6 +12,19 @@ follow-up reruns** queued for the next GPU session.
 > **See also:** [`REDO_PLAN.md`](REDO_PLAN.md) for the prioritized rerun
 > list (P0/P1/P2), the disciplined layer/head choice per cell, and the
 > archive/keep/delete decisions.
+
+> **2026-05-28 update banner.** The recon-pipeline reruns changed several
+> headline numbers (the consolidation-gradient table below was refreshed) and
+> closed P0.2 / P1.2 / P1.3. Two qualitative shifts worth flagging:
+> 1. **Llama's continuation "parse-damage" confound did NOT reproduce.** Under
+>    the recon pipeline Llama regenerates 100% coherent JSON (0% parse-fail).
+>    The real Llama issue is **verb drift on plain regeneration** (baseline
+>    regen already flips 56% of recorded FOLDs), not broken JSON. See §4.
+> 2. **Ministral has NO sparse-head story at L=16, even at 6 heads.** The
+>    sextet ablation is a clean null (§9). L=16 is residual flow-through.
+> A new data-generation issue was also found in **Tier 4** (§12): for Llama and
+> Qwen, `tight_aggressive` and `loose_aggressive` are byte-identical opponent
+> distributions — effectively 4 distinct presets, not 5.
 
 ---
 
@@ -35,10 +49,12 @@ This replaces the earlier "all 3 are equivalent" framing.
 | L\* spec-adj Δ (forward)                | **+18.3 nats** | +6.5 (L=14) / +10.2 (L=15) | +7.4 nats        |
 | Reverse FOLD→CHECK, top-1 → FOLD        | **96%**        | 59%                      | 100%               |
 | Reverse spec-adj Δ                      | **−26.8 nats** | −9.4                     | −2.2               |
-| BET→illegal_FOLD, top-1 → BET_RAISE     | 80% (+ 20% CHECK) | **94%**               | **100%**           |
-| Continuation regen_ablated FOLD→CHECK   | **22/24 = 92%**| 22/24 = 92% (with **46% parse fail**) | 4/25 = 16%   |
-| Continuation regen_baseline parse_OK     | 23/24          | **14/25**                | 25/25              |
-| Continuation patch flip → CHECK         | **120/120 = 100%** | 58/125 = 46%         | **125/125 = 100%** |
+| BET→illegal_FOLD, top-1 → BET_RAISE     | 80% (+ 20% CHECK) | 94% (L=14) / **100% (L=15)** | **100%**       |
+| Continuation regen_ablated FOLD→CHECK   | **20/24 = 83.3%** | 14/25 = 56% (net **+0pp** over baseline) | 3/25 = 12% (net **+12pp**) |
+| Continuation regen_baseline FOLD→CHECK  | 6/24 = 25%     | **14/25 = 56%** (verb drift) | 0/25 = 0%        |
+| Continuation parse-fail (regen, either) | **0%**         | **0%** (confound did NOT reproduce) | **0%**       |
+| Continuation patch flip → CHECK         | **120/120 = 100%** | 105/125 = 84%        | **125/125 = 100%** |
+| Inference ablation (recon, illegal_fold pool) triplet net FOLD→CHECK | **+58.3pp** (33→92%) | +23.5pp (74→97% any-flip; FOLD→CHECK ≈flat) | −2.5pp (control flips MORE) |
 | Mode-balanced cos(w_CoT, w_nonCoT)      | **+0.51** (n=110, both modes own labels) | +0.33 (n=99, fallback labels) | +0.095 (**n=16, NaN CV**) |
 | Opp-invariance (Tier 4 spec-adj)        | **+19.3 nats** | ≈0 (noise floor)         | ≈0.7               |
 
@@ -145,32 +161,42 @@ So: **Ministral is the strongest sufficient cell (saturated at L=16, +11.5
 nat spec-adj plateau, 100% patch flip) AND the weakest necessity cell (12pp
 flip under triplet ablation).** This is a real finding, not a bug.
 
-### 4. Llama's continuation numbers conflate "necessity" and "general damage"
+### 4. Llama's continuation: verb DRIFT on regeneration, NOT parse damage [REVISED 2026-05-28]
 
-Re-counted from `results/continuation_after_patch/llama8b_l14/examples.jsonl`:
+The original audit (HFAgent-era continuation) reported Llama failing to
+regenerate parseable JSON 44% of the time and framed the necessity result as
+"confounded by parse damage." **The recon-pipeline rerun
+(`results/continuation_after_patch/llama8b_l14/`, commit `dd1a534`) does NOT
+reproduce parse damage.** Re-counted from the committed `summary.json`:
 
-- 24 recorded illegal_fold targets parsed FOLD; 1 was UNK at recording.
-- regen_baseline parse_OK: **14/25** — Llama already fails to regenerate
-  parseable JSON 44% of the time at T=0. This is the chat-template `Today
-  Date:` drift documented in §22m.2. (We knew about this for Tier 4 already.)
-- regen_ablated parse_OK: 11/25 — adds another 3 parse failures.
-- regen_ablated FOLD→non-FOLD verb flip: 22/24 = 92%, but **22-7 = 15
-  additional flips over baseline (75% baseline)** ⇒ **+17 pp** *if you
-  trust the baseline*.
-- Patch flip (verb-only): 58/125 = **46% to CHECK**, 62/125 stay FOLD.
+- 25 recorded illegal_fold targets, all FOLD.
+- **All four modes regenerate 100% coherent CoT+JSON; parse-fail = 0/25.**
+- regen_baseline verbs: 6 FOLD / 14 CHECK_OR_CALL / 5 BET_OR_RAISE → **baseline
+  already flips 56% (14/25) of recorded FOLDs to CHECK without any ablation.**
+- regen_ablated verbs: 1 FOLD / 14 CHECK_OR_CALL / 10 BET_OR_RAISE → FOLD→CHECK
+  still 56% (14/25); net ablation effect over baseline = **+0 pp** (ablation
+  shifts mass FOLD→BET, not FOLD→CHECK).
+- Patch flip (verb-only, source×target): **105/125 = 84% to CHECK** (up from
+  the stale 46% in the HFAgent-era run).
 
-The patch flip of only 46% on Llama L=14 is genuinely surprising. At L=14 the
-forward pooled sweep showed top-1 → CHECK = 79%; the continuation patch
-sample of n=125 showing 46% suggests either (a) the source residuals sampled
-in continuation underperform the n_source=10 pool used in pooled sweeps or
-(b) the verb-only single-forward measurement is noisier than the
-n_source × n_target full grid. Either way the continuation patch headline
-should be reported with the 46% number, not the pooled-sweep 79%.
+**Corrected interpretation.** Llama's L=14 continuation **cannot measure
+necessity** because the *baseline regeneration itself* already drifts the verb
+56% of the time (chat-template / `Today Date:` regeneration non-determinism in
+the VERB token — distinct from the now-disproven JSON-parse damage). With a
+baseline that high, the ablated condition has no headroom to show a clean
+differential. Sufficiency, by contrast, is strong: 84% patch flip and (at L=15)
+100% top-1 → CHECK.
 
-**Action:** flag in the writeup that Llama L=14 patch flip on continuation is
-46%, and that the necessity claim is confounded by parse damage. Frame Llama
-as the "intermediate consolidation" cell; let Qwen carry the cleanest
-necessity claim.
+**Where Llama necessity DOES show up:** the inference head-ablation recon cell
+on the illegal_fold pool (`results/inference_head_ablation/llama8b_l14_recon_illegal_fold/`)
+gives triplet any-flip 97.1% vs baseline 73.5% (**+23.5 pp**), and the L=15
+negative control (§10) confirms this is specific to the L=14 compute layer.
+
+**Action:** report Llama as the "intermediate consolidation" cell using the
+**inference-ablation** necessity number (+23.5 pp at L=14), not the
+continuation number. Explicitly note that Llama continuation necessity is
+**unmeasurable** due to 56% baseline regeneration drift, and drop the old
+"parse damage" framing entirely. Let Qwen carry the cleanest necessity claim.
 
 ### 5. Context-stratified result is "stable across streets", not "context-modulated"
 
@@ -233,12 +259,15 @@ From the existing component decompositions and `updates.md` §17g:
 
 - **Llama** triplet `[5, 23, 24]` at L=14 is the genuine sparse circuit. ✅
 - **Ministral** triplet `[22, 9, 15]` at L=16 is **sub-circuit** — it only
-  flips 3% of patched targets. The sextet is the proper Ministral analogue
-  of Llama's triplet. The current Phase Q inference-ablation triplet
-  result (small effect) is therefore not "necessity is weak"; it's "we
-  ablated the wrong subset of heads." We added the **sextet** as a new
-  default condition (see `experiments/inference_head_ablation.py`
-  `DEFAULT_HEAD_SETS["ministral"]["extended"]`).
+  flips 3% of patched targets. We hypothesized the sextet was the proper
+  Ministral analogue of Llama's triplet and added it as a new condition
+  (`DEFAULT_HEAD_SETS["ministral"]["extended"]`). **The sextet hypothesis was
+  tested behaviorally (P0.2) and is a clean NULL — see §9.** The sextet adds
+  only +3.7 pp any-flip over the triplet and is still far below the control's
+  43.8% flip. NB: the "37%" in the table is the *component-patch joint
+  top-1 → CHECK* (signal the 6 heads carry when their contribution is
+  injected); it does NOT survive as behavioral *necessity* when those heads
+  are ablated during generation. Ministral L=16 is residual flow-through.
 - **Qwen** triplet `[26, 28, 30]` at L=23 is **arbitrary** — Qwen has no
   sparse head story at L=23 (`heads_26+28+30` includes h28 with NEGATIVE
   contribution). Reported for cross-model surface comparison only. The
@@ -263,6 +292,151 @@ From `results/mode_balanced_probe/`:
 
 **Action:** drop Ministral from the mode-balanced cell. Caveat Llama's
 fallback. Report Qwen as the primary mode-stability evidence.
+
+### 9. Ministral sextet ablation is a clean NULL — L=16 is residual flow-through [NEW 2026-05-28]
+
+P0.2 ran the sextet `[9,15,22,24,30,31]` as a behavioral inference-ablation
+condition alongside triplet/control on the recorded illegal_fold pool (n=80,
+recon pipeline). From
+`results/inference_head_ablation/ministral8b_l16_recon_illegal_fold_sextet/SUMMARY.md`:
+
+| Condition | any FOLD-flip | FOLD→CHECK | parse-fail |
+|-----------|--------------:|----------:|-----------:|
+| baseline  | 21.2%         | 11.2%     | 0% |
+| triplet   | 18.8%         | 17.5%     | 0% |
+| **sextet (extended)** | **22.5%** | **21.2%** | 0% |
+| control `[0,1,2]` | **43.8%** | **42.5%** | 0% |
+
+The sextet adds only **+3.7 pp** any-flip over the triplet (noise) and is
+**less than the control's 43.8%**. The control (heads 0–2) flips ~2× more than
+either hypothesized head set. This is decisive: **Ministral L=16 has no sparse
+head story at 3 OR 6 heads.** The verb signal at L=16 is residual
+flow-through; ablating any small head subset is dominated by the generic
+attention-reweighting disruption captured by the control.
+
+**Conclusion for the paper.** Drop the "Ministral sextet is the proper
+analogue of Llama's triplet" hypothesis. Ministral's necessity story is
+"distributed / residual flow-through at the saturation layer; no localizable
+attention-head circuit at L=16." This is the honest null, and it sharpens the
+gradient: only Llama has a sparse head circuit at its compute layer.
+
+### 10. Llama L=15 negative control PASSES — confirms L=14 compute / L=15 saturation [NEW 2026-05-28]
+
+P1.3 applied the SAME Llama triplet `[5,23,24]` at **L=15** (the saturation
+layer, where the component decomposition found no sparse head story). From
+`results/inference_head_ablation/llama8b_l15_recon_illegal_fold_negctrl/SUMMARY.md`
+(recon, illegal_fold pool, n=68):
+
+| Condition | any FOLD-flip | FOLD→CHECK |
+|-----------|--------------:|----------:|
+| baseline  | 73.5%         | 50.0%     |
+| triplet @ L=15 | 75.0%    | 36.8%     |
+| control @ L=15 | 75.0%    | 54.4%     |
+
+Triplet at L=15 = +1.5 pp any-flip over baseline (noise), indistinguishable
+from control. **This is a textbook negative control:** the triplet that
+carries +23.5 pp necessity at L=14 carries nothing at L=15. It confirms the
+compute(L=14) vs saturation(L=15) split is real and head-specific, not an
+artifact of ablating any heads anywhere. Cite alongside §1.
+
+### 11. Qwen L=22 component decomposition — residual flow-through; compute layer is L<22 [NEW 2026-05-28]
+
+P1.2 ran `experiments.component_patching` at L=22 (pooled 3 seeds,
+clean_check_or_call → illegal_fold). From
+`results/causal_patching/qwen8b_l22_components/SUMMARY_components.md`:
+
+| Component | mean Δ(CHECK−FOLD) | ratio to residual | top-1 → CHECK |
+|-----------|-------------------:|------------------:|--------------:|
+| `residual`| +19.39 nats        | 100%              | 76.2% |
+| `attn`    | +1.59 nats         | 8%                | 2.5%  |
+| `mlp`     | −0.74 nats         | −4%               | 0.0%  |
+| best head (`head_00`) | +4.59  | 24%               | 3.8%  |
+
+Patching the full residual at L=22 reproduces the verb flip (+19.4 nats, 76%
+top-1 → CHECK), but the layer's **own attention contributes 8% and its MLP
+−4%**; no single head exceeds 24% and the next-largest are <17%. So **L=22 is
+residual flow-through, like L=23** — the verb signal arrives via the residual
+stream and L=22 passes it through. **Qwen's compute layer (where attn/MLP
+inject the signal) is at L<22 and is not yet localized.**
+
+**Follow-up (move 3, queued, not blocking):** `scripts/run_qwen_compute_layer_sweep.sh`
+runs the same decomposition at L=18–21 to find the earliest layer whose
+attention crosses ~80% of the residual effect (or shows >10% single heads).
+That would give Qwen a "compute layer" coordinate symmetric to Llama L=14.
+
+### 12. Tier 4 preset duplication: Llama/Qwen have 4 distinct opponent distributions, not 5 [NEW 2026-05-28]
+
+While auditing the Tier 4 L=15 cells we found
+`tier4_loose_aggressive_llama_l15` and `tier4_tight_aggressive_llama_l15`
+report **bit-identical aggregates** (mean Δ, top-1 fractions, every per-pair
+value to 4 dp) despite different hand IDs. Root cause is upstream in the Tier 4
+behavioral generation, **not** in patching:
+
+- `default`          = {aggression 0.40, fold_threshold 0.30, bluff_freq 0.10}
+- `informative_v2`   = {aggression 0.85, fold_threshold 0.55, bluff_freq 0.02}
+- `tight_aggressive` = {aggression 0.60, fold_threshold 0.40, bluff_freq 0.08}
+- `loose_aggressive` = {aggression 0.60, fold_threshold 0.20, bluff_freq 0.15}
+- `loose_passive`    = {aggression 0.20, fold_threshold 0.20, bluff_freq 0.05}
+
+Several of these bind only when a hand's strength lands in a narrow band. The
+opponent's RNG is seeded `base_seed + player_index = 43` for **every** preset
+(`run_experiment.create_agents`). With a shared RNG stream + a fixed 50-hand
+deck, when the policy differences don't bind the opponent plays an IDENTICAL
+action sequence — so the hero sees identical states (identical prompt_hash
+sequences; even the whole game tree is identical, only the `hand_id` label
+differs). The collapse is **model-dependent** (it depends on the hero's own
+trajectory, which routes the opponent's strengths into/out of the divergent
+bands).
+
+**Full cross-preset overlap matrix** (committed, reproducible, CPU-only:
+`python -m experiments.diagnose_tier4_preset_overlap` →
+[`results/diagnostics/tier4_preset_overlap/SUMMARY.md`](results/diagnostics/tier4_preset_overlap/SUMMARY.md)):
+
+| Model | collapsed (byte-identical) group | **distinct distributions** |
+|-------|----------------------------------|----------------------------|
+| llama-8b  | `tight_aggressive ≡ loose_aggressive`            | **4** {default, informative_v2, aggressive_twin, loose_passive} |
+| qwen-8b   | `informative_v2 ≡ tight_aggressive ≡ loose_aggressive` | **3** {default, aggressive_cluster, loose_passive} |
+| ministral-8b | `informative_v2 ≡ loose_aggressive`           | **4** {default, tight_aggressive, info≡loose_agg, loose_passive} |
+
+**Implication — worse than first thought: NO model has 5 distinct presets, and
+Qwen (the opponent-invariance headline model) has only 3.** Any
+preset-to-preset comparison WITHIN a collapsed group is trivially true
+(identical inputs) and must NOT be counted as independent invariance evidence.
+The honest opponent-invariance claim is "invariant across **3** (Qwen) /
+**4** (Llama, Ministral) genuinely distinct opponent distributions." This also
+**corrects an earlier draft of this section** that claimed Ministral had 5
+distinct presets — it has 4 (its collapse is `informative_v2 ≡ loose_aggressive`,
+a different pair than Llama/Qwen).
+
+**Fixes shipped (this commit):**
+- `run_experiment.py` — new opt-in `--opponent-seed` override. Default is
+  unchanged (preserves Tier 1–3 reproducibility); passing a distinct
+  per-preset value decorrelates the RNG streams so presets can no longer
+  collapse. Documented in `create_agents`' docstring.
+- `scripts/run_tier4_regen_distinct_presets.sh` — **OPTIONAL** regeneration of
+  Llama/Qwen presets with distinct opponent seeds + re-patch at L*. Outputs
+  suffixed `_distinctseed`; originals preserved.
+
+**Recommendation: regenerate (now warranted), AND document.** Originally this
+was "documentation only," on the logic that tight/loose_aggressive are
+near-identical by design. But the full matrix shows the collapse is broader
+(Qwen down to **3** distinct distributions, including the headline-aggressive
+preset folding into informative_v2). With distinct per-preset opponent seeds,
+each preset draws an INDEPENDENT sample even where policies are similar, which
+turns the opponent-invariance test from "3 distinct populations" back into a
+genuine 5-population test. So regeneration meaningfully strengthens the claim,
+not just cosmetically. Run `scripts/run_tier4_regen_distinct_presets.sh` for
+all 3 models (it is in the required GPU list below). Until then, the interim
+writeup move is to **report each collapsed group as a single cell** (Llama/Min:
+4 cells; Qwen: 3 cells).
+
+**Tangential confirmation (Llama Tier 4 L=15 baseline_top1_match).** Across
+presets the no-patch baseline match is 0.23 (informative_v2) – 0.67 (default),
+reflecting the known Llama action-token top-1 instability, NOT a prompt-recon
+bug: `experiments.verify_prompt_reconstruction` passes 30/30 at 0.50-nat
+tolerance for every preset (`results/diagnostics/tier4_llama_l15_regen/`).
+informative_v2 had 8/30 "TIE" (within tolerance), consistent with bf16 ULP
+noise on the verb token at logits ~25.
 
 ---
 
@@ -316,15 +490,28 @@ drift, Ministral's bucket-skew) that belong in the limitations section.
   env so multiple layers/stratifications can coexist (`_pot_odds`,
   `llama8b_l15_street`, etc).
 - `scripts/run_phase_q_audit_rerun.sh` — orchestrator for items 1, 2, 3 above.
-- `scripts/run_phase_q_llama_l15_parallel.sh` — **new**: runs the Llama
+- `scripts/run_phase_q_llama_l15_parallel.sh` — runs the Llama
   patching cells (reverse, BET, context-stratified) at L=15 for the
   saturation-layer parallel comparison.
+- `scripts/run_phase_q_audit_and_l15_serial.sh` + `scripts/run_phase_q_missing_four.sh`
+  — serial orchestrators that produced the `dd1a534` and `185800a` results
+  (recon ablation, continuation breakdown, pot_odds, Llama L=15 cells,
+  Ministral sextet, Qwen L=22 components, Llama L=15 negctrl, Tier 4 regen).
+- **`run_experiment.py`** — new opt-in `--opponent-seed` override so opponent
+  presets no longer share an RNG stream (root-cause fix for §12). Default
+  behavior unchanged.
+- **`scripts/run_tier4_regen_distinct_presets.sh`** — optional Tier 4
+  regeneration with decorrelated per-preset opponent seeds (§12).
+- **`scripts/run_qwen_compute_layer_sweep.sh`** — Qwen L=18–21 component
+  decomposition to localize the compute layer (§11 follow-up).
 
 ## Code paths NOT changed (deliberately)
 
 - Reverse FOLD→CHECK and BET→illegal_FOLD patching summaries (`commit
   6fe23d4`) — already valid, do not re-run.
-- Tier 4 — methodologically OK but documented better below.
+- Tier 4 *patching* code is OK; the issue is upstream *data generation*
+  (§12 preset-duplication). Fixed opt-in via `--opponent-seed`; regeneration
+  is optional (documentation is the recommended fix).
 - Mode-balanced probe — Ministral isn't worth re-running (small pool is a
   data fact, not a code bug); Llama fallback is documented.
 
@@ -354,7 +541,35 @@ MODEL=ministral PIPELINE=recon \
   --conditions baseline triplet extended control
 ```
 
-Total P0 wall time: ~5 GPU-hours.
+**Status 2026-05-28: P0.1–P0.4, P1.1, P1.2, P1.3, and Tier 4@L=15 have all
+landed** (`dd1a534`, `185800a`). Remaining GPU work (one command, nothing
+optional):
+
+```bash
+cd xpoker2026Extension && git pull origin main
+export HF_HOME=/workspace/huggingface HF_TOKEN=...
+bash scripts/run_phase_q_final_gpu.sh   # detaches into tmux 'poker_phase_q_final'
+```
+
+That orchestrator runs, serially with HF-cache purges:
+1. **Qwen compute-layer component sweep** L=18–21 (~30–45 min) — localizes
+   Qwen's compute layer to complete §11 (forward signal ramps L19→22; L<18 is
+   zero, so this range is complete).
+2. **Tier 4 distinct-seed regeneration** for all 3 models × 5 presets
+   (~2–3 h) — restores 5 genuinely-distinct opponent distributions (§12) and
+   re-patches at each L*.
+3. Refreshes the cross-preset overlap diagnostic on the new logs (CPU).
+
+**Follow-up that depends on step 1's result (not pre-scriptable):** once the
+sweep names Qwen's compute layer `L_c`, run a necessity ablation of that
+layer's attention during generation. This needs a small addition to
+`experiments/inference_head_ablation.py` so `--head-sets`/conditions accept an
+arbitrary head list (e.g. all heads at `L_c`). It is sequential on the sweep,
+so do it after `run_phase_q_final_gpu.sh` reports `L_c`.
+
+Local (no-GPU) verification already committed:
+`results/diagnostics/tier4_preset_overlap/SUMMARY.md` (run via
+`python -m experiments.diagnose_tier4_preset_overlap`).
 
 ---
 
@@ -365,13 +580,24 @@ Total P0 wall time: ~5 GPU-hours.
    Ministral / Qwen, 79% in Llama L=14 / 100% in Llama L=15. Verb-generality
    replicated for BET → illegal_FOLD (80–100% top-1 BET_RAISE).
 
-2. **Necessity** (gradient): triplet head-ablation during full CoT decoding
-   flips +58 pp of recorded-FOLD verbs to CHECK in Qwen, ≈+17 pp in Llama
-   *with parse-failure damage*, +12 pp in Ministral (small but real).
+2. **Necessity** (gradient, from the recon-pipeline inference ablation on the
+   illegal_fold pool): triplet head-ablation during full CoT decoding flips
+   **+58 pp** of recorded-FOLD verbs to CHECK in Qwen (33%→92% any-flip), the
+   L=14 triplet adds **+23.5 pp** any-flip in Llama (and its L=15 negative
+   control is null, §10), and Ministral shows **no head-localized necessity at
+   3 or 6 heads** (sextet null, control flips more — §9). Report Llama
+   necessity from inference ablation, **not** continuation (continuation
+   baseline regen-drift is 56%, §4). Ministral is "distributed / residual
+   flow-through; no sparse circuit at L=16."
 
 3. **Opponent-invariance** (Qwen-only, by Tier 4): Qwen's L\*=23 produces
-   spec-adj +19–20 nats / 92–100% top-1 → CHECK across 6 opponent presets;
-   Llama and Ministral fail this test.
+   spec-adj +19–20 nats / 92–100% top-1 → CHECK across opponent presets;
+   Llama and Ministral fail this test. **Caveat (§12):** the preset suite
+   collapses (shared opponent RNG) into fewer genuinely-distinct
+   distributions — **Qwen 3, Llama 4, Ministral 4** (no model has 5). Report
+   each byte-identical group as ONE cell until the distinct-seed regeneration
+   (`run_tier4_regen_distinct_presets.sh`) lands. Also note the target_bucket
+   is `clean_legal_fold` (§6), so Δ-magnitudes differ from Phase K.
 
 4. **Mode-stability** (Qwen-only, by §18b/§22j): cos(w_CoT, w_nonCoT) = +0.51
    matched, +0.34 unmatched in Qwen; Llama uses fallback labels (cos +0.33);
@@ -394,10 +620,19 @@ Total P0 wall time: ~5 GPU-hours.
    parse-damage confounds at the transition layer; Ministral has clean
    sufficiency but a wider, longer-tailed head circuit.
 
-8. **The smallest head set that crosses the verb-flip threshold scales
-   with model architecture**: Llama 3 heads at L=14 (sparse triplet);
-   Ministral 6 heads at L=16 (long-tail sextet); Qwen >32 heads /
-   distributed across L=19–22 (no sparse story at any single layer). This
-   is a tighter version of the consolidation gradient.
+8. **Only Llama has a sparse head circuit; Ministral and Qwen are residual
+   flow-through at the saturation layer** [revised after P0.2/P1.2/P1.3]:
+   - **Llama L=14** — genuine sparse triplet `[5,23,24]`: +23.5 pp behavioral
+     necessity, and the L=15 negative control is null (§10).
+   - **Ministral L=16** — **no** sparse circuit at 3 or 6 heads; the sextet
+     ablation is a clean null and the control flips more (§9). Distributed /
+     residual flow-through.
+   - **Qwen L=22/23** — residual flow-through: at L=22 attn carries 8% and MLP
+     −4% of the residual effect, no head >24% (§11). Any sparse circuit is at
+     L<22 and not yet localized (sweep queued).
+
+   So the gradient is sharper than "head count scales": **Llama is the only
+   8B with a localizable attention-head circuit at its compute layer; Qwen and
+   Ministral commit the verb via the residual stream.**
 
 This is the honest cross-model story.

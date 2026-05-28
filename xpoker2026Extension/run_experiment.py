@@ -146,6 +146,7 @@ def create_agents(
     max_input_tokens: int | None = None,
     belief_format: str | None = None,
     opponent_preset: str | None = None,
+    opponent_seed: int | None = None,
     cot_mode: bool = False,
     logit_lens: bool = False,
     capture_logprobs: bool = False,
@@ -159,13 +160,25 @@ def create_agents(
     the same instance is reused to avoid duplicating GPU memory. This is
     safe because run_single_hand processes decisions sequentially, but
     callers must read metadata immediately after each act/belief call.
+
+    ``opponent_seed`` (opt-in) overrides the RNG seed used by stochastic
+    NON-hero agents (threshold/random). The default seeding (``base_seed + i``)
+    is shared across opponent presets, so two presets with near-identical
+    policies (e.g. tight_aggressive vs loose_aggressive, both aggression=0.6)
+    draw the SAME RNG stream and can produce byte-identical opponent action
+    sequences — collapsing two nominal presets into one distribution (see
+    AUDIT_FINDINGS.md Tier 4 caveat). Pass a preset-derived ``opponent_seed``
+    to decorrelate the streams. Default (None) preserves prior reproducibility.
     """
     agents = []
     shared_instances: dict[str, BaseAgent] = {}
 
     for i in range(num_players):
         agent_type = agent_types[i % len(agent_types)]
-        seed = base_seed + i if agent_type in ("random", "threshold") else None
+        if agent_type in ("random", "threshold"):
+            seed = opponent_seed if opponent_seed is not None else base_seed + i
+        else:
+            seed = None
 
         # Reuse heavy agent instances (HF model or API client)
         if agent_type in ("hf", "api"):
@@ -434,6 +447,7 @@ def run_experiment(
     elicit_beliefs: bool = False,
     randomize_probe_order: bool = False,
     opponent_preset: str | None = None,
+    opponent_seed: int | None = None,
     cot_mode: bool = False,
     logit_lens: bool = False,
     capture_logprobs: bool = False,
@@ -466,6 +480,7 @@ def run_experiment(
         max_input_tokens=max_input_tokens,
         belief_format=belief_format,
         opponent_preset=opponent_preset,
+        opponent_seed=opponent_seed,
         cot_mode=cot_mode,
         logit_lens=logit_lens,
         capture_logprobs=capture_logprobs,
@@ -558,6 +573,14 @@ def main():
         choices=["default", "tight_passive", "tight_aggressive",
                  "loose_passive", "loose_aggressive", "informative", "informative_v2"],
         help="Preset for threshold opponent (default: default)",
+    )
+    parser.add_argument(
+        "--opponent-seed", type=int, default=None,
+        help="Explicit RNG seed for the stochastic (non-hero) opponent. "
+             "Default (None) uses base_seed+player_index, which is SHARED "
+             "across presets and can collapse near-identical presets into "
+             "byte-identical opponent action sequences (see AUDIT_FINDINGS.md "
+             "Tier 4 caveat). Pass a distinct value per preset to decorrelate.",
     )
     parser.add_argument("--hands", type=int, default=100, help="Number of hands (default: 100)")
     parser.add_argument("--seed", type=int, default=42, help="Base random seed (default: 42)")
@@ -671,6 +694,7 @@ def main():
         elicit_beliefs=args.elicit_beliefs,
         randomize_probe_order=args.randomize_probe_order,
         opponent_preset=args.opponent_preset,
+        opponent_seed=args.opponent_seed,
         cot_mode=args.cot,
         logit_lens=args.logit_lens,
         capture_logprobs=args.capture_logprobs,

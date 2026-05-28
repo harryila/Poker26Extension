@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import re
 import sys
 import time
 from collections import Counter
@@ -50,6 +51,26 @@ from experiments.causal_patching import (  # noqa: E402
     _iter_decisions,
     _load_agent_config,
 )
+
+
+_VERB_RE = re.compile(r'"action"\s*:\s*"([A-Za-z_]+)"', re.IGNORECASE)
+
+
+def _extract_verb(raw: str) -> str:
+    """Returns canonical verb in {FOLD, CHECK_OR_CALL, BET_OR_RAISE, UNK}."""
+    if not raw:
+        return "UNK"
+    m = _VERB_RE.search(raw)
+    if not m:
+        return "UNK"
+    v = m.group(1).upper()
+    if v == "FOLD":
+        return "FOLD"
+    if v in {"CHECK_OR_CALL", "CHECK", "CALL"}:
+        return "CHECK_OR_CALL"
+    if v in {"BET_OR_RAISE", "BET", "RAISE"}:
+        return "BET_OR_RAISE"
+    return "UNK"
 
 
 def _classify_response(raw: str, *, cot_mode: bool) -> str:
@@ -216,6 +237,12 @@ def main():
         "regenerate_ablated": Counter(),
         "patch_verb_then_continue": Counter(),
     }
+    verb_counts: dict[str, Counter] = {
+        "recorded": Counter(),
+        "regenerate_baseline": Counter(),
+        "regenerate_ablated": Counter(),
+        "patch_verb_then_continue": Counter(),
+    }
 
     ablation = AttnHeadZeroAblation(model, args.layer, head_idxs)
 
@@ -251,9 +278,15 @@ def main():
         rec_class = _classify_response(recorded, cot_mode=cot_mode)
         base_class = _classify_response(regen_base, cot_mode=cot_mode)
         abl_class = _classify_response(regen_abl, cot_mode=cot_mode)
+        rec_verb = _extract_verb(recorded)
+        base_verb = _extract_verb(regen_base)
+        abl_verb = _extract_verb(regen_abl)
         mode_counts["recorded"][rec_class] += 1
         mode_counts["regenerate_baseline"][base_class] += 1
         mode_counts["regenerate_ablated"][abl_class] += 1
+        verb_counts["recorded"][rec_verb] += 1
+        verb_counts["regenerate_baseline"][base_verb] += 1
+        verb_counts["regenerate_ablated"][abl_verb] += 1
 
         verb_found = find_action_verb_response_offset(recorded, tokenizer)
         verb_inp = build_input_text_for_action_verb_position(
@@ -297,7 +330,9 @@ def main():
             )
             patch_cont = response_before_verb + suffix
             patch_class = _classify_response(patch_cont, cot_mode=cot_mode)
+            patch_verb = _extract_verb(patch_cont)
             mode_counts["patch_verb_then_continue"][patch_class] += 1
+            verb_counts["patch_verb_then_continue"][patch_verb] += 1
 
             examples.append({
                 "target_idx": ti,
@@ -308,6 +343,10 @@ def main():
                 "regenerate_baseline_class": base_class,
                 "regenerate_ablated_class": abl_class,
                 "patch_continue_class": patch_class,
+                "recorded_verb": rec_verb,
+                "regenerate_baseline_verb": base_verb,
+                "regenerate_ablated_verb": abl_verb,
+                "patch_continue_verb": patch_verb,
                 "recorded_snippet": recorded[:400],
                 "regenerate_baseline_snippet": regen_base[:400],
                 "regenerate_ablated_snippet": regen_abl[:400],
@@ -331,7 +370,38 @@ def main():
         "continue_tokens": args.continue_tokens,
         "head_indices_ablated": head_idxs,
         "class_counts": {k: dict(v) for k, v in mode_counts.items()},
+        "verb_counts": {k: dict(v) for k, v in verb_counts.items()},
     }
+    # Flip rates conditioned on recorded verb == FOLD.
+    fold_targets = [e for e in examples if e["recorded_verb"] == "FOLD"
+                    and e["source_idx"] == 0]  # 1 row per unique target
+    n_fold = len(fold_targets)
+    if n_fold:
+        def _flip_rate(field: str, target: str) -> dict:
+            n_flip = sum(1 for e in fold_targets if e[field] == target)
+            return {"n": n_flip, "rate": n_flip / n_fold}
+        # patch flip uses ALL source*target rows (not just source_idx==0)
+        patch_rows_fold = [e for e in examples
+                           if e["recorded_verb"] == "FOLD"]
+        n_patch_fold = len(patch_rows_fold)
+        patch_flip = sum(1 for e in patch_rows_fold
+                         if e["patch_continue_verb"] == "CHECK_OR_CALL")
+        summary["fold_target_flips"] = {
+            "n_recorded_fold_targets": n_fold,
+            "regen_baseline_to_check": _flip_rate(
+                "regenerate_baseline_verb", "CHECK_OR_CALL"),
+            "regen_ablated_to_check": _flip_rate(
+                "regenerate_ablated_verb", "CHECK_OR_CALL"),
+            "regen_baseline_parse_fail": _flip_rate(
+                "regenerate_baseline_verb", "UNK"),
+            "regen_ablated_parse_fail": _flip_rate(
+                "regenerate_ablated_verb", "UNK"),
+            "patch_to_check_over_pairs": {
+                "n_patch_pairs": n_patch_fold,
+                "n_patch_to_check": patch_flip,
+                "rate": patch_flip / max(n_patch_fold, 1),
+            },
+        }
     with open(out_dir / "summary.json", "w") as f:
         json.dump(summary, f, indent=2)
 
@@ -371,15 +441,80 @@ def main():
             f"| {c.get('empty', 0) / denom * 100:.0f}% |"
         )
     md.append("")
+    md.append("## Verb distribution (parsed `\"action\": \"...\"`)")
+    md.append("")
+    md.append("| Mode | denominator | FOLD | CHECK_OR_CALL | BET_OR_RAISE | UNK (parse fail) |")
+    md.append("|---|---:|---:|---:|---:|---:|")
+    for mode, label, denom in [
+        ("recorded", "Recorded log", n_tgt),
+        ("regenerate_baseline", "Full regenerate", n_tgt),
+        ("regenerate_ablated", "Full regenerate + ablation", n_tgt),
+        ("patch_verb_then_continue", "Patch verb + continue (× sources)", n_patch),
+    ]:
+        v = verb_counts[mode]
+        md.append(
+            f"| {label} | {denom} | "
+            f"{v.get('FOLD', 0) / denom * 100:.0f}% "
+            f"| {v.get('CHECK_OR_CALL', 0) / denom * 100:.0f}% "
+            f"| {v.get('BET_OR_RAISE', 0) / denom * 100:.0f}% "
+            f"| {v.get('UNK', 0) / denom * 100:.0f}% |"
+        )
+
+    if "fold_target_flips" in summary:
+        ft = summary["fold_target_flips"]
+        md.append("")
+        md.append(
+            f"## Flip rate on recorded-FOLD targets (n={ft['n_recorded_fold_targets']})"
+        )
+        md.append("")
+        md.append("| Mode | FOLD→CHECK | parse fail (UNK) |")
+        md.append("|---|---:|---:|")
+        md.append(
+            f"| **regenerate_baseline** | "
+            f"{ft['regen_baseline_to_check']['rate']*100:.1f}% "
+            f"({ft['regen_baseline_to_check']['n']}) "
+            f"| {ft['regen_baseline_parse_fail']['rate']*100:.1f}% "
+            f"({ft['regen_baseline_parse_fail']['n']}) |"
+        )
+        md.append(
+            f"| **regenerate_ablated**  | "
+            f"{ft['regen_ablated_to_check']['rate']*100:.1f}% "
+            f"({ft['regen_ablated_to_check']['n']}) "
+            f"| {ft['regen_ablated_parse_fail']['rate']*100:.1f}% "
+            f"({ft['regen_ablated_parse_fail']['n']}) |"
+        )
+        net = (ft['regen_ablated_to_check']['rate']
+               - ft['regen_baseline_to_check']['rate']) * 100
+        damage = (ft['regen_ablated_parse_fail']['rate']
+                  - ft['regen_baseline_parse_fail']['rate']) * 100
+        md.append("")
+        md.append(
+            f"**Net ablation flip (FOLD→CHECK over baseline): {net:+.1f} pp**  "
+            f"| **Net parse-fail damage: {damage:+.1f} pp**"
+        )
+        ppair = ft["patch_to_check_over_pairs"]
+        md.append(
+            f"\n**Patch flip (single-forward, source×target pairs): "
+            f"{ppair['n_patch_to_check']}/{ppair['n_patch_pairs']} = "
+            f"{ppair['rate']*100:.1f}% to CHECK_OR_CALL**"
+        )
+
+    md.append("")
     md.append("## Interpretation")
     md.append(
-        "- **patch_verb_then_continue** aggregates over every (source × target) "
-        "pair — not a single source residual."
+        "- Compare **`regenerate_ablated`** flip rate to "
+        "`results/inference_head_ablation/<model>_l*_recon_illegal_fold/SUMMARY.md` "
+        "— numbers should agree (same prompt path, same hook scope, same "
+        "filter)."
     )
     md.append(
-        "- If patch-continue is mostly `broken_json` but regenerate_ablated is "
-        "`coherent_cot_json`, the one-forward patch does not sustain global "
-        "coherence (circuit acts during full decoding)."
+        "- If **net parse-fail damage** is large, ablation hurts JSON "
+        "generation broadly (Llama L=14 case) — net flip should be "
+        "interpreted as 'general damage' not 'surgical FOLD necessity'."
+    )
+    md.append(
+        "- **patch_verb_then_continue** aggregates over every (source × target) "
+        "pair — surgical 1-token verb swap, doesn't disrupt JSON close."
     )
     md.append("")
     md.append("See `examples.jsonl` (one row per source×target for patch mode).")

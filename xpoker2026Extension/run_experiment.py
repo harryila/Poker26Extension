@@ -95,10 +95,11 @@ def _maybe_attach_circuit_hook(agent) -> None:
         npz = _np.load(os.environ["CIRCUIT_STEER_NPZ"], allow_pickle=True)
         vec = _torch.tensor(npz["direction"].astype("float32"))
         norm = float(npz["resid_mean_norm"]) if "resid_mean_norm" in npz else 1.0
-        alpha = float(os.environ.get("CIRCUIT_STEER_ALPHA", "4"))
+        alpha = float(os.environ.get("CIRCUIT_STEER_ALPHA", "2"))   # smaller default; all-positions over-steers
+        last_only = os.environ.get("CIRCUIT_STEER_LASTONLY", "1") not in ("0", "false", "")
         hooks.append(ActivationAdditionHook(agent.model, int(sl), vec * norm,
-                                            alpha=alpha, last_only=False))
-        print(f"[circuit] gameplay steering: layer {sl} alpha {alpha}")
+                                            alpha=alpha, last_only=last_only))
+        print(f"[circuit] gameplay steering: layer {sl} alpha {alpha} last_only={last_only}")
     if hooks:
         agent._extra_generation_hooks = hooks
 

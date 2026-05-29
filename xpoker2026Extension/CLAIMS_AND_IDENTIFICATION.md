@@ -11,6 +11,61 @@ Status legend: ✅ supported by committed evidence · 🟡 supported with a stat
 
 ---
 
+## RESULTS LANDED (2026-05-29 — Phase B/C/D GPU follow-ups)
+
+**Rejection-proofing (Phase B) — the crux is resolved:**
+- ✅ **Bet-matched PROBE (B1, all 3 models):** with bet held constant or balanced, the verb is
+  still decodable far above the permuted floor — bet-balanced acc **Qwen 1.000 / Llama 0.996 /
+  Ministral 1.000** (floors ~0.50). The "decision direction = facing-a-bet" objection is dead.
+- ✅ **Bet-matched PATCH (B2):** sufficiency SURVIVES bet held constant. The previously-vulnerable
+  Tier-4-style cell — Qwen L23 facing (CALL@bet>0 → legal_fold@bet>0) — is **100% top-1→CHECK,
+  spec-adj +19.6**. Llama L15 facing 100%/+13.0; Ministral 86–100%. (Llama L14 facing 100%, L14
+  nobet 69% — L14 is pre-saturation, consistent.)
+- ✅ **Ministral 3-seed sufficiency:** L16 pooled **100% / +8.0** (was single-seed s42 +7.4).
+- 🟡 **B4 same-depth control sharpens Qwen necessity:** at L19, the named top-5 heads flip MORE
+  than random L19 5-head sets but only **marginally (p=0.06 vs best random draw)**; all L19 sets
+  flip ~20–37 pp. ⇒ Qwen necessity is **L19-LAYER-specific but DISTRIBUTED across L19 heads**, NOT
+  a sparse head circuit. (The earlier L8 cross-layer control overstated head-specificity.) This
+  *strengthens* the gradient: Llama = sparse specific heads; Qwen = distributed-within-L19.
+- 🟡 **Ministral null reconfirmed at n=150** (control flips MORE, p<1e-5) but the illegal_fold pool
+  is **147/150 seed-42** — illegal-fold events concentrate in seed 42 for Ministral; can't be
+  seed-balanced (data property, not a bug). The null is robust regardless.
+- Integrity: all SIGNIFICANCE_*.md reproduce EXACTLY from the pulled rows.
+
+**Novelty (Phase C):**
+- ✅/🟡 **Encode-vs-decode (C1, all 3 models):** the residual linearly encodes the correct Bayesian
+  trash mass (probe |err| **0.006–0.027**) while the model's STATED belief severely under-reports it
+  (|err| **0.32–0.63**; Ministral states 0.049 vs truth 0.682). JS(stated,oracle) 0.20–0.30.
+  → "the correct posterior is linearly available at the decision layer; the verbalized belief
+  discards it." **CAVEAT (must control):** the oracle is a deterministic function of the prompt
+  inputs, which the residual encodes — so decodability could be trivial input-presence, not
+  "computed." Needs the **early-layer control** (decode oracle at L2 vs L*); claim only "linearly
+  available + discarded by readout" until then, not "knows."
+- ❌ **Steering de-bias (C2): NULL.** Adding the trash direction at L23 (last_only) does NOT beat
+  the random-direction control (alpha-8: trash −6.7 vs control −3.2; top-1→CHECK 0% throughout).
+  Likely because L23 is the commit layer and the direction acts like a norm bump. Needs rework
+  (steer at the L19 compute layer; tune alpha; target base-rate-neglect spots; belief-JS readout).
+- ❌ **Behavior-at-scale (C3): UNUSABLE as run — root-caused.** The env is CORRECT (random-vs-random
+  play gives varied deltas +2/−10/+16/+20/… and correctly awards pots). The constant −4/hand was a
+  **behavioral degeneracy of the non-CoT agent**: it ran **cot_mode=False** (mismatch — the circuit
+  was characterized on CoT) and the non-CoT Qwen plays a fixed losing line (limp/bet then FOLD to the
+  aggressive opponent's raise, contributing exactly 4 every hand → −4), so there is no win-rate
+  headroom to detect a circuit effect. The steer run additionally induced **60% fallbacks** (alpha
+  too large, all-positions). FIX (in v2): run with `--cot` (varied play, as in the original logs);
+  steer with small alpha + last_only + a parse-rate guard. No env fix needed.
+
+**Depth (Phase D):**
+- 🟡 **D1 SVD:** residual at L18–23 is ~20-rank (90% var), but the decision direction is NOT in the
+  top singular vectors (cos 0.07–0.13) — it is a **low-variance functional direction**, not a
+  dominant axis of variation. Exploratory; mildly interesting, not load-bearing.
+
+**Net:** the paper's central confound is closed (B1+B2). The new headline is C1 (encode-vs-decode),
+pending its early-layer control. C2/C3 need rework before any steering/behavioral claim.
+
+---
+
+---
+
 ## 0. Reframed headline (what leads the paper)
 
 **Old framing (demote):** "LLMs encode a linear *belief/decision direction*" — led with the

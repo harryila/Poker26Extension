@@ -184,3 +184,34 @@ idiosyncratic points — either way a stronger claim than now.
 ## After everything lands
 - Re-finalize `CLAIMS_AND_IDENTIFICATION.md` (flip the ⏳ items to ✅/🟡 with the new numbers).
 - Update the `AUDIT_FINDINGS.md` cross-model tables with bet-matched + Ministral-3-seed + B4 numbers.
+
+---
+
+## V2 BATCH — controls + reworks (after the v1 results came back)
+
+The v1 results closed the bet confound (B1/B2 ✓) but flagged three things needing a second
+batch (see `CLAIMS_AND_IDENTIFICATION.md` "RESULTS LANDED"). One script runs them in order:
+
+```bash
+cd xpoker2026Extension && git pull
+export HF_HOME=/workspace/huggingface HF_TOKEN=...
+bash scripts/run_followups_gpu_v2.sh            # all (~4–6 GPU-h)
+PHASES="C1" bash scripts/run_followups_gpu_v2.sh  # just the make-or-break C1 control
+```
+
+- **C1-CTRL** (make-or-break for the encode-vs-decode headline): recapture at **L2**, decode the
+  oracle, and compare to L*. `ENCODE_LAYER_COMPARE.md` verdict: COMPUTED (late ≫ early → the model
+  builds the posterior, "knows-but-mis-states" holds) vs INPUT-PRESENCE (early ≈ late → downgrade
+  to "linearly available + discarded by readout"). **Pull this back first.**
+- **C2-DEC** steering decision readout reworked: L19 (compute) + L23 (commit), **±alpha**, on
+  **illegal_fold (wrong folds)** + clean_legal_fold, vs the built-in random control. (v1 C2 was
+  L23/clean_legal_fold only → null.)
+- **C2-BEL** steering belief readout: does steering **reduce JS(belief, oracle)** (repair the
+  readout)? Reuses `HFAgent.belief` under the hook; reports parse-rate to catch over-steer.
+- **C3** behavior-at-scale **rerun with `--cot`** (v1 ran non-CoT → degenerate constant-loss agent;
+  the env itself is correct) + safe steering (`CIRCUIT_STEER_LASTONLY=1`, alpha 2).
+
+Pull back `results/direction_probe_baselines/ENCODE_*`, `results/posterior_steering/*`,
+`logs/scale_qwen_cot_*.jsonl` and we post-process: read `ENCODE_LAYER_COMPARE.md` first (it sets
+whether the headline is "knows" or the weaker claim), then the steering SUMMARYs (trash vs control),
+then diff the three CoT win-rates.

@@ -68,6 +68,9 @@ def main() -> None:
                     help="npz path to save the residual->oracle-trash ridge direction (steering vec)")
     ap.add_argument("--target", default="oracle_strategy_aware",
                     choices=["oracle_strategy_aware", "oracle_card_only"])
+    ap.add_argument("--emit-json", action="store_true",
+                    help="also write a machine-readable {layer,trash_r2,mean_r2,...}.json "
+                         "sidecar (for the early-vs-late layer comparison).")
     args = ap.parse_args()
 
     d = np.load(args.tagged, allow_pickle=True)
@@ -137,6 +140,23 @@ def main() -> None:
         fh.write("\n".join(md) + "\n")
     print("\n".join(md))
     print(f"\n[written] {args.out}")
+
+    if args.emit_json:
+        import json
+        layer = int(d["layer"]) if "layer" in d else -1
+        rec = {
+            "tagged": args.tagged, "layer": layer, "n_oracle_rows": int(len(Xo)),
+            "trash_r2": float(r2[trash_idx]), "mean_r2": float(r2.mean()),
+            "js_stated": float(js_stated.mean()) if have_belief.sum() else None,
+            "probe_trash_abs_err": (float(np.abs(rec_trash - oracle_trash).mean())
+                                    if have_belief.sum() else None),
+            "stated_trash_abs_err": (float(np.abs(stated_trash - oracle_trash).mean())
+                                     if have_belief.sum() else None),
+        }
+        jpath = args.out[:-3] + ".json" if args.out.endswith(".md") else args.out + ".json"
+        with open(jpath, "w") as fh:
+            json.dump(rec, fh, indent=2)
+        print(f"[written] {jpath}")
 
     if args.save_direction:
         # Fit a single ridge on ALL oracle rows for the trash target -> direction in residual space.

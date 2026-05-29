@@ -62,6 +62,31 @@ cd "$(dirname "$0")/.."
 mkdir -p logs
 export FORCE_RERUN="${FORCE_RERUN:-1}"
 
+# HF cache env + token so per-model purges target the right dir on tight quota.
+if [[ -z "${HF_TOKEN:-}" ]] && [[ -f /root/.hf_token ]]; then
+    export HF_TOKEN="$(tr -d '[:space:]' < /root/.hf_token)"
+    export HUGGING_FACE_HUB_TOKEN="$HF_TOKEN"
+fi
+export HF_HOME="${HF_HOME:-/workspace/huggingface}"
+export HF_HUB_CACHE="${HF_HUB_CACHE:-$HF_HOME/hub}"
+export HF_HUB_DISABLE_XET="${HF_HUB_DISABLE_XET:-1}"
+
+hub_dir_for_tier4_model() {
+    case "$1" in
+        llama-8b)     echo "models--meta-llama--Llama-3.1-8B-Instruct" ;;
+        qwen-8b)      echo "models--Qwen--Qwen3-8B" ;;
+        ministral-8b) echo "models--mistralai--Ministral-8B-Instruct-2410" ;;
+    esac
+}
+purge_hf_hub() {
+    local hub_dirname="$1"
+    local target="${HF_HUB_CACHE%/}/${hub_dirname}"
+    [[ -d "$target" ]] && { echo "  [purge] rm -rf $target"; rm -rf "$target"; }
+    local xet_dir; xet_dir="$(dirname "$HF_HUB_CACHE")/xet"
+    [[ -d "$xet_dir" ]] && { echo "  [purge] xet temp"; rm -rf "${xet_dir:?}"/*; }
+    df -h "$HF_HOME" 2>/dev/null | tail -1 || true
+}
+
 echo "=== Phase Q FINAL GPU run $(date -u +%FT%TZ) ==="
 
 # -------------------------------------------------------------------------
@@ -73,12 +98,18 @@ QWEN_LAYERS="${QWEN_LAYERS:-18 19 20 21}" PURGE=1 \
     bash scripts/run_qwen_compute_layer_sweep.sh
 
 # -------------------------------------------------------------------------
-# TASK 2 — Tier 4 distinct-seed regeneration (all 3 models, purges each).
+# TASK 2 — Tier 4 distinct-seed regeneration (all 3 models).
+# Run one model at a time and purge its HF weights afterward so the tight
+# /workspace quota (~20 GB) never has to hold two 8B models at once.
 # -------------------------------------------------------------------------
 echo ""
-echo "######### TASK 2/2: Tier 4 distinct-seed regeneration (all 3 models) #########"
-MODELS="${TIER4_MODELS:-llama-8b qwen-8b ministral-8b}" \
-    bash scripts/run_tier4_regen_distinct_presets.sh
+echo "######### TASK 2/2: Tier 4 distinct-seed regeneration (all 3 models, serial) #########"
+for _m in ${TIER4_MODELS:-llama-8b qwen-8b ministral-8b}; do
+    echo ""
+    echo "===== Tier 4 distinct-seed: $_m ====="
+    MODELS="$_m" bash scripts/run_tier4_regen_distinct_presets.sh
+    purge_hf_hub "$(hub_dir_for_tier4_model "$_m")"
+done
 
 # -------------------------------------------------------------------------
 # Refresh the cross-preset overlap diagnostic on the NEW distinct-seed logs.

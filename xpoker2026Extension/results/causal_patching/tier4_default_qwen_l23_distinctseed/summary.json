@@ -1,0 +1,42 @@
+{
+  "enriched_log": "logs/opp_default_qwen-8b_t00_s42_distinctseed_enriched.jsonl",
+  "n_enriched_logs": 1,
+  "model_id": "Qwen/Qwen3-8B",
+  "source_bucket": "clean_check_or_call",
+  "target_bucket": "clean_legal_fold",
+  "n_source": 10,
+  "n_target": 17,
+  "layers": [
+    23
+  ],
+  "n_pairs_total": 170,
+  "controls": {
+    "baseline_top1_match_rate": 1.0,
+    "self_patch_max_logit_drift": 0.0,
+    "random_source_per_layer": {
+      "23": {
+        "mean_delta": 10.126999179370236,
+        "std_delta": 7.289374453864401,
+        "n": 50,
+        "n_random_sources": 5,
+        "n_random_targets": 10
+      }
+    },
+    "random_source_n": 5,
+    "random_source_mean_delta": 10.126999179370236,
+    "random_source_test_layer": 23
+  },
+  "zero_ablation": false,
+  "per_layer": {
+    "23": {
+      "n": 170,
+      "mean_delta_check_minus_fold": 15.256784117647069,
+      "frac_top1_check_call": 0.9235294117647059,
+      "frac_top1_fold": 0.0,
+      "frac_top1_bet_raise": 0.07647058823529412,
+      "frac_top1_other": 0.0,
+      "random_null_delta": 10.126999179370236,
+      "specificity_adjusted_delta": 5.129784938276833
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "model_id": "Qwen/Qwen3-8B",
+  "layer": 18,
+  "pipeline": "recon",
+  "filter_recorded_bucket": "clean_legal_fold",
+  "conditions": {
+    "baseline": {
+      "n": 150,
+      "recorded_bucket_frac": {
+        "clean_legal_fold": 1.0
+      },
+      "replay_bucket_frac": {
+        "clean_legal_fold": 0.8466666666666667,
+        "clean_bet_or_raise": 0.05333333333333334,
+        "clean_check_or_call": 0.1
+      },
+      "replay_verb_frac": {
+        "FOLD": 0.8466666666666667,
+        "BET_OR_RAISE": 0.05333333333333334,
+        "CHECK_OR_CALL": 0.1
+      },
+      "illegal_fold_rate": 0.0,
+      "clean_check_rate": 0.1,
+      "parse_success_rate": 1.0,
+      "fallback_rate": 0.0,
+      "parseable_json_rate": 1.0,
+      "fold_target_flips": {
+        "n_recorded_fold": 150,
+        "flip_to_check_rate": 0.1,
+        "flip_to_bet_rate": 0.05333333333333334,
+        "any_flip_rate": 0.15333333333333332,
+        "parse_fail_rate": 0.0
+      }
+    },
+    "whole_attn": {
+      "n": 150,
+      "recorded_bucket_frac": {
+        "clean_legal_fold": 1.0
+      },
+      "replay_bucket_frac": {
+        "clean_legal_fold": 0.54,
+        "clean_check_or_call": 0.37333333333333335,
+        "clean_bet_or_raise": 0.08,
+        "illegal_other": 0.006666666666666667
+      },
+      "replay_verb_frac": {
+        "FOLD": 0.54,
+        "CHECK_OR_CALL": 0.37333333333333335,
+        "BET_OR_RAISE": 0.08666666666666667
+      },
+      "illegal_fold_rate": 0.0,
+      "clean_check_rate": 0.37333333333333335,
+      "parse_success_rate": 1.0,
+      "fallback_rate": 0.0,
+      "parseable_json_rate": 1.0,
+      "fold_target_flips": {
+        "n_recorded_fold": 150,
+        "flip_to_check_rate": 0.37333333333333335,
+        "flip_to_bet_rate": 0.08666666666666667,
+        "any_flip_rate": 0.46,
+        "parse_fail_rate": 0.0
+      },
+      "ablated_heads": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "whole_attention": true
+    }
+  }
+}

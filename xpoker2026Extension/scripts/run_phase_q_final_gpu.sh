@@ -16,9 +16,10 @@
 #            genuinely-distinct, independently-sampled opponent distributions,
 #            then re-patches at each model's L*. AUDIT_FINDINGS.md §12.
 #
-# A follow-up that DEPENDS on Task 1's result (Qwen necessity ablation at the
-# identified compute layer) is described at the end — it needs the sweep to
-# name the layer first, so it is intentionally not pre-scripted here.
+#   TASK 3 — Qwen necessity ablation at the compute band located by Task 1
+#            (whole-attention ablation @ L18/19/20 + saturation L23 + control
+#            L8, plus concentrated top-head sets). AUDIT_FINDINGS.md §11.
+#            On a re-run this consumes the already-written Task 1 sweep.
 #
 # Usage (GPU box):
 #   cd xpoker2026Extension
@@ -116,22 +117,30 @@ done
 # (CPU-only; safe to run here.)
 # -------------------------------------------------------------------------
 echo ""
-echo "[verify] distinct-seed preset overlap (should now show 5 distinct each) ..."
+echo "[verify] distinct-seed preset overlap (targets *_distinctseed logs) ..."
 python -m experiments.diagnose_tier4_preset_overlap \
     --models llama-8b qwen-8b ministral-8b \
-    --out results/diagnostics/tier4_preset_overlap_distinctseed/SUMMARY.md \
-    || echo "[warn] diagnostic expects *_distinctseed_enriched.jsonl naming; adjust if needed"
+    --log-suffix _distinctseed \
+    --out results/diagnostics/tier4_preset_overlap_distinctseed/SUMMARY.md
+
+# -------------------------------------------------------------------------
+# TASK 3 — Qwen necessity ablation at the localized compute band.
+# Unblocked by Task 1: the sweep placed Qwen's verb compute in ATTENTION
+# across L18-L20 (distributed; no sparse head), residual flow-through by
+# L21-23. Since there is no sparse triplet, necessity is tested with a
+# whole-attention-block ablation at the compute layers (+ saturation L23 and
+# control L8) and a concentrated top-head set. AUDIT_FINDINGS.md §11.
+# (Needs only the Qwen weights — kept after the Task 2 Qwen purge re-pulls.)
+# -------------------------------------------------------------------------
+echo ""
+echo "######### TASK 3: Qwen necessity ablation (compute band L18-20) #########"
+bash scripts/run_qwen_necessity_ablation.sh
 
 echo ""
 echo "=== Phase Q FINAL COMPLETE $(date -u +%FT%TZ) ==="
 echo "Outputs:"
 echo "  results/causal_patching/qwen8b_l{18,19,20,21}_components/SUMMARY_components.md"
 echo "  results/causal_patching/tier4_*_{llama,qwen,ministral}_l*_distinctseed/SUMMARY.md"
+echo "  results/inference_head_ablation/qwen8b_l*_recon_illegal_fold_wholeattn/SUMMARY.md"
+echo "  results/inference_head_ablation/qwen8b_l1{9,9}_recon_illegal_fold_topk/SUMMARY.md"
 echo "  logs/opp_*_*_t00_s42_distinctseed_enriched.jsonl"
-echo ""
-echo "FOLLOW-UP (needs Task 1 result): once the sweep names Qwen's compute"
-echo "layer L_c (earliest layer with attn ratio >= ~80%% of residual, or a"
-echo "head > 10%%), run a necessity ablation of that layer's attention during"
-echo "generation to complete the Qwen necessity story. This needs a small"
-echo "addition to inference_head_ablation.py to accept an arbitrary head set"
-echo "(e.g. all heads at L_c) — flagged in AUDIT_FINDINGS.md."

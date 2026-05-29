@@ -56,7 +56,8 @@ This replaces the earlier "all 3 are equivalent" framing.
 | Continuation patch flip → CHECK         | **120/120 = 100%** | 105/125 = 84%        | **125/125 = 100%** |
 | Inference ablation (recon, illegal_fold pool) triplet net FOLD→CHECK | **+58.3pp** (33→92%) | +23.5pp (74→97% any-flip; FOLD→CHECK ≈flat) | −2.5pp (control flips MORE) |
 | Mode-balanced cos(w_CoT, w_nonCoT)      | **+0.51** (n=110, both modes own labels) | +0.33 (n=99, fallback labels) | +0.095 (**n=16, NaN CV**) |
-| Opp-invariance (Tier 4 spec-adj)        | **+19.3 nats** | ≈0 (noise floor)         | ≈0.7               |
+| Compute band (where attn injects verb)  | **distributed attn L18–20** (no sparse head; max 17%) | **sparse 3-head circuit @ L14** (h5,h23,h24) | residual flow-through @ L16 (sextet null) |
+| Opp-invariance (Tier 4 spec-adj, distinct-seed) | **+5 to +20 nats across 5 distinct presets** | ≈0 (noise floor, baseline_match 0.56–0.63) | ≈0.7–1.4 (fails) |
 
 **Reading the row "L\* spec-adj Δ (forward)":** Qwen at its saturation layer is
 ~3× cleaner than Ministral at *its* saturation layer; Llama at L=14 (the
@@ -339,7 +340,7 @@ carries +23.5 pp necessity at L=14 carries nothing at L=15. It confirms the
 compute(L=14) vs saturation(L=15) split is real and head-specific, not an
 artifact of ablating any heads anywhere. Cite alongside §1.
 
-### 11. Qwen L=22 component decomposition — residual flow-through; compute layer is L<22 [NEW 2026-05-28]
+### 11. Qwen compute band located = attention across L18–L20 (distributed, no sparse head) [UPDATED 2026-05-29]
 
 P1.2 ran `experiments.component_patching` at L=22 (pooled 3 seeds,
 clean_check_or_call → illegal_fold). From
@@ -359,10 +360,37 @@ residual flow-through, like L=23** — the verb signal arrives via the residual
 stream and L=22 passes it through. **Qwen's compute layer (where attn/MLP
 inject the signal) is at L<22 and is not yet localized.**
 
-**Follow-up (move 3, queued, not blocking):** `scripts/run_qwen_compute_layer_sweep.sh`
-runs the same decomposition at L=18–21 to find the earliest layer whose
-attention crosses ~80% of the residual effect (or shows >10% single heads).
-That would give Qwen a "compute layer" coordinate symmetric to Llama L=14.
+**Follow-up COMPLETE [2026-05-29].** `scripts/run_qwen_compute_layer_sweep.sh`
+ran the same decomposition at L=18–21
+(`results/causal_patching/qwen8b_l{18,19,20,21}_components/`). Attention's share
+of the residual effect, by layer:
+
+| Layer | residual Δ (nats) | **attn ratio** | mlp ratio | top-1 → CHECK (residual) | max single head |
+|------:|------------------:|---------------:|----------:|-------------------------:|----------------:|
+| L18 | +1.19  | **92%** | 64% | 0.0%  | (all small) |
+| L19 | +4.83  | **78%** | 18% | 1.2%  | head_31 = 17% |
+| L20 | +9.17  | 39%     | 11% | 27.1% | head_29 = 30% / head_09 = −19% |
+| L21 | +13.25 | 1%      | −17% | 55.8% | <3% |
+| L22 | +19.39 | 8%      | −4% | 76.2% | head_00 = 24% |
+| L23 | +26.83 | (flow-through) | | 100% | — |
+
+**Qwen's compute band is L18–L20: attention injects the signal there (92% of
+the small effect at L18, 78% at L19), and from L21 onward it is residual
+flow-through (attn ≈ 0–8%).** Crucially the compute is **distributed across
+heads** — the largest single head is only 17% (L19) and L20 has a cancelling
++30%/−19% pair — so unlike Llama L=14 there is **no sparse necessary triplet**.
+This is the mechanistic signature of Qwen's deeper consolidation: the verb
+decision is computed by a *distributed* attention sub-network across three
+layers, not a 3-head circuit.
+
+**Necessity (TASK 3, scripted):** because there is no sparse head set, Qwen's
+necessity test is a **whole-attention-block ablation** at L18/19/20 (+ saturation
+L23 and control L8), plus a concentrated top-positive-head set at L19/L20 —
+`scripts/run_qwen_necessity_ablation.sh`, wired into `run_phase_q_final_gpu.sh`.
+A genuine necessity result is high FOLD→CHECK flip with LOW parse_fail localized
+to the compute band; whole-attention ablation is blunt, so the SUMMARY reports
+flip vs parse_fail side-by-side to separate FOLD-specific necessity from generic
+CoT damage.
 
 ### 12. Tier 4 preset duplication: Llama/Qwen have 4 distinct opponent distributions, not 5 [NEW 2026-05-28]
 
@@ -429,6 +457,49 @@ not just cosmetically. Run `scripts/run_tier4_regen_distinct_presets.sh` for
 all 3 models (it is in the required GPU list below). Until then, the interim
 writeup move is to **report each collapsed group as a single cell** (Llama/Min:
 4 cells; Qwen: 3 cells).
+
+**Distinct-seed regeneration COMPLETE [2026-05-29].** Ran
+`scripts/run_tier4_regen_distinct_presets.sh` for all 3 models with a distinct
+per-preset opponent seed (1043/2043/3043/4043/5043), re-enriched, re-patched at
+each L*, and re-ran the overlap diagnostic on the `_distinctseed` logs
+([`results/diagnostics/tier4_preset_overlap_distinctseed/SUMMARY.md`](results/diagnostics/tier4_preset_overlap_distinctseed/SUMMARY.md)).
+Decorrelation outcome:
+
+| Model | distinct distributions BEFORE | AFTER (distinct seed) | residual collapse |
+|-------|------------------------------:|----------------------:|-------------------|
+| qwen-8b   | 3 | **5** ✓ | none |
+| llama-8b  | 4 | **5** ✓ | none |
+| ministral-8b | 4 | **4** | `default ≡ informative_v2` |
+
+Qwen and Llama now have **5 genuinely-distinct, independently-sampled** opponent
+distributions — the seed fix fully decorrelated them. Ministral still has one
+residual collapse (`default ≡ informative_v2`), but for a **different, benign
+reason**: Ministral folds early (those two presets average only 2 decisions/hand,
+49 distinct prompts each), so the opponent rarely acts and its policy never binds
+— the collapse is a property of Ministral's tight play, not the shared RNG. Report
+Ministral as 4 distinct cells; Qwen and Llama as 5.
+
+**Re-patched opponent-invariance on the now-distinct presets**
+(`results/causal_patching/tier4_*_*_l*_distinctseed/`, spec-adj Δ / top-1→CHECK):
+
+| Preset | Qwen L23 | Llama L15 | Ministral L16 |
+|--------|---------:|----------:|--------------:|
+| default          | +5.1 / 92%  | −1.0 / 98%* | (skipped, <5 LF) |
+| informative_v2   | +8.4 / 100% | (skipped)   | (skipped, <5 LF) |
+| tight_aggressive | +13.0 / 61% | (skipped)   | +1.4 / 3%  (n=60) |
+| loose_aggressive | +18.3 / 100%| −0.2 / 70%* | +0.9 / 19% |
+| loose_passive    | +20.5 / 100%| (skipped)   | +0.9 / 9%  |
+
+\* Llama baseline_top1_match is 0.56–0.63 (action-token instability), so its
+spec-adj sits at the noise floor regardless of preset — Tier 4 remains
+unmeasurable for Llama, consistent with the rest of Phase Q. (Skipped Llama/
+Ministral cells had <5 clean_legal_fold targets in the regenerated logs.)
+
+**Net: Qwen's opponent-invariance now holds across 5 genuinely-distinct presets**
+(spec-adj +5 to +20 nats, top-1→CHECK 61–100%, baseline_match 1.00) — a strictly
+stronger claim than the pre-fix "3 distinct." Llama = noise floor, Ministral =
+fails (~1 nat). This supersedes the interim "report collapsed groups as one cell"
+guidance for Qwen and Llama.
 
 **Tangential confirmation (Llama Tier 4 L=15 baseline_top1_match).** Across
 presets the no-patch baseline match is 0.23 (informative_v2) – 0.67 (default),
@@ -500,18 +571,24 @@ drift, Ministral's bucket-skew) that belong in the limitations section.
 - **`run_experiment.py`** — new opt-in `--opponent-seed` override so opponent
   presets no longer share an RNG stream (root-cause fix for §12). Default
   behavior unchanged.
-- **`scripts/run_tier4_regen_distinct_presets.sh`** — optional Tier 4
-  regeneration with decorrelated per-preset opponent seeds (§12).
+- **`scripts/run_tier4_regen_distinct_presets.sh`** — Tier 4 regeneration with
+  decorrelated per-preset opponent seeds (§12). RAN 2026-05-29 (all 3 models).
 - **`scripts/run_qwen_compute_layer_sweep.sh`** — Qwen L=18–21 component
-  decomposition to localize the compute layer (§11 follow-up).
+  decomposition (§11). RAN 2026-05-29: located compute band = attn L18–20.
+- **`scripts/run_qwen_necessity_ablation.sh`** + `inference_head_ablation.py`
+  `--head-sets name:all` support — whole-attention-block necessity test at
+  Qwen's compute band (§11, TASK 3), since the distributed circuit has no
+  sparse triplet to ablate.
+- **`experiments/diagnose_tier4_preset_overlap.py`** — added `--log-suffix` so
+  the diagnostic can target the `_distinctseed` regenerated logs (§12).
 
 ## Code paths NOT changed (deliberately)
 
 - Reverse FOLD→CHECK and BET→illegal_FOLD patching summaries (`commit
   6fe23d4`) — already valid, do not re-run.
-- Tier 4 *patching* code is OK; the issue is upstream *data generation*
-  (§12 preset-duplication). Fixed opt-in via `--opponent-seed`; regeneration
-  is optional (documentation is the recommended fix).
+- Tier 4 *patching* code is OK; the issue was upstream *data generation*
+  (§12 preset-duplication), now fixed opt-in via `--opponent-seed` AND
+  regenerated with distinct seeds (Qwen/Llama → 5 distinct, Ministral → 4).
 - Mode-balanced probe — Ministral isn't worth re-running (small pool is a
   data fact, not a code bug); Llama fallback is documented.
 
@@ -541,9 +618,11 @@ MODEL=ministral PIPELINE=recon \
   --conditions baseline triplet extended control
 ```
 
-**Status 2026-05-28: P0.1–P0.4, P1.1, P1.2, P1.3, and Tier 4@L=15 have all
-landed** (`dd1a534`, `185800a`). Remaining GPU work (one command, nothing
-optional):
+**Status 2026-05-29: P0.1–P0.4, P1.1–P1.3, Tier 4@L=15, the Qwen compute-layer
+sweep (§11), and the Tier 4 distinct-seed regeneration (§12) have ALL landed**
+(`dd1a534`, `185800a`, `8ce0b47`, `2b88d27`). The only remaining GPU task is
+**TASK 3 — the Qwen necessity ablation** (now unblocked + scripted), folded into
+the same orchestrator:
 
 ```bash
 cd xpoker2026Extension && git pull origin main
@@ -551,25 +630,25 @@ export HF_HOME=/workspace/huggingface HF_TOKEN=...
 bash scripts/run_phase_q_final_gpu.sh   # detaches into tmux 'poker_phase_q_final'
 ```
 
-That orchestrator runs, serially with HF-cache purges:
-1. **Qwen compute-layer component sweep** L=18–21 (~30–45 min) — localizes
-   Qwen's compute layer to complete §11 (forward signal ramps L19→22; L<18 is
-   zero, so this range is complete).
-2. **Tier 4 distinct-seed regeneration** for all 3 models × 5 presets
-   (~2–3 h) — restores 5 genuinely-distinct opponent distributions (§12) and
-   re-patches at each L*.
-3. Refreshes the cross-preset overlap diagnostic on the new logs (CPU).
+On re-run that orchestrator skips the already-written sweep/regen (FORCE_RERUN
+guards) and runs **TASK 3** directly. Or run TASK 3 standalone (Qwen weights
+only, ~20–40 min):
 
-**Follow-up that depends on step 1's result (not pre-scriptable):** once the
-sweep names Qwen's compute layer `L_c`, run a necessity ablation of that
-layer's attention during generation. This needs a small addition to
-`experiments/inference_head_ablation.py` so `--head-sets`/conditions accept an
-arbitrary head list (e.g. all heads at `L_c`). It is sequential on the sweep,
-so do it after `run_phase_q_final_gpu.sh` reports `L_c`.
+```bash
+cd xpoker2026Extension && export HF_HOME=/workspace/huggingface HF_TOKEN=...
+FORCE_RERUN=1 bash scripts/run_qwen_necessity_ablation.sh
+```
 
-Local (no-GPU) verification already committed:
-`results/diagnostics/tier4_preset_overlap/SUMMARY.md` (run via
-`python -m experiments.diagnose_tier4_preset_overlap`).
+TASK 3 = whole-attention-block ablation at Qwen's compute band L18/19/20 (+
+saturation L23, control L8) and a concentrated top-head set at L19/L20, on the
+illegal_fold pool. Reads flip→CHECK vs parse_fail to separate FOLD-specific
+necessity from generic CoT damage (the test is blunt because the circuit is
+distributed — §11).
+
+Local (no-GPU) verification committed:
+`results/diagnostics/tier4_preset_overlap_distinctseed/SUMMARY.md`
+(Qwen/Llama 5 distinct, Ministral 4 — run via
+`python -m experiments.diagnose_tier4_preset_overlap --log-suffix _distinctseed`).
 
 ---
 
@@ -590,14 +669,15 @@ Local (no-GPU) verification already committed:
    baseline regen-drift is 56%, §4). Ministral is "distributed / residual
    flow-through; no sparse circuit at L=16."
 
-3. **Opponent-invariance** (Qwen-only, by Tier 4): Qwen's L\*=23 produces
-   spec-adj +19–20 nats / 92–100% top-1 → CHECK across opponent presets;
-   Llama and Ministral fail this test. **Caveat (§12):** the preset suite
-   collapses (shared opponent RNG) into fewer genuinely-distinct
-   distributions — **Qwen 3, Llama 4, Ministral 4** (no model has 5). Report
-   each byte-identical group as ONE cell until the distinct-seed regeneration
-   (`run_tier4_regen_distinct_presets.sh`) lands. Also note the target_bucket
-   is `clean_legal_fold` (§6), so Δ-magnitudes differ from Phase K.
+3. **Opponent-invariance** (Qwen-only, by Tier 4): after the distinct-seed
+   regeneration (§12), Qwen's L\*=23 produces spec-adj **+5 to +20 nats /
+   61–100% top-1 → CHECK across all 5 genuinely-distinct opponent presets**
+   (baseline_match 1.00); Llama is at the noise floor (baseline_match 0.56–0.63)
+   and Ministral fails (~0.9–1.4 nats, top-1→CHECK 3–19%). The earlier RNG
+   collapse is **resolved** — Qwen/Llama now have 5 distinct distributions,
+   Ministral 4 (`default ≡ informative_v2`, a benign fold-early collapse). Note
+   the target_bucket is `clean_legal_fold` (§6), so Δ-magnitudes differ from
+   Phase K.
 
 4. **Mode-stability** (Qwen-only, by §18b/§22j): cos(w_CoT, w_nonCoT) = +0.51
    matched, +0.34 unmatched in Qwen; Llama uses fallback labels (cos +0.33);
@@ -627,12 +707,18 @@ Local (no-GPU) verification already committed:
    - **Ministral L=16** — **no** sparse circuit at 3 or 6 heads; the sextet
      ablation is a clean null and the control flips more (§9). Distributed /
      residual flow-through.
-   - **Qwen L=22/23** — residual flow-through: at L=22 attn carries 8% and MLP
-     −4% of the residual effect, no head >24% (§11). Any sparse circuit is at
-     L<22 and not yet localized (sweep queued).
+   - **Qwen** — compute is **distributed attention across L18–L20** (§11): attn
+     carries 92%/78% of the (small) residual effect at L18/L19, but the largest
+     single head is only 17% and L20 has a cancelling +30%/−19% pair. By L21–23
+     it is residual flow-through (attn ≈0–8%). So Qwen HAS a localizable
+     *compute band*, but it is a distributed multi-layer attention sub-network,
+     **not** a sparse head circuit. Necessity tested by whole-attention ablation
+     (TASK 3).
 
-   So the gradient is sharper than "head count scales": **Llama is the only
-   8B with a localizable attention-head circuit at its compute layer; Qwen and
-   Ministral commit the verb via the residual stream.**
+   So the gradient is sharper than "head count scales": **Llama is the only 8B
+   with a localizable *sparse* attention-head circuit at its compute layer;
+   Qwen consolidates the verb into a distributed attention band (L18–20) that
+   then rides the residual stream; Ministral commits it via the residual stream
+   with no localizable heads at its saturation layer.**
 
 This is the honest cross-model story.

@@ -80,6 +80,19 @@ ARGS=(
 if [[ -n "$FILTER" ]]; then
   ARGS+=( --filter-recorded-bucket "$FILTER" )
 fi
+# Extra whole-attention / custom head-set conditions. Each item is one
+# quoted token of the form 'name:idx...' or 'name:all'. Pass via the
+# HEAD_SETS env var, space-separated at the item level using ';' as the
+# item delimiter so embedded spaces survive, e.g.
+#   HEAD_SETS='whole_attn:all;topk:29 15 16'
+if [[ -n "${HEAD_SETS:-}" ]]; then
+  ARGS+=( --head-sets )
+  OLD_IFS="$IFS"; IFS=';'
+  for item in $HEAD_SETS; do
+    [[ -n "$item" ]] && ARGS+=( "$item" )
+  done
+  IFS="$OLD_IFS"
+fi
 
 python -m experiments.inference_head_ablation "${ARGS[@]}"
 echo "[done] $OUT/SUMMARY.md"

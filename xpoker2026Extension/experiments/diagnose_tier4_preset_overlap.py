@@ -42,8 +42,9 @@ DEFAULT_PRESETS = [
 DEFAULT_MODELS = ["llama-8b", "qwen-8b", "ministral-8b"]
 
 
-def _enriched_path(preset: str, model: str, temp_tag: str = "t00", seed: int = 42) -> str:
-    return f"logs/opp_{preset}_{model}_{temp_tag}_s{seed}_enriched.jsonl"
+def _enriched_path(preset: str, model: str, temp_tag: str = "t00", seed: int = 42,
+                   log_suffix: str = "") -> str:
+    return f"logs/opp_{preset}_{model}_{temp_tag}_s{seed}{log_suffix}_enriched.jsonl"
 
 
 def _decision_prompt_hashes(path: str) -> set[str]:
@@ -69,11 +70,11 @@ def _decision_prompt_hashes(path: str) -> set[str]:
     return hashes
 
 
-def diagnose_model(model: str, presets: list[str]) -> dict:
+def diagnose_model(model: str, presets: list[str], log_suffix: str = "") -> dict:
     sets: dict[str, set[str]] = {}
     missing: list[str] = []
     for preset in presets:
-        path = _enriched_path(preset, model)
+        path = _enriched_path(preset, model, log_suffix=log_suffix)
         s = _decision_prompt_hashes(path)
         if not s:
             missing.append(preset)
@@ -166,9 +167,15 @@ def main() -> None:
     ap.add_argument("--models", nargs="+", default=DEFAULT_MODELS)
     ap.add_argument("--presets", nargs="+", default=DEFAULT_PRESETS)
     ap.add_argument("--out", default="results/diagnostics/tier4_preset_overlap/SUMMARY.md")
+    ap.add_argument(
+        "--log-suffix", default="",
+        help="Suffix inserted before '_enriched' in the log filename, e.g. "
+             "'_distinctseed' to diagnose the decorrelated-seed regeneration.",
+    )
     args = ap.parse_args()
 
-    results = {m: diagnose_model(m, args.presets) for m in args.models}
+    results = {m: diagnose_model(m, args.presets, log_suffix=args.log_suffix)
+               for m in args.models}
     md = render(results, args.presets)
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)

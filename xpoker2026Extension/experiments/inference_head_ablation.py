@@ -49,6 +49,7 @@ from poker_env.interp.forward_helpers import (  # noqa: E402
     obs_from_dict,
 )
 from poker_env.interp.generation_ablation import AttnHeadZeroAblation  # noqa: E402
+from poker_env.interp.patching import get_head_geometry  # noqa: E402
 from experiments.causal_patching import (  # noqa: E402
     classify_decision,
     _iter_decisions,
@@ -88,6 +89,28 @@ DEFAULT_HEAD_SETS: dict[str, dict] = {
         "head_story": "no_sparse_residual_arrival",
     },
 }
+
+
+def _parse_head_sets(specs: list[str] | None) -> list[tuple[str, object]]:
+    """Parse --head-sets items into (name, heads) pairs.
+
+    Each spec is 'name:idx1 idx2 ...' or 'name:all'. Returns heads as a
+    list[int] or the sentinel string 'all' (resolved to range(num_heads)
+    once the model is loaded).
+    """
+    out: list[tuple[str, object]] = []
+    for spec in specs or []:
+        if ":" not in spec:
+            raise ValueError(f"--head-sets item missing ':' -> {spec!r}")
+        name, rhs = spec.split(":", 1)
+        name = name.strip()
+        rhs = rhs.strip()
+        if rhs.lower() == "all":
+            out.append((name, "all"))
+        else:
+            heads = [int(x) for x in rhs.split()]
+            out.append((name, heads))
+    return out
 
 
 def _short_model_name(model_id: str) -> str:
@@ -287,7 +310,12 @@ def main():
     parser.add_argument("--layer", type=int, default=None)
     parser.add_argument(
         "--head-sets", nargs="+", default=None,
-        help="Named sets as 'name:22 9 15' (default: triplet + control)",
+        help="Extra named ablation conditions, each as one quoted arg of the "
+             "form 'name:idx1 idx2 ...' or 'name:all'. 'all' zeros EVERY head "
+             "at --layer (whole-attention-block ablation), used for the Qwen "
+             "necessity test where compute is distributed across heads (no "
+             "sparse triplet). Runs in addition to baseline/triplet/control. "
+             "Example: --head-sets 'whole_attn:all'",
     )
     parser.add_argument(
         "--conditions", nargs="+",
@@ -446,6 +474,27 @@ def main():
             for r in rows:
                 f.write(json.dumps(r) + "\n")
 
+    custom_sets = _parse_head_sets(args.head_sets)
+    custom_names: list[str] = []
+    if custom_sets:
+        num_heads, _ = get_head_geometry(model)
+    for name, heads in custom_sets:
+        resolved = list(range(num_heads)) if heads == "all" else list(heads)
+        scope = "ALL heads (whole-attention)" if heads == "all" else str(resolved)
+        print(f"[run] custom ablation '{name}' layer={layer} heads={scope} ...")
+        abl = AttnHeadZeroAblation(model, layer, resolved)
+        rows = _run(name, abl)
+        results["conditions"][name] = {
+            **_aggregate(rows),
+            "fold_target_flips": _flip_rates(rows),
+            "ablated_heads": resolved,
+            "whole_attention": heads == "all",
+        }
+        custom_names.append(name)
+        with open(out_dir / f"{name}_rows.jsonl", "w") as f:
+            for r in rows:
+                f.write(json.dumps(r) + "\n")
+
     with open(out_dir / "summary.json", "w") as f:
         json.dump(results, f, indent=2)
 
@@ -477,7 +526,7 @@ def main():
         "verb=FOLD | verb=CHECK | verb=BET | verb=UNK |",
         "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
-    for name in ("baseline", "triplet", "extended", "control"):
+    for name in ("baseline", "triplet", "extended", "control", *custom_names):
         if name not in results["conditions"]:
             continue
         a = results["conditions"][name]
@@ -501,7 +550,7 @@ def main():
         "| Condition | n | FOLD→CHECK | FOLD→BET | any flip | parse fail |",
         "|---|---:|---:|---:|---:|---:|",
     ]
-    for name in ("baseline", "triplet", "extended", "control"):
+    for name in ("baseline", "triplet", "extended", "control", *custom_names):
         cond = results["conditions"].get(name)
         if not cond:
             continue
@@ -544,6 +593,33 @@ def main():
                 "- Heads are **behaviorally redundant** for FOLD generation "
                 "(no large flip beyond baseline). Consistent with §16/Phase O "
                 "redundancy framing."
+            )
+    for name in custom_names:
+        cond = results["conditions"].get(name)
+        if not base or not cond:
+            continue
+        b_flip = base["fold_target_flips"]["any_flip_rate"]
+        c_flip = cond["fold_target_flips"]["any_flip_rate"]
+        net_pp = (c_flip - b_flip) * 100
+        scope = ("whole-attention block"
+                 if cond.get("whole_attention") else f"heads {cond.get('ablated_heads')}")
+        md.append("")
+        md.append(
+            f"**Net ablation-induced FOLD-flip ({name}, {scope}): "
+            f"{c_flip*100:.1f}% − baseline {b_flip*100:.1f}% = {net_pp:+.1f} pp** "
+            f"(parse_fail {cond['fold_target_flips']['parse_fail_rate']*100:.1f}%)"
+        )
+        if net_pp >= 30:
+            md.append(
+                f"- The `{name}` attention scope is **behaviorally necessary** "
+                "for FOLD at this layer."
+            )
+        elif net_pp >= 10:
+            md.append(f"- Moderate necessity for `{name}`; check parse_fail.")
+        else:
+            md.append(
+                f"- `{name}` ablation is **behaviorally redundant** for FOLD "
+                "(no large flip beyond baseline)."
             )
     md.append("")
     md.append("## Reading guide")

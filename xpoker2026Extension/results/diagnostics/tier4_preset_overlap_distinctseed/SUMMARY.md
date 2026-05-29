@@ -8,58 +8,58 @@ RNG stream and the presets' policies are too similar to diverge. See
 
 ## llama-8b
 
-- distinct prompt_hashes per preset: default=282, informative_v2=468, tight_aggressive=370, loose_aggressive=370, loose_passive=199
+- distinct prompt_hashes per preset: default=247, informative_v2=449, tight_aggressive=322, loose_aggressive=168, loose_passive=98
 
 | preset A | preset B | |A| | |B| | A∩B | A∪B | Jaccard | identical? |
 |---|---|---:|---:|---:|---:|---:|:--:|
-| default | informative_v2 | 282 | 468 | 125 | 625 | 0.20 | no |
-| default | tight_aggressive | 282 | 370 | 162 | 490 | 0.33 | no |
-| default | loose_aggressive | 282 | 370 | 162 | 490 | 0.33 | no |
-| default | loose_passive | 282 | 199 | 85 | 396 | 0.21 | no |
-| informative_v2 | tight_aggressive | 468 | 370 | 280 | 558 | 0.50 | no |
-| informative_v2 | loose_aggressive | 468 | 370 | 280 | 558 | 0.50 | no |
-| informative_v2 | loose_passive | 468 | 199 | 49 | 618 | 0.08 | no |
-| tight_aggressive | loose_aggressive | 370 | 370 | 370 | 370 | 1.00 | **YES** |
-| tight_aggressive | loose_passive | 370 | 199 | 49 | 520 | 0.09 | no |
-| loose_aggressive | loose_passive | 370 | 199 | 49 | 520 | 0.09 | no |
+| default | informative_v2 | 247 | 449 | 69 | 627 | 0.11 | no |
+| default | tight_aggressive | 247 | 322 | 58 | 511 | 0.11 | no |
+| default | loose_aggressive | 247 | 168 | 6 | 409 | 0.01 | no |
+| default | loose_passive | 247 | 98 | 0 | 345 | 0.00 | no |
+| informative_v2 | tight_aggressive | 449 | 322 | 266 | 505 | 0.53 | no |
+| informative_v2 | loose_aggressive | 449 | 168 | 21 | 596 | 0.04 | no |
+| informative_v2 | loose_passive | 449 | 98 | 0 | 547 | 0.00 | no |
+| tight_aggressive | loose_aggressive | 322 | 168 | 49 | 441 | 0.11 | no |
+| tight_aggressive | loose_passive | 322 | 98 | 20 | 400 | 0.05 | no |
+| loose_aggressive | loose_passive | 168 | 98 | 89 | 177 | 0.50 | no |
 
-- **Collapsed groups: tight_aggressive≡loose_aggressive ⇒ 4 distinct distribution(s), NOT 5.** Report each collapsed group as a single cell.
+- No fully-collapsed pairs; 5 distinct distributions.
 
 ## qwen-8b
 
-- distinct prompt_hashes per preset: default=153, informative_v2=142, tight_aggressive=142, loose_aggressive=142, loose_passive=199
+- distinct prompt_hashes per preset: default=251, informative_v2=168, tight_aggressive=163, loose_aggressive=143, loose_passive=142
 
 | preset A | preset B | |A| | |B| | A∩B | A∪B | Jaccard | identical? |
 |---|---|---:|---:|---:|---:|---:|:--:|
-| default | informative_v2 | 153 | 142 | 135 | 160 | 0.84 | no |
-| default | tight_aggressive | 153 | 142 | 135 | 160 | 0.84 | no |
-| default | loose_aggressive | 153 | 142 | 135 | 160 | 0.84 | no |
-| default | loose_passive | 153 | 199 | 108 | 244 | 0.44 | no |
-| informative_v2 | tight_aggressive | 142 | 142 | 142 | 142 | 1.00 | **YES** |
-| informative_v2 | loose_aggressive | 142 | 142 | 142 | 142 | 1.00 | **YES** |
-| informative_v2 | loose_passive | 142 | 199 | 92 | 249 | 0.37 | no |
-| tight_aggressive | loose_aggressive | 142 | 142 | 142 | 142 | 1.00 | **YES** |
-| tight_aggressive | loose_passive | 142 | 199 | 92 | 249 | 0.37 | no |
-| loose_aggressive | loose_passive | 142 | 199 | 92 | 249 | 0.37 | no |
+| default | informative_v2 | 251 | 168 | 90 | 329 | 0.27 | no |
+| default | tight_aggressive | 251 | 163 | 72 | 342 | 0.21 | no |
+| default | loose_aggressive | 251 | 143 | 8 | 386 | 0.02 | no |
+| default | loose_passive | 251 | 142 | 0 | 393 | 0.00 | no |
+| informative_v2 | tight_aggressive | 168 | 163 | 134 | 197 | 0.68 | no |
+| informative_v2 | loose_aggressive | 168 | 143 | 13 | 298 | 0.04 | no |
+| informative_v2 | loose_passive | 168 | 142 | 0 | 310 | 0.00 | no |
+| tight_aggressive | loose_aggressive | 163 | 143 | 42 | 264 | 0.16 | no |
+| tight_aggressive | loose_passive | 163 | 142 | 29 | 276 | 0.11 | no |
+| loose_aggressive | loose_passive | 143 | 142 | 130 | 155 | 0.84 | no |
 
-- **Collapsed groups: informative_v2≡tight_aggressive≡loose_aggressive ⇒ 3 distinct distribution(s), NOT 5.** Report each collapsed group as a single cell.
+- No fully-collapsed pairs; 5 distinct distributions.
 
 ## ministral-8b
 
-- distinct prompt_hashes per preset: default=134, informative_v2=107, tight_aggressive=93, loose_aggressive=107, loose_passive=199
+- distinct prompt_hashes per preset: default=49, informative_v2=49, tight_aggressive=61, loose_aggressive=102, loose_passive=105
 
 | preset A | preset B | |A| | |B| | A∩B | A∪B | Jaccard | identical? |
 |---|---|---:|---:|---:|---:|---:|:--:|
-| default | informative_v2 | 134 | 107 | 97 | 144 | 0.67 | no |
-| default | tight_aggressive | 134 | 93 | 84 | 143 | 0.59 | no |
-| default | loose_aggressive | 134 | 107 | 97 | 144 | 0.67 | no |
-| default | loose_passive | 134 | 199 | 90 | 243 | 0.37 | no |
-| informative_v2 | tight_aggressive | 107 | 93 | 93 | 107 | 0.87 | no |
-| informative_v2 | loose_aggressive | 107 | 107 | 107 | 107 | 1.00 | **YES** |
-| informative_v2 | loose_passive | 107 | 199 | 58 | 248 | 0.23 | no |
-| tight_aggressive | loose_aggressive | 93 | 107 | 93 | 107 | 0.87 | no |
-| tight_aggressive | loose_passive | 93 | 199 | 51 | 241 | 0.21 | no |
-| loose_aggressive | loose_passive | 107 | 199 | 58 | 248 | 0.23 | no |
+| default | informative_v2 | 49 | 49 | 49 | 49 | 1.00 | **YES** |
+| default | tight_aggressive | 49 | 61 | 40 | 70 | 0.57 | no |
+| default | loose_aggressive | 49 | 102 | 4 | 147 | 0.03 | no |
+| default | loose_passive | 49 | 105 | 0 | 154 | 0.00 | no |
+| informative_v2 | tight_aggressive | 49 | 61 | 40 | 70 | 0.57 | no |
+| informative_v2 | loose_aggressive | 49 | 102 | 4 | 147 | 0.03 | no |
+| informative_v2 | loose_passive | 49 | 105 | 0 | 154 | 0.00 | no |
+| tight_aggressive | loose_aggressive | 61 | 102 | 24 | 139 | 0.17 | no |
+| tight_aggressive | loose_passive | 61 | 105 | 21 | 145 | 0.14 | no |
+| loose_aggressive | loose_passive | 102 | 105 | 96 | 111 | 0.86 | no |
 
-- **Collapsed groups: informative_v2≡loose_aggressive ⇒ 4 distinct distribution(s), NOT 5.** Report each collapsed group as a single cell.
+- **Collapsed groups: default≡informative_v2 ⇒ 4 distinct distribution(s), NOT 5.** Report each collapsed group as a single cell.
 

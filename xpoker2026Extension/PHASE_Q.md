@@ -8,16 +8,25 @@ Implements the pre-submission GPU suite discussed in the planning thread.
 > The audit reframes the cross-model story as a **circuit-consolidation
 > gradient** (Qwen > Llama > Ministral on necessity, opponent-invariance,
 > mode-stability) and establishes that **only Llama (L=14) has a localizable
-> sparse head circuit**; Qwen (L=22/23) and Ministral (L=16) commit the verb
-> via residual flow-through.
+> sparse head circuit**; Qwen consolidates the verb into a **distributed
+> attention band (L18–L20)** that then rides the residual stream, and Ministral
+> (L=16) commits it via residual flow-through with no localizable heads.
 >
 > **2026-05-28 reruns landed** (`dd1a534`, `185800a`): recon-pipeline ablation,
 > continuation verb/parse breakdown, pot_odds stratification, Llama L=15
 > cells, **Ministral sextet (clean null — AUDIT §9)**, **Llama L=15 negative
-> control (passes — §10)**, **Qwen L=22 component decomposition (flow-through
-> — §11)**, and **Tier 4 @ L=15**. Two corrections vs the first audit:
-> Llama's continuation parse-damage confound **did not reproduce** (§4), and a
-> **Tier 4 preset-duplication** issue was found (§12, see note below).
+> control (passes — §10)**, Qwen L=22 component decomposition, and **Tier 4 @
+> L=15**. Two corrections vs the first audit: Llama's continuation parse-damage
+> confound **did not reproduce** (§4), and a **Tier 4 preset-duplication** issue
+> was found (§12).
+>
+> **2026-05-29 reruns landed** (`8ce0b47`, `2b88d27`): (1) **Qwen compute-layer
+> sweep L18–21** located the compute band = distributed attention at L18–L20
+> (§11); (2) **Tier 4 distinct-seed regeneration** decorrelated the opponent RNG
+> — Qwen and Llama now have **5 genuinely-distinct** opponent presets (Qwen
+> opp-invariance +5 to +20 nats across all 5), Ministral 4 (§12). The remaining
+> GPU task is the **Qwen whole-attention necessity ablation** (TASK 3,
+> `scripts/run_qwen_necessity_ablation.sh`, wired into `run_phase_q_final_gpu.sh`).
 
 ## Quick start (GPU box)
 

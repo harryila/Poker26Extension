@@ -120,7 +120,7 @@ def main() -> None:
             row = {"baseline_delta": base_delta, "baseline_top1": base_grp, "by_alpha": {}}
             for a in args.alphas:
                 if a == 0:
-                    row["by_alpha"]["0"] = {"delta": base_delta, "top1": base_grp}
+                    row["by_alpha"][str(a)] = {"delta": base_delta, "top1": base_grp}
                     continue
                 hook = ActivationAdditionHook(model, args.layer, vec * norm, alpha=float(a), last_only=True)
                 with hook, torch.no_grad():

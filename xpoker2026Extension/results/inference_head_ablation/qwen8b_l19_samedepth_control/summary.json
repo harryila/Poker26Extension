@@ -1,0 +1,180 @@
+{
+  "model_id": "Qwen/Qwen3-8B",
+  "layer": 19,
+  "pipeline": "recon",
+  "filter_recorded_bucket": "clean_legal_fold",
+  "conditions": {
+    "baseline": {
+      "n": 150,
+      "recorded_bucket_frac": {
+        "clean_legal_fold": 1.0
+      },
+      "replay_bucket_frac": {
+        "clean_legal_fold": 0.8466666666666667,
+        "clean_bet_or_raise": 0.05333333333333334,
+        "clean_check_or_call": 0.1
+      },
+      "replay_verb_frac": {
+        "FOLD": 0.8466666666666667,
+        "BET_OR_RAISE": 0.05333333333333334,
+        "CHECK_OR_CALL": 0.1
+      },
+      "illegal_fold_rate": 0.0,
+      "clean_check_rate": 0.1,
+      "parse_success_rate": 1.0,
+      "fallback_rate": 0.0,
+      "parseable_json_rate": 1.0,
+      "fold_target_flips": {
+        "n_recorded_fold": 150,
+        "flip_to_check_rate": 0.1,
+        "flip_to_bet_rate": 0.05333333333333334,
+        "any_flip_rate": 0.15333333333333332,
+        "parse_fail_rate": 0.0
+      }
+    },
+    "top5": {
+      "n": 150,
+      "recorded_bucket_frac": {
+        "clean_legal_fold": 1.0
+      },
+      "replay_bucket_frac": {
+        "clean_bet_or_raise": 0.2,
+        "clean_legal_fold": 0.47333333333333333,
+        "clean_check_or_call": 0.32666666666666666
+      },
+      "replay_verb_frac": {
+        "BET_OR_RAISE": 0.2,
+        "FOLD": 0.47333333333333333,
+        "CHECK_OR_CALL": 0.32666666666666666
+      },
+      "illegal_fold_rate": 0.0,
+      "clean_check_rate": 0.32666666666666666,
+      "parse_success_rate": 1.0,
+      "fallback_rate": 0.0,
+      "parseable_json_rate": 1.0,
+      "fold_target_flips": {
+        "n_recorded_fold": 150,
+        "flip_to_check_rate": 0.32666666666666666,
+        "flip_to_bet_rate": 0.2,
+        "any_flip_rate": 0.5266666666666666,
+        "parse_fail_rate": 0.0
+      },
+      "ablated_heads": [
+        31,
+        3,
+        21,
+        1,
+        0
+      ],
+      "whole_attention": false
+    },
+    "rand5a": {
+      "n": 150,
+      "recorded_bucket_frac": {
+        "clean_legal_fold": 1.0
+      },
+      "replay_bucket_frac": {
+        "clean_check_or_call": 0.22,
+        "clean_legal_fold": 0.5666666666666667,
+        "clean_bet_or_raise": 0.21333333333333335
+      },
+      "replay_verb_frac": {
+        "CHECK_OR_CALL": 0.22,
+        "FOLD": 0.5666666666666667,
+        "BET_OR_RAISE": 0.21333333333333335
+      },
+      "illegal_fold_rate": 0.0,
+      "clean_check_rate": 0.22,
+      "parse_success_rate": 1.0,
+      "fallback_rate": 0.0,
+      "parseable_json_rate": 1.0,
+      "fold_target_flips": {
+        "n_recorded_fold": 150,
+        "flip_to_check_rate": 0.22,
+        "flip_to_bet_rate": 0.21333333333333335,
+        "any_flip_rate": 0.43333333333333335,
+        "parse_fail_rate": 0.0
+      },
+      "ablated_heads": [
+        3,
+        12,
+        13,
+        22,
+        29
+      ],
+      "whole_attention": false
+    },
+    "rand5b": {
+      "n": 150,
+      "recorded_bucket_frac": {
+        "clean_legal_fold": 1.0
+      },
+      "replay_bucket_frac": {
+        "clean_check_or_call": 0.26,
+        "clean_bet_or_raise": 0.11333333333333333,
+        "clean_legal_fold": 0.6266666666666667
+      },
+      "replay_verb_frac": {
+        "CHECK_OR_CALL": 0.26,
+        "BET_OR_RAISE": 0.11333333333333333,
+        "FOLD": 0.6266666666666667
+      },
+      "illegal_fold_rate": 0.0,
+      "clean_check_rate": 0.26,
+      "parse_success_rate": 1.0,
+      "fallback_rate": 0.0,
+      "parseable_json_rate": 1.0,
+      "fold_target_flips": {
+        "n_recorded_fold": 150,
+        "flip_to_check_rate": 0.26,
+        "flip_to_bet_rate": 0.11333333333333333,
+        "any_flip_rate": 0.37333333333333335,
+        "parse_fail_rate": 0.0
+      },
+      "ablated_heads": [
+        12,
+        24,
+        25,
+        26,
+        30
+      ],
+      "whole_attention": false
+    },
+    "rand5c": {
+      "n": 150,
+      "recorded_bucket_frac": {
+        "clean_legal_fold": 1.0
+      },
+      "replay_bucket_frac": {
+        "clean_check_or_call": 0.3,
+        "clean_legal_fold": 0.6533333333333333,
+        "clean_bet_or_raise": 0.04666666666666667
+      },
+      "replay_verb_frac": {
+        "CHECK_OR_CALL": 0.3,
+        "FOLD": 0.6533333333333333,
+        "BET_OR_RAISE": 0.04666666666666667
+      },
+      "illegal_fold_rate": 0.0,
+      "clean_check_rate": 0.3,
+      "parse_success_rate": 1.0,
+      "fallback_rate": 0.0,
+      "parseable_json_rate": 1.0,
+      "fold_target_flips": {
+        "n_recorded_fold": 150,
+        "flip_to_check_rate": 0.3,
+        "flip_to_bet_rate": 0.04666666666666667,
+        "any_flip_rate": 0.3466666666666667,
+        "parse_fail_rate": 0.0
+      },
+      "ablated_heads": [
+        2,
+        5,
+        12,
+        15,
+        16
+      ],
+      "whole_attention": false
+    }
+  }
+}

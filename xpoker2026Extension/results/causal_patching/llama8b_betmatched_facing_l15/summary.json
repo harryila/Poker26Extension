@@ -1,0 +1,48 @@
+{
+  "enriched_log": [
+    "logs/cot_llama8b_t0_s42_informative_v2_enriched.jsonl.gz",
+    "logs/cot_llama8b_t0_s123_informative_v2_enriched.jsonl.gz",
+    "logs/cot_llama8b_t0_s456_informative_v2_enriched.jsonl.gz"
+  ],
+  "n_enriched_logs": 3,
+  "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+  "source_bucket": "clean_check_or_call",
+  "target_bucket": "clean_legal_fold",
+  "source_bet_filter": "facing",
+  "target_bet_filter": "facing",
+  "n_source": 10,
+  "n_target": 30,
+  "layers": [
+    15
+  ],
+  "n_pairs_total": 300,
+  "controls": {
+    "baseline_top1_match_rate": 1.0,
+    "self_patch_max_logit_drift": 0.0,
+    "random_source_per_layer": {
+      "15": {
+        "mean_delta": -0.424524356132293,
+        "std_delta": 2.6071527577297586,
+        "n": 5,
+        "n_random_sources": 5,
+        "n_random_targets": 1
+      }
+    },
+    "random_source_n": 5,
+    "random_source_mean_delta": -0.424524356132293,
+    "random_source_test_layer": 15
+  },
+  "zero_ablation": false,
+  "per_layer": {
+    "15": {
+      "n": 300,
+      "mean_delta_check_minus_fold": 12.540184333333332,
+      "frac_top1_check_call": 1.0,
+      "frac_top1_fold": 0.0,
+      "frac_top1_bet_raise": 0.0,
+      "frac_top1_other": 0.0,
+      "random_null_delta": -0.424524356132293,
+      "specificity_adjusted_delta": 12.964708689465626
+    }
+  }
+}

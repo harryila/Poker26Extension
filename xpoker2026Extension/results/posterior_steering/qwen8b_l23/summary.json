@@ -1,0 +1,51 @@
+{
+  "model_id": "Qwen/Qwen3-8B",
+  "layer": 23,
+  "target_bucket": "clean_legal_fold",
+  "alphas": [
+    0.0,
+    2.0,
+    4.0,
+    8.0
+  ],
+  "n": 60,
+  "norm": 158.14293014465548,
+  "conditions": {
+    "trash_direction": {
+      "0.0": {
+        "mean_delta_check_minus_fold": -22.039784937259345,
+        "frac_top1_check_call": 0.0
+      },
+      "2.0": {
+        "mean_delta_check_minus_fold": -23.06201175345311,
+        "frac_top1_check_call": 0.0
+      },
+      "4.0": {
+        "mean_delta_check_minus_fold": -11.427699538835155,
+        "frac_top1_check_call": 0.0
+      },
+      "8.0": {
+        "mean_delta_check_minus_fold": -6.701271261894034,
+        "frac_top1_check_call": 0.0
+      }
+    },
+    "random_control": {
+      "0.0": {
+        "mean_delta_check_minus_fold": -22.039784937259345,
+        "frac_top1_check_call": 0.0
+      },
+      "2.0": {
+        "mean_delta_check_minus_fold": -24.475491637116328,
+        "frac_top1_check_call": 0.0
+      },
+      "4.0": {
+        "mean_delta_check_minus_fold": -12.864609905099153,
+        "frac_top1_check_call": 0.0
+      },
+      "8.0": {
+        "mean_delta_check_minus_fold": -3.1778452120539913,
+        "frac_top1_check_call": 0.0
+      }
+    }
+  }
+}

@@ -58,9 +58,10 @@ LAYER=20 OUT_SUFFIX="_topk" HEAD_SETS="topk_l20:29 15 16" \
   bash scripts/run_inference_head_ablation.sh
 
 echo "==================================================================="
-echo " DONE. Inspect:"
-echo "   results/inference_head_ablation/qwen8b_l*_recon_illegal_fold_wholeattn/SUMMARY.md"
-echo "   results/inference_head_ablation/qwen8b_l1{9,9}_recon_illegal_fold_topk/SUMMARY.md"
-echo " Compare flip-to-CHECK vs parse_fail across layers: a clean necessity"
-echo " result is high flip + low parse_fail localized to the compute band."
+echo " DONE (pool=${FILTER_RECORDED_BUCKET}, n<=${N_DECISIONS}). Inspect:"
+echo "   results/inference_head_ablation/qwen8b_l*_recon_${FILTER_RECORDED_BUCKET}_wholeattn/SUMMARY.md"
+echo "   results/inference_head_ablation/qwen8b_l{19,20}_recon_${FILTER_RECORDED_BUCKET}_topk/SUMMARY.md"
+echo " Compare each layer's net any-flip to the L8 CONTROL: a real localization"
+echo " shows the compute band (L18-20, esp L19) well above L8 with low parse_fail."
+echo " A flat profile = distributed/non-localized necessity (the n=24 read)."
 echo "==================================================================="

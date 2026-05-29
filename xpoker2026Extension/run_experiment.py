@@ -66,6 +66,43 @@ def _write_sidecar(path: str, hand_id: str, decision_idx: int, data: dict) -> No
         f.write(_json.dumps({"hand_id": hand_id, "decision_idx": decision_idx, **data}) + "\n")
 
 
+def _maybe_attach_circuit_hook(agent) -> None:
+    """Behavior-at-scale (Tier-1 C3): attach a circuit intervention to the LIVE agent via
+    env vars, so the existing gameplay loop measures win-rate/exploitability UNDER the
+    intervention. No-op unless an env var is set. Reuses the validated hooks.
+
+      Ablation (necessity at scale):
+        CIRCUIT_ABLATE_LAYER=19  CIRCUIT_ABLATE_HEADS='31 3 21 1 0'
+      Steering (de-bias at scale):
+        CIRCUIT_STEER_LAYER=23  CIRCUIT_STEER_NPZ=<steer_*.npz>  CIRCUIT_STEER_ALPHA=4
+
+    Run the SAME command with and without the env vars and diff the win-rate the driver
+    already prints. Only applies to HFAgent (its decisions go through model.generate).
+    """
+    import os
+    hooks = []
+    al = os.environ.get("CIRCUIT_ABLATE_LAYER")
+    if al is not None:
+        from poker_env.interp.generation_ablation import AttnHeadZeroAblation
+        heads = [int(x) for x in os.environ.get("CIRCUIT_ABLATE_HEADS", "").split()]
+        hooks.append(AttnHeadZeroAblation(agent.model, int(al), heads))
+        print(f"[circuit] gameplay ablation: layer {al} heads {heads}")
+    sl = os.environ.get("CIRCUIT_STEER_LAYER")
+    if sl is not None:
+        import numpy as _np
+        import torch as _torch
+        from poker_env.interp.patching import ActivationAdditionHook
+        npz = _np.load(os.environ["CIRCUIT_STEER_NPZ"], allow_pickle=True)
+        vec = _torch.tensor(npz["direction"].astype("float32"))
+        norm = float(npz["resid_mean_norm"]) if "resid_mean_norm" in npz else 1.0
+        alpha = float(os.environ.get("CIRCUIT_STEER_ALPHA", "4"))
+        hooks.append(ActivationAdditionHook(agent.model, int(sl), vec * norm,
+                                            alpha=alpha, last_only=False))
+        print(f"[circuit] gameplay steering: layer {sl} alpha {alpha}")
+    if hooks:
+        agent._extra_generation_hooks = hooks
+
+
 def create_agent(
     agent_type: str,
     seed: Optional[int] = None,
@@ -99,7 +136,7 @@ def create_agent(
                 "HFAgent requires torch and transformers. "
                 "Install with: pip install torch transformers accelerate"
             )
-        return HFAgent(
+        _hf_agent = HFAgent(
             model_id=hf_model,
             temperature=temperature,
             top_p=top_p,
@@ -113,6 +150,8 @@ def create_agent(
             top_logprobs=top_logprobs,
             name=name or "HFAgent",
         )
+        _maybe_attach_circuit_hook(_hf_agent)
+        return _hf_agent
     elif agent_type == "api":
         if not API_AVAILABLE:
             raise ImportError(

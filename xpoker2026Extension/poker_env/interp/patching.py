@@ -191,6 +191,71 @@ class HiddenStatePatch:
         return _replace_layer_output_residual(output, new_residual)
 
 
+class ActivationAdditionHook:
+    """Forward-hook that ADDS ``alpha * vec`` to a layer's residual (steering).
+
+    Unlike HiddenStatePatch (which REPLACES the last position), this ADDS a fixed
+    direction. By default it steers EVERY position so the steer persists across all
+    tokens emitted by ``model.generate()`` (set ``last_only=True`` to steer only the
+    last input position, e.g. for a single-forward logit readout).
+
+    Exposes ``attach()``/``detach()`` (and is a context manager), so it plugs into both
+    the single-forward path (``with hook:``) and generation via
+    ``attached_hooks([hook])`` / ``agent._extra_generation_hooks`` — identical wiring to
+    AttnHeadZeroAblation.
+
+    Usage::
+
+        steer = ActivationAdditionHook(model, layer_idx=23, vec=direction, alpha=6.0)
+        with steer:
+            out = model.generate(input_ids=ids, max_new_tokens=200, do_sample=False)
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        layer_idx: int,
+        vec: torch.Tensor,
+        alpha: float = 1.0,
+        last_only: bool = False,
+    ):
+        layers = _get_layers(model)
+        if not (0 <= layer_idx < len(layers)):
+            raise ValueError(f"layer_idx={layer_idx} out of range [0, {len(layers)})")
+        self.model = model
+        self.layer_idx = layer_idx
+        self.layer = layers[layer_idx]
+        self.vec = vec
+        self.alpha = float(alpha)
+        self.last_only = bool(last_only)
+        self._hook = None
+
+    def attach(self) -> None:
+        self._hook = self.layer.register_forward_hook(self._hook_fn)
+
+    def detach(self) -> None:
+        if self._hook is not None:
+            self._hook.remove()
+            self._hook = None
+
+    def __enter__(self):
+        self.attach()
+        return self
+
+    def __exit__(self, *exc):
+        self.detach()
+
+    def _hook_fn(self, module, input, output):
+        residual = _layer_output_residual(output)
+        v = self.vec.to(device=residual.device, dtype=residual.dtype)
+        new_residual = residual.clone()
+        if self.last_only:
+            new_residual[0, -1, :] = new_residual[0, -1, :] + self.alpha * v
+        else:
+            new_residual[0, :, :] = new_residual[0, :, :] + self.alpha * v
+        return _replace_layer_output_residual(output, new_residual)
+
+
 # ---------------------------------------------------------------------------
 # Multi-layer patch (for layer-sweep ablations in one forward pass — optional;
 # the experiment driver uses one HiddenStatePatch per layer to keep the

@@ -324,7 +324,7 @@ def main():
                              "match this value. Useful for non-CoT runs where "
                              "the recorded-action label and the residual "
                              "top-1 family disagree (e.g. Llama non-CoT "
-                             "clean_legal_fold has only 20% residual top-1 = "
+                             "clean_legal_fold has only 20%% residual top-1 = "
                              "FOLD). With this flag set, the patching is "
                              "performed only on targets that ACTUALLY have "
                              "the requested family at the verb-residual "
@@ -342,12 +342,27 @@ def main():
                              "match this value. Useful for non-CoT runs where "
                              "the recorded-action label and the source's "
                              "residual top-1 disagree (the source-side analog "
-                             "of the Llama non-CoT 20%-baseline pathology). "
+                             "of the Llama non-CoT 20%%-baseline pathology). "
                              "With both filters set, only sources AND targets "
                              "whose verb-position residual matches the "
                              "expected family enter the main loop. Adds a "
                              "`source_residual_top1_filter` field to "
                              "summary.json.")
+    parser.add_argument("--source-bet-filter", choices=["any", "facing", "nobet"],
+                        default="any",
+                        help="OPTIONAL bet-matched control (audit crux): restrict the "
+                             "SOURCE pool by game state. 'facing' keeps only "
+                             "bet_to_call>0 decisions, 'nobet' only bet_to_call==0. "
+                             "Use with --target-bet-filter to hold 'facing a bet' "
+                             "CONSTANT across source and target so a verb flip cannot be "
+                             "explained by injecting bet-context. Adds a "
+                             "`source_bet_filter` field to summary.json.")
+    parser.add_argument("--target-bet-filter", choices=["any", "facing", "nobet"],
+                        default="any",
+                        help="OPTIONAL bet-matched control (symmetric). E.g. for the "
+                             "facing-a-bet regime use --source-bucket clean_check_or_call "
+                             "--source-bet-filter facing --target-bucket clean_legal_fold "
+                             "--target-bet-filter facing (CALL@bet>0 -> FOLD@bet>0).")
     args = parser.parse_args()
 
     rng = random.Random(args.seed)
@@ -413,8 +428,26 @@ def main():
     for b in BUCKET_NAMES:
         print(f"  {b:<22}: {len(by_bucket[b])}")
 
-    sources_pool = by_bucket[args.source_bucket]
-    targets_pool = by_bucket[args.target_bucket]
+    def _bet_filter(pool: list[dict], mode: str) -> list[dict]:
+        """Bet-matched control: restrict a pool by bet_to_call regime."""
+        if mode == "any":
+            return pool
+        want_facing = (mode == "facing")
+        out = []
+        for r in pool:
+            obs = r.get("obs")
+            b2c = obs.get("bet_to_call") if isinstance(obs, dict) else None
+            if b2c is None:
+                continue
+            if (b2c > 0) == want_facing:
+                out.append(r)
+        return out
+
+    sources_pool = _bet_filter(by_bucket[args.source_bucket], args.source_bet_filter)
+    targets_pool = _bet_filter(by_bucket[args.target_bucket], args.target_bet_filter)
+    if args.source_bet_filter != "any" or args.target_bet_filter != "any":
+        print(f"[bet-filter] source={args.source_bet_filter}: {len(sources_pool)} ; "
+              f"target={args.target_bet_filter}: {len(targets_pool)}")
     # In zero-ablation mode the source bucket is only used for the random-null
     # exclusion (control 3); we don't actually need any real source records.
     if args.zero_ablation:
@@ -827,6 +860,8 @@ def main():
         "model_id": model_id,
         "source_bucket": args.source_bucket,
         "target_bucket": args.target_bucket,
+        "source_bet_filter": args.source_bet_filter,
+        "target_bet_filter": args.target_bet_filter,
         "n_source": len(sources_prep),
         "n_target": len(targets_prep),
         "layers": list(args.layers),

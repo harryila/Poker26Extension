@@ -20,13 +20,15 @@ Implements the pre-submission GPU suite discussed in the planning thread.
 > confound **did not reproduce** (§4), and a **Tier 4 preset-duplication** issue
 > was found (§12).
 >
-> **2026-05-29 reruns landed** (`8ce0b47`, `2b88d27`): (1) **Qwen compute-layer
-> sweep L18–21** located the compute band = distributed attention at L18–L20
-> (§11); (2) **Tier 4 distinct-seed regeneration** decorrelated the opponent RNG
-> — Qwen and Llama now have **5 genuinely-distinct** opponent presets (Qwen
-> opp-invariance +5 to +20 nats across all 5), Ministral 4 (§12). The remaining
-> GPU task is the **Qwen whole-attention necessity ablation** (TASK 3,
-> `scripts/run_qwen_necessity_ablation.sh`, wired into `run_phase_q_final_gpu.sh`).
+> **2026-05-29 reruns landed** (`8ce0b47`, `2b88d27`, `2119466`, `853e662`):
+> (1) **Qwen compute-layer sweep L18–21** located the sufficiency band =
+> distributed attention at L18–L20 (§11); (2) **Tier 4 distinct-seed
+> regeneration** decorrelated the opponent RNG — Qwen and Llama now have
+> **5 genuinely-distinct** opponent presets (Qwen opp-invariance +5 to +20 nats
+> across all 5), Ministral 4 (§12); (3) **Qwen necessity ablation** (TASK 3 +
+> confirmatory clean_legal_fold n=150 run) shows necessity **localizes to L19
+> attention** — McNemar p=3.8e-5 vs an early control layer, saturation L23 not
+> necessary (§11). **All Phase Q GPU work is now complete.**
 
 ## Quick start (GPU box)
 

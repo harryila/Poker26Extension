@@ -7,7 +7,9 @@ landed on `main` after the GPU runs.
 
 This file documents (a) what is **defensible** as-is, (b) what was **broken or
 mis-framed** in the original post-run write-up, and (c) the **fixes and
-follow-up reruns** queued for the next GPU session.
+follow-up reruns** that resolved them. As of 2026-05-29 **all queued GPU reruns
+are complete** (see the Status section); what remains is CPU-only analysis and
+the writeup.
 
 > **See also:** [`REDO_PLAN.md`](REDO_PLAN.md) for the prioritized rerun
 > list (P0/P1/P2), the disciplined layer/head choice per cell, and the
@@ -54,7 +56,7 @@ This replaces the earlier "all 3 are equivalent" framing.
 | Continuation regen_baseline FOLD→CHECK  | 6/24 = 25%     | **14/25 = 56%** (verb drift) | 0/25 = 0%        |
 | Continuation parse-fail (regen, either) | **0%**         | **0%** (confound did NOT reproduce) | **0%**       |
 | Continuation patch flip → CHECK         | **120/120 = 100%** | 105/125 = 84%        | **125/125 = 100%** |
-| Inference ablation (recon, illegal_fold pool) net any-flip | **+58.3pp @ L19** but **L8 control also +41.7pp** (not localized; distributed — §11) | +23.5pp @ L14 triplet, **L15 control null** (localized — §10) | −2.5pp (sextet null; control flips MORE — §9) |
+| Inference ablation necessity (recon, clean_legal_fold n=150) | **L19 localized**: +42.7pp net, **sig > L8 control (p=3.8e-5)**; 5-head subset also sig (p=1e-3); L23 satur. NS (§11) | +23.5pp @ L14 triplet, **L15 control null** (sparse-localized — §10) | −2.5pp (sextet null; control flips MORE — §9) |
 | Mode-balanced cos(w_CoT, w_nonCoT)      | **+0.51** (n=110, both modes own labels) | +0.33 (n=99, fallback labels) | +0.095 (**n=16, NaN CV**) |
 | Compute band (where attn injects verb)  | **distributed attn L18–20** (no sparse head; max 17%) | **sparse 3-head circuit @ L14** (h5,h23,h24) | residual flow-through @ L16 (sextet null) |
 | Opp-invariance (Tier 4 spec-adj, distinct-seed) | **+5 to +20 nats across 5 distinct presets** | ≈0 (noise floor, baseline_match 0.56–0.63) | ≈0.7–1.4 (fails) |
@@ -315,6 +317,12 @@ head story at 3 OR 6 heads.** The verb signal at L=16 is residual
 flow-through; ablating any small head subset is dominated by the generic
 attention-reweighting disruption captured by the control.
 
+Paired McNemar (`SIGNIFICANCE_ministral_l16_sextet.md`) makes this quantitative:
+both triplet and sextet are **✗ REVERSED vs the head-control** (control flips
+MORE — triplet p=8.2e-4, sextet p=2.3e-3), and neither differs from baseline
+(p=0.82 / 1.0). The named heads are, if anything, *less* FOLD-relevant than an
+arbitrary control triple.
+
 **Conclusion for the paper.** Drop the "Ministral sextet is the proper
 analogue of Llama's triplet" hypothesis. Ministral's necessity story is
 "distributed / residual flow-through at the saturation layer; no localizable
@@ -339,6 +347,11 @@ from control. **This is a textbook negative control:** the triplet that
 carries +23.5 pp necessity at L=14 carries nothing at L=15. It confirms the
 compute(L=14) vs saturation(L=15) split is real and head-specific, not an
 artifact of ablating any heads anywhere. Cite alongside §1.
+
+Paired McNemar at **L=14** (`SIGNIFICANCE_llama_l14.md`): the triplet is
+**✓ sig necessary vs the head-control** (p=2.1e-5) and vs baseline (p=3.0e-5),
+while the head-control itself is a clean null vs baseline (−4.4 pp, p=0.71).
+This is the only model with a clean, head-localized, significant necessity.
 
 ### 11. Qwen compute band located = attention across L18–L20 (distributed, no sparse head) [UPDATED 2026-05-29]
 
@@ -397,40 +410,80 @@ illegal_fold pool (n=24), `results/inference_head_ablation/qwen8b_l*_recon_illeg
 | L20 top-3 heads `[29,15,16]` | 62.5% | +29.2 pp | 0% |
 | L23 (saturation) | 79.2% | +45.8 pp | 0% |
 
-**Two honest conclusions, and one caveat that gates the claim:**
+The n=24 illegal_fold pool was too coarse (each record = 4.2%) and, misleadingly,
+made the saturation layer L23 look as necessary as the compute peak. **The
+confirmatory run on the 10× larger `clean_legal_fold` pool (n=150) resolved it
+decisively.**
 
-1. **The flips are genuine, not generation damage.** parse_fail = 0% in every
-   condition — ablation produces coherent CoT+JSON that simply chooses CHECK
-   instead of FOLD. The L19 5-head subset reproducing the full whole-attention
-   L19 effect (both +58.3 pp) corroborates the sweep's L19 attention finding.
+**CONFIRMATORY RUN RAN 2026-05-29 — clean_legal_fold pool (n=150),
+`results/inference_head_ablation/qwen8b_l*_recon_clean_legal_fold_{wholeattn,topk}/`.**
+Baseline regen-drift is only 15.3% here (clean legal folds are more stable than
+illegal folds). Net any-flip vs baseline, with a **paired McNemar exact test of
+each layer's ablation against the early L8 CONTROL ablation** (same 150 records):
 
-2. **But the effect does NOT cleanly localize.** The early CONTROL layer (L8)
-   also flips +41.7 pp, and the saturation layer (L23) +45.8 pp. Whole-attention
-   ablation at *any* layer biases Qwen toward CHECK — i.e. there is a large
-   generic "remove attention → fold less" component (~+42 pp) on top of which the
-   compute band adds only a modest increment (L19 +58 vs L8 control +42 = ~16 pp,
-   ≈4 records). This is the expected signature of a *distributed/consolidated*
-   circuit: no single attention component is strictly necessary because the
-   residual stream is robust. It is **consistent with** (not contradicting) the
-   consolidation-gradient story, but it does **not** support a strong "L18–20 is
-   necessary" claim.
+| Layer (scope) | net any-flip | McNemar vs **L8 control** | parse_fail |
+|---|---:|---|---:|
+| **L8 (early CONTROL)** | +20.7 pp | — (the generic floor) | 0% |
+| L18 | +30.7 pp | p = 0.077 (marginal) | 0% |
+| **L19 (compute peak)** | **+42.7 pp** | **p = 3.8e-5 ✓ significant** | 0% |
+| L19 top-5 heads `[31,3,21,1,0]` | +37.3 pp | **p = 1.0e-3 ✓ significant** | 0% |
+| L20 whole | +11.3 pp | NS (below control) | 0% |
+| L20 top-3 heads `[29,15,16]` | +24.7 pp | p = 0.50 (NS) | 0% |
+| L23 (saturation) | +16.0 pp | p = 0.36 (NS) | 0% |
 
-3. **Caveat — n=24 is too coarse to resolve the ~16 pp compute-band increment**
-   (each record = 4.2%). The illegal_fold pool is only 24 records. Qwen has
-   **261 clean_legal_fold** records — a >10× larger genuine-FOLD pool. A
-   confirmatory re-run on that pool (next GPU task) is needed to say whether
-   L19's edge over the L8 control is real or noise:
+(L19 ablation vs its **own baseline**: 70 vs 6 discordant records, p = 6.3e-15.)
 
-   ```bash
-   FILTER_RECORDED_BUCKET=clean_legal_fold N_DECISIONS=150 FORCE_RERUN=1 \
-     bash scripts/run_qwen_necessity_ablation.sh
-   ```
+**Three conclusions — Qwen necessity DOES localize, to L19:**
 
-   Until that lands, the defensible necessity statement for Qwen is: *"whole-
-   attention ablation flips FOLD→CHECK coherently and most strongly at the
-   compute band (L19), but with a large layer-nonspecific component — consistent
-   with a distributed, residual-robust circuit rather than a sparse necessary
-   one."*
+1. **Genuine, not generation damage:** parse_fail = 0% everywhere — ablation
+   yields coherent CoT+JSON that simply chooses CHECK over FOLD.
+
+2. **Localized to L19 above the generic floor.** There IS a generic "remove
+   attention → fold less" component (~+20 pp even at the early L8 control), but
+   **L19 ablation flips significantly MORE than L8** (+42.7 vs +20.7 pp,
+   p = 3.8e-5), and crucially a **5-head L19 subset `[31,3,21,1,0]` alone also
+   beats control** (p = 1.0e-3). So the L19 attention is necessary for the FOLD
+   decision over-and-above generic disruption. L18 is only marginal (p = 0.077).
+
+3. **Saturation layer L23 is NOT specifically necessary** (p = 0.36 vs control)
+   — confirming the sweep's "residual flow-through by L21–23." And L20's
+   whole-block ablation is *weaker* than its own top-3-head ablation (+11 vs
+   +25 pp), the expected signature of the **cancelling +30%/−19% head pair** the
+   sweep found at L20: zeroing all of L20 removes both the promoting and the
+   suppressing heads, partly self-cancelling.
+
+**Bottom line:** Qwen's verb-decision necessity localizes to **L19 attention
+(concentrated in ~5 heads), with L18 contributing marginally and L20/L23 not
+necessary beyond the generic floor.** This is weaker localization than Llama's
+sparse L14 triplet (Llama's control is a clean null; Qwen's L8 control still
+flips ~20 pp), but it is a genuine, statistically-significant compute-layer
+necessity result — not the "non-localized" picture the n=24 pool suggested.
+
+**Reproducible significance artifacts.** The paired McNemar exact tests above
+are computed by `experiments/necessity_significance.py` (CPU-only, stdlib-only,
+reads the committed `*_rows.jsonl`), not ad-hoc. Committed outputs:
+
+- `results/inference_head_ablation/SIGNIFICANCE_qwen_clean_legal_fold.md`
+  (n=150 — the decisive Qwen result: L19 ✓ sig necessary p=3.8e-5; L19 5-head
+  subset ✓ sig p=1e-3; L23 NS).
+- `results/inference_head_ablation/SIGNIFICANCE_qwen_illegal_fold.md`
+  (n=24 — shows **no** cell reaches significance vs control at this n, i.e. the
+  small pool was the reason for the earlier ambiguity, not absence of an effect).
+- `results/inference_head_ablation/SIGNIFICANCE_llama_l14.md`
+  (Llama triplet ✓ sig necessary p=2.1e-5; the head-control is a clean null,
+  −4.4 pp NS — §10's localized story, now with a p-value).
+- `results/inference_head_ablation/SIGNIFICANCE_ministral_l16_sextet.md`
+  (Ministral triplet AND sextet are **✗ REVERSED** — the control heads `[0,1,2]`
+  flip *more* than the named heads, p=8e-4 / 2e-3; quantifies the §9 null).
+
+Regenerate any of them, e.g.:
+
+```bash
+python -m experiments.necessity_significance \
+  --glob 'results/inference_head_ablation/qwen8b_l*_recon_clean_legal_fold_*' \
+  --control-layer 8 \
+  --out results/inference_head_ablation/SIGNIFICANCE_qwen_clean_legal_fold.md
+```
 
 ### 12. Tier 4 preset duplication: Llama/Qwen have 4 distinct opponent distributions, not 5 [NEW 2026-05-28]
 
@@ -621,6 +674,13 @@ drift, Ministral's bucket-skew) that belong in the limitations section.
   sparse triplet to ablate.
 - **`experiments/diagnose_tier4_preset_overlap.py`** — added `--log-suffix` so
   the diagnostic can target the `_distinctseed` regenerated logs (§12).
+- **`experiments/necessity_significance.py`** (NEW) — CPU/stdlib-only paired
+  McNemar exact test turning the ad-hoc necessity stats into reproducible
+  `SIGNIFICANCE_*.md` artifacts; supports both the Qwen cross-layer control and
+  the Llama/Ministral within-cell head control, with a **directional** verdict
+  (✓ necessary vs ✗ reversed). Also softened the per-cell
+  `inference_head_ablation.py` SUMMARY verdict to stop calling a large
+  flip-over-baseline "necessary" without the control comparison.
 
 ## Code paths NOT changed (deliberately)
 
@@ -658,29 +718,22 @@ MODEL=ministral PIPELINE=recon \
   --conditions baseline triplet extended control
 ```
 
-**Status 2026-05-29: P0.1–P0.4, P1.1–P1.3, Tier 4@L=15, the Qwen compute-layer
-sweep (§11), the Tier 4 distinct-seed regeneration (§12), AND the Qwen necessity
-ablation (TASK 3) have ALL landed** (`dd1a534`, `185800a`, `8ce0b47`, `2b88d27`,
-`2119466`). TASK 3 produced a genuine-but-non-localized necessity signal (§11):
-flips are coherent (0% parse_fail) and peak at L19, but the early control layer
-also flips, and n=24 is too coarse to resolve the compute-band increment.
+**Status 2026-05-29: ALL Phase Q GPU work is COMPLETE.** P0.1–P0.4, P1.1–P1.3,
+Tier 4@L=15, the Qwen compute-layer sweep (§11), the Tier 4 distinct-seed
+regeneration (§12), the Qwen necessity ablation (TASK 3, illegal_fold n=24), AND
+the confirmatory necessity run (clean_legal_fold n=150) have all landed
+(`dd1a534`, `185800a`, `8ce0b47`, `2b88d27`, `2119466`, `45e4bea`, `853e662`).
 
-**One confirmatory GPU task remains** — re-run necessity on the 10× larger
-`clean_legal_fold` pool (n≈150 vs 24) to test whether L19's edge over the L8
-control is real:
+The confirmatory n=150 run **resolved the necessity question**: Qwen's FOLD
+necessity **localizes to L19 attention**, significantly above the L8 control
+(McNemar p = 3.8e-5; 5-head subset p = 1e-3), with the saturation layer L23 NOT
+necessary (p = 0.36) — see §11. There is **no remaining GPU work**; the analysis
+is complete and the cross-model story (sufficiency universal, necessity gradient
+Llama-sparse / Qwen-L19 / Ministral-distributed, opponent-invariance Qwen-only)
+is fully evidenced.
 
-```bash
-cd xpoker2026Extension && git pull origin main
-export HF_HOME=/workspace/huggingface HF_TOKEN=...
-FILTER_RECORDED_BUCKET=clean_legal_fold N_DECISIONS=150 FORCE_RERUN=1 \
-  bash scripts/run_qwen_necessity_ablation.sh   # ~60-80 min, Qwen weights only
-```
-
-Outputs land in `results/inference_head_ablation/qwen8b_l*_recon_clean_legal_fold_{wholeattn,topk}/`
-(distinct dirs; won't clobber the illegal_fold cells). The read is the same:
-compare each layer's net any-flip to the **L8 control** — a real localization
-shows the compute band (L18–20, esp. L19) significantly above L8; a flat profile
-confirms the distributed/non-localized picture.
+(The paired McNemar tests are CPU-only and reproducible from the committed
+`*_rows.jsonl` files; no GPU needed to re-verify.)
 
 Local (no-GPU) verification committed:
 `results/diagnostics/tier4_preset_overlap_distinctseed/SUMMARY.md`
@@ -700,15 +753,16 @@ Local (no-GPU) verification committed:
    illegal_fold pool):
    - **Llama L=14** — the only clean LOCALIZED necessity: the sparse triplet
      adds **+23.5 pp** any-flip and the L=15 negative control is null (§10).
-   - **Qwen** — necessity is **distributed, not localized**: whole-attention
-     ablation flips coherently (0% parse_fail) and peaks at the compute band
-     (L19, +58 pp any-flip; reproduced by a 5-head L19 subset), but an early
-     CONTROL layer (L8) also flips +41.7 pp and saturation L23 +45.8 pp. So the
-     compute-band-specific increment is only ~16 pp — consistent with a
-     residual-robust distributed circuit, NOT a sparse necessary one (§11). A
-     larger-pool (clean_legal_fold, n≈150) confirmatory run is queued to test
-     whether that increment is significant. **Do not over-claim "L18–20
-     necessary"** beyond the distributed framing.
+   - **Qwen L=19** — necessity **localizes to L19 attention** (confirmed on the
+     clean_legal_fold n=150 pool, §11): whole-attention ablation flips coherently
+     (0% parse_fail) +42.7 pp, **significantly above the early L8 control**
+     (p = 3.8e-5), and a 5-head L19 subset `[31,3,21,1,0]` alone also beats
+     control (p = 1e-3). The saturation layer L23 is NOT necessary (p = 0.36 vs
+     control — flow-through). There is a generic ~20 pp "remove-attention" floor
+     (so localization is softer than Llama's clean-null control), but L19 is a
+     genuine, significant compute-layer necessity. Note the compute layer for
+     *necessity* (L19) sits inside the L18–20 attention band the sufficiency
+     sweep found (§11), one–two layers below the L23 saturation/patch layer.
    - **Ministral L=16** — **no head-localized necessity at 3 or 6 heads**
      (sextet null, control flips more — §9).
 
@@ -731,7 +785,8 @@ Local (no-GPU) verification committed:
 
 5. **L\* fires regardless of street** (3 models, 2–4 strata): top-1 → CHECK
    stays 86–100% across PREFLOP / FLOP / TURN / RIVER. The
-   pot-odds-quartile-on-facing-bet experiment (queued) will say whether L\*
+   pot-odds-quartile-on-facing-bet experiment (landed for all 3 models,
+   `results/context_stratified_patching/*_pot_odds/`) addresses whether L\*
    is downstream of equity computation specifically.
 
 6. **The L\* patch is surgical, not a coherence break**: continuation after
@@ -753,18 +808,21 @@ Local (no-GPU) verification committed:
    - **Ministral L=16** — **no** sparse circuit at 3 or 6 heads; the sextet
      ablation is a clean null and the control flips more (§9). Distributed /
      residual flow-through.
-   - **Qwen** — compute is **distributed attention across L18–L20** (§11): attn
-     carries 92%/78% of the (small) residual effect at L18/L19, but the largest
-     single head is only 17% and L20 has a cancelling +30%/−19% pair. By L21–23
-     it is residual flow-through (attn ≈0–8%). So Qwen HAS a localizable
-     *compute band*, but it is a distributed multi-layer attention sub-network,
-     **not** a sparse head circuit. Necessity tested by whole-attention ablation
-     (TASK 3).
+   - **Qwen** — sufficiency sweep: compute is **distributed attention across
+     L18–L20** (§11), attn carries 92%/78% of the residual effect at L18/L19,
+     largest single head 17%, L20 has a cancelling +30%/−19% pair, residual
+     flow-through by L21–23. Necessity (clean_legal_fold n=150 ablation,
+     McNemar): **localizes to L19** — L19 ablation flips significantly above the
+     L8 control (p = 3.8e-5) and a 5-head L19 subset alone beats control
+     (p = 1e-3), while saturation L23 is NS (p = 0.36, flow-through). So Qwen's
+     necessity is genuine and L19-localized, but softer than Llama's (Qwen has a
+     ~20 pp generic "remove-attention" floor; Llama's L15 control is a clean
+     null).
 
-   So the gradient is sharper than "head count scales": **Llama is the only 8B
-   with a localizable *sparse* attention-head circuit at its compute layer;
-   Qwen consolidates the verb into a distributed attention band (L18–20) that
-   then rides the residual stream; Ministral commits it via the residual stream
-   with no localizable heads at its saturation layer.**
+   So the gradient: **Llama has a sparse, clean-control attention triplet at its
+   compute layer (L14); Qwen has a distributed L18–20 sufficiency band whose
+   *necessity* concentrates at L19 attention (above a generic floor); Ministral
+   commits the verb via the residual stream with no localizable necessary heads
+   at L16.**
 
 This is the honest cross-model story.

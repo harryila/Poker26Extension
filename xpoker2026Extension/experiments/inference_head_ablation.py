@@ -94,9 +94,11 @@ DEFAULT_HEAD_SETS: dict[str, dict] = {
 def _parse_head_sets(specs: list[str] | None) -> list[tuple[str, object]]:
     """Parse --head-sets items into (name, heads) pairs.
 
-    Each spec is 'name:idx1 idx2 ...' or 'name:all'. Returns heads as a
-    list[int] or the sentinel string 'all' (resolved to range(num_heads)
-    once the model is loaded).
+    Each spec is 'name:idx1 idx2 ...', 'name:all', or 'name:rand:K:SEED'
+    (K random heads sampled at the ablation layer with a fixed SEED — used for
+    the same-depth random-head CONTROL). Returns heads as a list[int], the
+    sentinel string 'all', or a ('rand', K, SEED) tuple (both sentinels are
+    resolved once the model is loaded and num_heads is known).
     """
     out: list[tuple[str, object]] = []
     for spec in specs or []:
@@ -107,6 +109,11 @@ def _parse_head_sets(specs: list[str] | None) -> list[tuple[str, object]]:
         rhs = rhs.strip()
         if rhs.lower() == "all":
             out.append((name, "all"))
+        elif rhs.lower().startswith("rand:"):
+            parts = rhs.split(":")
+            k = int(parts[1])
+            sd = int(parts[2]) if len(parts) > 2 else 0
+            out.append((name, ("rand", k, sd)))
         else:
             heads = [int(x) for x in rhs.split()]
             out.append((name, heads))
@@ -479,7 +486,14 @@ def main():
     if custom_sets:
         num_heads, _ = get_head_geometry(model)
     for name, heads in custom_sets:
-        resolved = list(range(num_heads)) if heads == "all" else list(heads)
+        if heads == "all":
+            resolved = list(range(num_heads))
+        elif isinstance(heads, tuple) and heads and heads[0] == "rand":
+            _, k, sd = heads
+            _rng = random.Random(sd)
+            resolved = sorted(_rng.sample(range(num_heads), min(k, num_heads)))
+        else:
+            resolved = list(heads)
         scope = "ALL heads (whole-attention)" if heads == "all" else str(resolved)
         print(f"[run] custom ablation '{name}' layer={layer} heads={scope} ...")
         abl = AttnHeadZeroAblation(model, layer, resolved)
@@ -609,18 +623,16 @@ def main():
             f"{c_flip*100:.1f}% − baseline {b_flip*100:.1f}% = {net_pp:+.1f} pp** "
             f"(parse_fail {cond['fold_target_flips']['parse_fail_rate']*100:.1f}%)"
         )
-        if net_pp >= 30:
-            md.append(
-                f"- The `{name}` attention scope is **behaviorally necessary** "
-                "for FOLD at this layer."
-            )
-        elif net_pp >= 10:
-            md.append(f"- Moderate necessity for `{name}`; check parse_fail.")
-        else:
-            md.append(
-                f"- `{name}` ablation is **behaviorally redundant** for FOLD "
-                "(no large flip beyond baseline)."
-            )
+        md.append(
+            f"- ⚠️ This is flip-over-BASELINE only. A whole-attention/large head "
+            f"ablation is blunt: removing attention at *any* layer biases toward "
+            f"CHECK, so a large net flip can be **generic disruption**, not "
+            f"layer-specific necessity. The necessity claim requires a paired "
+            f"comparison to a CONTROL-layer (or control-head) ablation — see "
+            f"`experiments.necessity_significance` and "
+            f"`results/inference_head_ablation/SIGNIFICANCE_*.md`. Do NOT read "
+            f"this single number as 'necessary'."
+        )
     md.append("")
     md.append("## Reading guide")
     md.append(

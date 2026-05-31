@@ -215,3 +215,44 @@ Pull back `results/direction_probe_baselines/ENCODE_*`, `results/posterior_steer
 `logs/scale_qwen_cot_*.jsonl` and we post-process: read `ENCODE_LAYER_COMPARE.md` first (it sets
 whether the headline is "knows" or the weaker claim), then the steering SUMMARYs (trash vs control),
 then diff the three CoT win-rates.
+
+---
+
+## V3 BATCH — fix the v2 design errors (after v2 verdicts: steering=artifact, encode=input-presence, C3=bet-not-fold)
+
+v2 closed the bet confound but its three Tier-1 cells were design-flawed (verified by an adversarial
+workflow — see `CLAIMS_AND_IDENTIFICATION.md` "RESULTS LANDED v2-batch"). v3 corrects them. One script:
+
+```bash
+cd xpoker2026Extension && git pull
+export HF_HOME=/workspace/huggingface HF_TOKEN=...
+bash scripts/run_followups_gpu_v3.sh                  # all (~4-7 GPU-h; P0-NECC's 50 draws dominate)
+PHASES="P0-STEER" bash scripts/run_followups_gpu_v3.sh   # just the cheap, decisive steering fix
+NDRAWS=30 bash scripts/run_followups_gpu_v3.sh           # faster permutation null
+```
+
+- **P0-STEER** (cheap, decisive): re-runs steering with the CAUSAL decision direction
+  (`make_decision_steer_dir.py` → centroid_diff, cos 0.999 to the patching axis) at SANE alpha
+  (gap-units {0,0.25,0.5,0.75,1,1.5}, NOT 2-8× resid-norm). Single-forward readout, built-in random
+  control. **Expect** the verb to move ~alpha 0.3-1.0 (partial flip — ADD-steering is weaker than the
+  REPLACE-patch that flips 100%). Either lands the payoff or gives a *defensible* null. Pull
+  `results/posterior_steering/qwen8b_decdir_*`.
+- **P0-NECC** (highest paper value): same-depth permutation null — top5 vs 50 random L19 5-head sets
+  in one model load (`inference_head_ablation … --head-sets top5 r000…r049`), then
+  `permutation_null_pvalue.py` → calibrated empirical p + z, AND the flip-destination split
+  (FOLD→CHECK vs FOLD→BET) = the fold-vs-aggression test on the recorded pool. Pull
+  `results/inference_head_ablation/PERMNULL_qwen_l19.md`. Turns "localized a layer" into a circuit
+  claim (or honestly into "graded/distributed").
+- **P1-BATTERY** (settles the C3 tension): `action_shift_battery.py` — single-forward, fully-paired
+  facing-bet spots, baseline vs ablate(L19) vs steer(L23 decision dir) → clean FOLD/CHECK/BET
+  transition matrix with ZERO game-tree divergence. Decides fold-circuit vs aggression cleanly. Pull
+  `results/action_shift/qwen8b_facingbet/SUMMARY.md`.
+- **P1-COMPUTE** (redirect after the input-presence null): re-recaptures L2 + L* WITH equity +
+  input-features (the recapture now saves them), then `computed_quantity_probe.py` decodes EQUITY
+  (win prob given HIDDEN opponent cards) and reports the partialled-out late−early R². A positive
+  partialled late R² = the model genuinely ESTIMATES equity internally (a "computed representation"
+  claim that survives the input-presence critique); ~0 = drop the line honestly. Pull
+  `results/direction_probe_baselines/COMPUTED_QUANTITY_qwen.md`.
+
+All CPU aggregators were synthetic-self-tested locally; `make_decision_steer_dir` already produced the
+L23 vector (cos 0.999). 106 unit tests pass after the edits.

@@ -85,9 +85,36 @@ def main() -> None:
 
     X, verbs, bets, buckets = [], [], [], []
     oracle_sa, oracle_co, beliefs = [], [], []   # for encode-vs-decode (may be all-NaN if absent)
+    row_seed, row_didx, equities, input_feats = [], [], [], []  # for the computed-quantity probe
     per_bucket = {b: 0 for b in KEEP_BUCKETS}
     n_seen = n_kept = 0
     _nan14 = np.full(14, np.nan, dtype=np.float32)
+    _RANKS = "23456789TJQKA"
+
+    def _input_features(obs):
+        """Compact NON-residual features for the partialling control: opponent action counts,
+        board size, street, bet_to_call, and hero/board high-card ranks. (See computed_quantity_probe.)"""
+        hist = obs.get("history") or []
+        cnt = {"BET_OR_RAISE": 0, "CHECK_OR_CALL": 0, "FOLD": 0}
+        for ev in hist:
+            a = (ev.get("action") if isinstance(ev, dict) else None)
+            if a in cnt:
+                cnt[a] += 1
+        board = obs.get("board") or []
+        hole = obs.get("hero_hole") or []
+        def _ranks(cards):
+            return sorted((_RANKS.index(c[0]) if c and c[0] in _RANKS else -1) for c in cards)
+        hr = _ranks(hole) + [-1, -1]
+        feats = [cnt["BET_OR_RAISE"], cnt["CHECK_OR_CALL"], cnt["FOLD"],
+                 len(board), obs.get("street_index", -1) if obs.get("street_index") is not None else -1,
+                 float(obs.get("bet_to_call") or 0), hr[0], hr[1]]
+        return np.array(feats, dtype=np.float32)
+
+    def _equity_scalar(rec):
+        e = rec.get("equity_given_true_hands")
+        if not isinstance(e, dict):
+            return np.float32("nan")
+        return np.float32(float(e.get("equity_win", 0.0)) + 0.5 * float(e.get("equity_tie", 0.0)))
 
     for log in args.enriched_log:
         for rec in _iter_decisions(log):
@@ -133,6 +160,10 @@ def main() -> None:
             oracle_sa.append(sa if sa is not None else _nan14)
             oracle_co.append(co if co is not None else _nan14)
             beliefs.append(bl if bl is not None else _nan14)
+            row_seed.append(int(rec.get("seed", -1)))
+            row_didx.append(int(rec.get("decision_idx", -1)))
+            equities.append(_equity_scalar(rec))
+            input_feats.append(_input_features(obs))
             per_bucket[bucket] += 1
             n_kept += 1
             if n_kept % 50 == 0:
@@ -150,6 +181,13 @@ def main() -> None:
              oracle_card_only=np.asarray(oracle_co, dtype=np.float32),
              agent_belief=np.asarray(beliefs, dtype=np.float32),
              bucket_order=np.array(list(BUCKET_ORDER)),
+             seed=np.asarray(row_seed, dtype=np.int64),
+             decision_idx=np.asarray(row_didx, dtype=np.int64),
+             equity=np.asarray(equities, dtype=np.float32),
+             input_feats=np.asarray(input_feats, dtype=np.float32),
+             input_feat_names=np.array(["opp_betraise", "opp_checkcall", "opp_fold",
+                                        "board_size", "street_idx", "bet_to_call",
+                                        "hole_rank0", "hole_rank1"]),
              layer=np.int64(args.layer),
              model_id=np.array(model_id))
     print(f"[written] {args.out}")

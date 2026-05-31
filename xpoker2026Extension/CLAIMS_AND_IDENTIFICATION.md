@@ -64,6 +64,67 @@ pending its early-layer control. C2/C3 need rework before any steering/behaviora
 
 ---
 
+## RESULTS LANDED v2-batch (2026-05-29 — C1-control, C2-steering, C3-CoT) + adversarial verification
+
+A 3-investigator → 3-skeptic workflow (all skeptics tried hard to refute; all AGREED) plus my
+own decisive cross-checks settled the three v2 follow-ups:
+
+- ❌→🔧 **Steering (C2): ARTIFACT, not a genuine null.** The steered vector
+  (`steer_trash_direction.npz`) is the residual→oracle-trash RIDGE direction, **orthogonal to
+  the causal decision axis** (cos to weight_vec/centroid_diff = 0.006; Cohen's d 0.93 vs
+  10.7–14.4), and alpha 2/4/8 = **6–25× the natural check−fold gap** (=2/4/8× the residual norm
+  158). The random control swung the logit as much as the trash direction, and generation
+  parse-rate collapsed 1.0→0.0 identically for both = direction-independent norm destruction.
+  **The corrected vector was never actually run** — so "it will steer" is a prediction, and ADD-
+  steering is mechanistically weaker than the REPLACE-patching that flips 100%. → re-run P0 below.
+
+- ❌ **Encode-vs-decode "knows" (C1): INPUT-PRESENCE — claim is DEAD (verifier: understated).**
+  A 4-number readout of opponent BET/RAISE/CALL/CHECK counts recovers oracle trash mass at
+  R²=0.962/0.960/0.974 (Llama/Qwen/Ministral) — **above the residual probe at every layer**
+  (L2≈L*). A parameter-free group-mean over 27/58 count-tuples reproduces R²≈0.97 (rules out
+  leakage); partialling opp-counts out of both sides leaves the best probe (Ministral L16) at
+  residual R²=**−1.21**. The oracle posterior is a near-deterministic function of prompt token
+  counts. **DROP "the model computes the Bayesian posterior."** The surviving, quantified finding:
+  *the information sufficient for the posterior is linearly present in the prompt yet the
+  VERBALIZED belief discards it* (stated trash abs-err 0.32/0.56/0.63; JS 0.20/0.25/0.30 nats;
+  stated belief uncorrelated/anti-correlated with oracle). Real, but a property of the prompt +
+  readout, not an internal computed representation.
+
+- 🔧 **C3 gameplay: NEEDS REDESIGN + a real reinterpretation.** Net chips is dead-noisy (paired
+  diff −0.127/hand, SE 0.78). On 670 byte-matched spots: **fold-rate UNCHANGED** (0.556→0.562,
+  McNemar p≈1) while **bet/raise DOUBLES** (0.449→0.919, z=7.1; confirmed at the byte-identical
+  first decision z≈8.9 with FOLD=0 in BOTH conditions). So in free play L19[31,3,21,1,0] reads as
+  an **aggression/bet-suppression component, not a fold circuit**. CoT fixed the v1 degeneracy
+  (31 distinct deltas); the steer arm is broken (1791/1791 forced fallbacks = over-steer).
+
+### MY CROSS-CHECK reconciling C3 with the necessity headline (load-bearing):
+When L19 ablation flips a *recorded* FOLD (inference-ablation pool), where does it go?
+- Qwen L19 whole-attn: 70/127 flip → **57% CHECK, 43% BET**.  L19 top-5 heads: **68% CHECK, 32% BET**.  L23: 76% CHECK.
+⇒ The two pipelines are BOTH right on their own pools: on *recorded-fold* spots ablation reduces
+fold (majority to CHECK), but in *free play across all spots* the dominant effect is check→bet
+with no net fold reduction. **Honest reframe: L19 modulates the fold-vs-(check/bet) decision on
+fold-committed spots and suppresses aggression in general play; "necessary for FOLD" is
+pool-dependent and too strong.** A fixed facing-bet battery (P1) is needed to settle it cleanly.
+
+### What survives as the paper backbone (post-v2):
+✅ Causal **sufficiency** (REPLACE-patch flips FOLD→CHECK ~100%, 3 seeds, +18.3 nats) — headline.
+✅ **Bet-matched control** (decode-the-decision-not-the-input, acc 1.00 vs 0.5 floor) — the
+   methodological contribution that beats the only direct competitor (arXiv 2512.23722, workshop).
+🟡 **Necessity gradient** — DOWNGRADE from "circuit" to "layer localization" until hardened: Qwen
+   L19 is p=3.8e-5 vs an early-layer control but only **marginal vs same-depth random heads**
+   (p≈0.06) — "you localized a layer, not a circuit." Reframe as a *non-universal* consolidation
+   gradient (Llama sparse → Qwen graded/distributed → Ministral flow-through).
+DROP: "computes Bayesian posterior / world model"; "L19 is a fold circuit"; net-chips as a readout.
+
+### Venue (per literature scan): borderline main-track.
+Strong workshop / mid-tier accept as-is (beats 2512.23722 on causal rigor). Two experiments lift
+it to credible main-track: (P0) harden necessity into a circuit claim; (P0→P2) land ONE working
+steering/de-bias payoff. Frame as "a causally sufficient decision direction + a non-universal
+necessity gradient," lineage LLMs-know-more-than-they-show (2410.02707) / verbalized-vs-internal
+(2603.25052); demote the world-model story to an honest input-presence negative (2509.13316).
+
+---
+
 ---
 
 ## 0. Reframed headline (what leads the paper)

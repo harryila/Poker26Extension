@@ -1,0 +1,10 @@
+{
+  "tagged": "results/direction_probe/qwen8b_l23/raw_residuals_tagged.npz",
+  "layer": 23,
+  "n_oracle_rows": 685,
+  "trash_r2": 0.48556433641296126,
+  "mean_r2": 0.3468804519056644,
+  "js_stated": 0.24556665887886395,
+  "probe_trash_abs_err": 0.027186272976453384,
+  "stated_trash_abs_err": 0.5556782896419729
+}

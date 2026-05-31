@@ -47,6 +47,25 @@ step () {
   else echo "[$name] !! FAILED rc=$? — continuing" | tee -a "$LOG"; fi
 }
 
+# --- disk-quota guard: the ~20 GB /workspace HF cache holds only ONE 8B model.
+# Purge every cached 8B model EXCEPT the one named, so each GPU recapture has
+# room. C1 runs llama->ministral->qwen, leaving qwen resident for C2/C3.
+export HF_HUB_CACHE="${HF_HUB_CACHE:-${HF_HOME:-/workspace/huggingface}/hub}"
+_hubdir () { case $1 in
+  llama)     echo "models--meta-llama--Llama-3.1-8B-Instruct";;
+  ministral) echo "models--mistralai--Ministral-8B-Instruct-2410";;
+  qwen)      echo "models--Qwen--Qwen3-8B";; esac; }
+purge_hf_except () {
+  local keep=$1 m t
+  for m in llama ministral qwen; do
+    [[ "$m" == "$keep" ]] && continue
+    t="${HF_HUB_CACHE%/}/$(_hubdir "$m")"
+    [[ -d "$t" ]] && { echo "  [purge] rm -rf $t" | tee -a "$LOG"; rm -rf "$t"; }
+  done
+  local xet; xet="$(dirname "$HF_HUB_CACHE")/xet"; [[ -d "$xet" ]] && rm -rf "${xet:?}"/* 2>/dev/null
+  du -sh "${HF_HOME:-/workspace/huggingface}" 2>/dev/null | tee -a "$LOG"
+}
+
 STEER=results/direction_probe/qwen8b_l23/steer_trash_direction.npz
 
 # =============================================================================
@@ -62,7 +81,8 @@ if want C1; then
     # (1) CPU: add json sidecar to the existing L* encode
     [[ -f "$LATE" ]] && step "C1.reEmitLate.$m" python -m experiments.encode_vs_decode \
       --tagged "$LATE" --out results/direction_probe_baselines/ENCODE_VS_DECODE_${m}_l${L}.md --emit-json
-    # (2) GPU: recapture at L2
+    # (2) GPU: recapture at L2 — free the quota for THIS model first.
+    purge_hf_except "$m"
     step "C1.recaptureEarly.$m" python -m experiments.bet_matched_recapture \
       --enriched-log $(logs_for $m) --layer 2 --device "$DEVICE" --dtype "$DTYPE" --out "$EARLY"
     # (3) CPU: encode at L2
@@ -85,6 +105,7 @@ fi
 #          ±alpha, wrong-folds (illegal_fold) + legal folds, vs random control.
 # =============================================================================
 if want C2; then
+  purge_hf_except qwen   # ensure Qwen has room (no-op if C1 already left it resident)
   if [[ -f "$STEER" ]]; then
     for L in 19 23; do
       for tgt in illegal_fold clean_legal_fold; do

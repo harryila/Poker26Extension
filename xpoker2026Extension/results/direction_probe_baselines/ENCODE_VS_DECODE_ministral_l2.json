@@ -1,0 +1,10 @@
+{
+  "tagged": "results/direction_probe/ministral8b_l2/raw_residuals_tagged.npz",
+  "layer": 2,
+  "n_oracle_rows": 514,
+  "trash_r2": 0.9077602248718822,
+  "mean_r2": 0.8336232537397068,
+  "js_stated": 0.3041324675203201,
+  "probe_trash_abs_err": 0.008853155606148681,
+  "stated_trash_abs_err": 0.6335276134632295
+}

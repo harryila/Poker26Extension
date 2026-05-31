@@ -1,0 +1,10 @@
+{
+  "tagged": "results/direction_probe/llama8b_l2/raw_residuals_tagged.npz",
+  "layer": 2,
+  "n_oracle_rows": 757,
+  "trash_r2": 0.6346987091597716,
+  "mean_r2": 0.6016527942753724,
+  "js_stated": 0.19545677033490969,
+  "probe_trash_abs_err": 0.024502772016319584,
+  "stated_trash_abs_err": 0.32202981240171424
+}

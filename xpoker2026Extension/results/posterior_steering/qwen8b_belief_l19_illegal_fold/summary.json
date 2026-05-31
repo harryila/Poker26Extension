@@ -1,0 +1,50 @@
+{
+  "model_id": "Qwen/Qwen3-8B",
+  "layer": 19,
+  "target_bucket": "illegal_fold",
+  "alphas": [
+    0.0,
+    2.0,
+    4.0,
+    6.0
+  ],
+  "n": 24,
+  "conditions": {
+    "trash_direction": {
+      "0.0": {
+        "mean_js": 0.20461996145916128,
+        "parse_rate": 1.0
+      },
+      "2.0": {
+        "mean_js": null,
+        "parse_rate": 0.0
+      },
+      "4.0": {
+        "mean_js": null,
+        "parse_rate": 0.0
+      },
+      "6.0": {
+        "mean_js": null,
+        "parse_rate": 0.0
+      }
+    },
+    "random_control": {
+      "0.0": {
+        "mean_js": 0.20461996145916128,
+        "parse_rate": 1.0
+      },
+      "2.0": {
+        "mean_js": null,
+        "parse_rate": 0.0
+      },
+      "4.0": {
+        "mean_js": null,
+        "parse_rate": 0.0
+      },
+      "6.0": {
+        "mean_js": null,
+        "parse_rate": 0.0
+      }
+    }
+  }
+}
